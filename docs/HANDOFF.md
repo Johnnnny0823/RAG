@@ -1,5 +1,28 @@
 # Agent Handoff
 
+## M3 混合檢索檢查點
+
+- Date/time (timezone): 2026-11-09 02:23（Asia/Taipei，UTC+8）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點為 `1beaef0`。
+- Current milestone and status: M3 IN_PROGRESS。M2 DONE。
+- Goal of this session: 以真實詞彙與向量結果驗證 RRF 融合、可查核的分支排名和版本去重。
+- Files changed (with purpose): `services/retrieval/fusion.py` 負責融合與去重，`services/api/patents.py` 共用候選查詢並提供混合端點。`tests/test_fusion.py` 和 `scripts/smoke_hybrid.py` 驗證單分支、分數與真實語料。
+- Database migrations added/applied: 無新遷移。沿用 `0004_semantic` 與既有索引。
+- API/Schema changes: 新增 `POST /api/v1/patents/search/hybrid`。見 [API.md](API.md)。
+- Commands actually run and results:
+  - Ruff 格式和 lint 通過，`pytest -q --basetemp=<new-directory>` 34 項通過，1 則既有 Starlette 棄用警告。
+  - `python scripts/smoke_hybrid.py` 使用 18006 埠、真實 TIPO 語料與 Ollama，核對單分支排名、RRF 數值、IPC、分頁及同案公開與公告各自保留。語意、詞彙、精確查詢及 M0 冒煙測試均通過。
+- Tests NOT run and reason: 未執行遠端 CI 或相關性評估。未測功能包括模型重排、特徵拆解及證據驗證。
+- Data sources checked (exact URL/date) and license/access notes: 本次重用 [M1 官方資料](DATA_SOURCES.md)，無新增擷取。融合公式參考 [RRF 原論文](https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf)。
+- Known bugs / risks / blockers: 每分支限前 100 筆，低排名候選可能被截斷。混合查詢尚未持久化，也未提供模型重排、查詢特徵與證據驗證。現有模型設定僅使用公開資料驗收。
+- Decisions made (ADR links): [DECISIONS.md](DECISIONS.md) 記錄 RRF、快照與去重規則。
+- Uncommitted changes / file ownership warnings: 真實語料保留在原隔離資料庫，驗收 API 綁定 `127.0.0.1:18006`。
+- Next 1–3 concrete actions:
+  1. 接入本機模型輸出的可編輯中英文檢索特徵，並將特徵接到混合候選。
+  2. 加入重排、結果與模型版本的搜尋紀錄，以及按文件版本與原文位置的證據驗證。
+- Exact reproduction steps: 見 [SETUP.md](SETUP.md) 的「M3 混合檢索驗收」。
+
 ## M2 語意檢索驗收
 
 - Date/time (timezone): 2026-11-09 02:18（Asia/Taipei，UTC+8）。
@@ -184,3 +207,6 @@
 - 本次重新執行 `python scripts/smoke.py`，通過存活、Web 代理的 pgvector 就緒與繁中首頁檢查。其餘測試結果沿用上方 M0 驗收紀錄。
 
 - 本次釐清驗收輸入可替換，只修改上述兩份文件。執行 `git diff --check`，通過。程式測試沿用前述紀錄。
+
+
+- 本次 Codex 負責 M3 混合候選與驗收。

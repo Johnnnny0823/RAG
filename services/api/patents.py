@@ -25,6 +25,7 @@ from services.retrieval.embeddings import (
     vector_literal,
 )
 from services.retrieval.lexical import TOKENIZER_VERSION, tokenize
+from services.retrieval.fusion import CANDIDATE_LIMIT, RRF_K, fuse_rankings
 
 logger = logging.getLogger(__name__)
 NumberType = Literal["application", "publication", "grant"]
@@ -120,6 +121,27 @@ class SemanticSearchResults(PatentSearchResults):
     model_name: str
     model_digest: str
     pipeline: str
+
+
+class HybridPatentHit(PatentVersion):
+    rrf_score: float
+    lexical_rank: int | None
+    lexical_score: float | None
+    semantic_rank: int | None
+    semantic_score: float | None
+
+
+class HybridSearchResults(BaseModel):
+    items: list[HybridPatentHit]
+    tokenizer_version: str
+    model_name: str
+    model_digest: str
+    pipeline: str
+    rrf_k: int
+    candidate_limit: int
+    limit: int
+    offset: int
+    has_more: bool
 
 
 class PartyName(BaseModel):
@@ -266,6 +288,57 @@ def normalize_ipc(value: str | None) -> str | None:
     return ipc
 
 
+class SemanticIndexUnavailable(Exception):
+    pass
+
+
+def indexed_model_id(model: LocalEmbeddingModel) -> int:
+    with engine.connect() as conn:
+        identity = model_id(conn, model)
+        if (
+            identity is None
+            or not conn.exec_driver_sql(
+                "SELECT EXISTS (SELECT 1 FROM patent_dense_chunks WHERE model_id = %s)",
+                (identity,),
+            ).scalar_one()
+        ):
+            raise SemanticIndexUnavailable
+    return identity
+
+
+def lexical_rows(
+    conn: Connection, terms: str, ipc: str | None, limit: int, offset: int
+):
+    return (
+        conn.exec_driver_sql(
+            LEXICAL_SEARCH, (terms, TOKENIZER_VERSION, *((ipc,) * 4), limit, offset)
+        )
+        .mappings()
+        .all()
+    )
+
+
+def semantic_rows(
+    conn: Connection,
+    embedding: str,
+    identity: int,
+    ipc: str | None,
+    limit: int,
+    offset: int,
+):
+    return (
+        conn.exec_driver_sql(
+            SEMANTIC_SEARCH, (*((ipc,) * 4), embedding, identity, limit, offset)
+        )
+        .mappings()
+        .all()
+    )
+
+
+def missing_semantic_index():
+    return api_error(503, "SEMANTIC_INDEX_UNAVAILABLE", "指定模型的語意索引尚未建立。")
+
+
 def normalize_number(number: str, number_type: NumberType) -> str:
     normalized = unicodedata.normalize("NFKC", number).strip().upper()
     pattern = r"I[0-9]{1,12}" if number_type == "grant" else r"[0-9]{9}"
@@ -392,23 +465,7 @@ def lexical_search(request: RankedSearchRequest):
         return api_error(422, "INVALID_REQUEST", str(error))
     try:
         with engine.connect() as conn:
-            rows = (
-                conn.exec_driver_sql(
-                    LEXICAL_SEARCH,
-                    (
-                        terms,
-                        TOKENIZER_VERSION,
-                        ipc,
-                        ipc,
-                        ipc,
-                        ipc,
-                        request.limit + 1,
-                        request.offset,
-                    ),
-                )
-                .mappings()
-                .all()
-            )
+            rows = lexical_rows(conn, terms, ipc, request.limit + 1, request.offset)
     except SQLAlchemyError:
         return unavailable()
     return LexicalSearchResults(
@@ -431,37 +488,14 @@ def semantic_search(request: RankedSearchRequest):
         return api_error(422, "INVALID_REQUEST", str(error))
     try:
         model = LocalEmbeddingModel.from_env()
-        with engine.connect() as conn:
-            identity = model_id(conn, model)
-            if (
-                identity is None
-                or not conn.exec_driver_sql(
-                    "SELECT EXISTS (SELECT 1 FROM patent_dense_chunks WHERE model_id = %s)",
-                    (identity,),
-                ).scalar_one()
-            ):
-                return api_error(
-                    503, "SEMANTIC_INDEX_UNAVAILABLE", "指定模型的語意索引尚未建立。"
-                )
+        identity = indexed_model_id(model)
         embedding = vector_literal(model.embed_query(query))
         with engine.connect() as conn:
-            rows = (
-                conn.exec_driver_sql(
-                    SEMANTIC_SEARCH,
-                    (
-                        ipc,
-                        ipc,
-                        ipc,
-                        ipc,
-                        embedding,
-                        identity,
-                        request.limit + 1,
-                        request.offset,
-                    ),
-                )
-                .mappings()
-                .all()
+            rows = semantic_rows(
+                conn, embedding, identity, ipc, request.limit + 1, request.offset
             )
+    except SemanticIndexUnavailable:
+        return missing_semantic_index()
     except EmbeddingError:
         return api_error(503, "EMBEDDING_UNAVAILABLE", "目前無法使用本機嵌入模型。")
     except SQLAlchemyError:
@@ -474,6 +508,52 @@ def semantic_search(request: RankedSearchRequest):
         limit=request.limit,
         offset=request.offset,
         has_more=len(rows) > request.limit,
+    )
+
+
+@router.post("/search/hybrid", response_model=HybridSearchResults)
+def hybrid_search(request: RankedSearchRequest):
+    query = request.query.strip()
+    if not query:
+        return api_error(422, "INVALID_REQUEST", "請提供可檢索的文字。")
+    try:
+        ipc = normalize_ipc(request.ipc)
+    except ValueError as error:
+        return api_error(422, "INVALID_REQUEST", str(error))
+    try:
+        model = LocalEmbeddingModel.from_env()
+        identity = indexed_model_id(model)
+        embedding = vector_literal(model.embed_query(query))
+        terms = " ".join(tokenize(query))
+        with engine.connect().execution_options(
+            isolation_level="REPEATABLE READ"
+        ) as conn:
+            lexical = (
+                lexical_rows(conn, terms, ipc, CANDIDATE_LIMIT, 0) if terms else []
+            )
+            semantic = semantic_rows(conn, embedding, identity, ipc, CANDIDATE_LIMIT, 0)
+    except SemanticIndexUnavailable:
+        return missing_semantic_index()
+    except EmbeddingError:
+        return api_error(503, "EMBEDDING_UNAVAILABLE", "目前無法使用本機嵌入模型。")
+    except SQLAlchemyError:
+        return unavailable()
+
+    ranked = fuse_rankings(lexical, semantic)
+    end = request.offset + request.limit
+    return HybridSearchResults(
+        items=[
+            HybridPatentHit.model_validate(row) for row in ranked[request.offset : end]
+        ],
+        tokenizer_version=TOKENIZER_VERSION,
+        model_name=model.name,
+        model_digest=model.digest,
+        pipeline=PIPELINE,
+        rrf_k=RRF_K,
+        candidate_limit=CANDIDATE_LIMIT,
+        limit=request.limit,
+        offset=request.offset,
+        has_more=len(ranked) > end,
     )
 
 

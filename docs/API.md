@@ -34,3 +34,9 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 `POST /api/v1/patents/search/semantic` 使用與詞彙檢索相同的請求欄位。回傳文件版本、模型名稱、權重 SHA-256、處理流程版本及分頁。先依正式語料與 IPC 篩選，再以各文件片段的最高餘弦相似度排序。分數用於檢索排序。
 
 語意查詢正文只傳送到管理者設定的本機 Ollama，應用程式不保存正文。模型服務未設定或不可用時回傳 503 `EMBEDDING_UNAVAILABLE`，設定模型尚無索引時回傳 503 `SEMANTIC_INDEX_UNAVAILABLE`。
+
+## 混合檢索
+
+`POST /api/v1/patents/search/hybrid` 沿用詞彙檢索的 JSON 欄位。兩個檢索分支各取最多 100 個文件版本，在同一資料庫快照查詢。回傳 `rrf_k`、`candidate_limit`、分詞器與嵌入模型版本，以及每筆的 `lexical_rank`、`lexical_score`、`semantic_rank`、`semantic_score` 和 `rrf_score`。某版本未進入分支候選時，該分支欄位為 `null`。
+
+按文件版本 UUID 融合，再依文件階段、公開或公告號及 kind code 去重。同一申請案的公開和公告可同時呈現。分頁套用在融合後的候選集合。模型服務或索引不可用時，錯誤行為與語意檢索一致。此端點不保存查詢或排名。

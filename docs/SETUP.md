@@ -114,3 +114,13 @@ docker compose -p $project run --rm --no-deps -p 127.0.0.1:18005:8000 api
 ```
 
 另開終端執行 `python scripts/smoke_semantic.py`。模型未設定時，精確查詢與詞彙檢索仍可使用。
+
+## M3 混合檢索驗收
+
+保留上方語意索引的專案和模型設定，重新建置 API，再於另一個終端執行冒煙測試。
+
+```powershell
+docker compose -p $project build api
+docker compose -p $project run --rm --no-deps -p 127.0.0.1:18006:8000 api
+python scripts/smoke_hybrid.py
+```
