@@ -2,7 +2,7 @@
 
 - Date/time (timezone): 2026-11-09 01:30（Asia/Taipei，UTC+8）
 - Agent: Codex
-- Branch / commit SHA: `main`，本文件所在的 M0 初始提交。以 `git log -1 --oneline` 查 SHA。
+- Branch / commit SHA: `main`，M0 實作提交為 `199419b`。
 - Current milestone and status: M0 DONE。M1 NOT_STARTED。
 - Goal of this session: 從僅有 AGENTS.md／CLAUDE.md 的目錄建立並驗收本機開發堆疊。
 - Files changed (with purpose): `apps/web/` 繁中 React 狀態頁、Tailwind 與同源代理。 `services/api/` FastAPI 探測端點。 `database/migrations/` 與 `alembic.ini` 管理 DB 修訂。根目錄 Compose、Dockerfile、環境範本、依賴及忽略設定供重現。 `tests/`、`scripts/smoke.py`、`.github/workflows/ci.yml` 提供測試和 CI。README、API、SETUP、DECISIONS、PROGRESS 與本文件記錄契約和交接。
@@ -24,3 +24,9 @@
   2. 用實際樣本確認申請號、公開／公告號、kind code 與請求項定位，再加入保留原檔雜湊和文件版本的資料表、解析器及冪等批次匯入。
   3. 存取許可時匯入 100–500 筆，抽查原檔到 DB 的回溯，重跑同批驗證去重。存取受阻則記錄阻礙並用 DEMO fixture 驗證解析，保持真實匯入未完成。
 - Exact reproduction steps: 在根目錄依 [README](../README.md) 建立 `.env`，執行 `docker compose up -d --build --wait --wait-timeout 180`、`python scripts/smoke.py`，再執行 README 的本機檢查。若 Windows Bake 出現代碼 100，依 [SETUP.md](SETUP.md) 暫時停用 Bake 或改用 ASCII 路徑的工作副本。
+
+## 2026-11-09 產品規格補充（Asia/Taipei）
+
+- Codex 將智慧冰箱情境整理至 [PROGRESS.md](PROGRESS.md)，供 M1–M5 逐階段驗收。使用者指定的 PDF 報告、公開／公告版本、證據定位及發明構想隱私已列入。
+- 本次修改 PROGRESS 與 HANDOFF。API、資料庫遷移、程式碼與里程碑狀態無異動。
+- 本次重新執行 `python scripts/smoke.py`，通過存活、Web 代理的 pgvector 就緒與繁中首頁檢查。其餘測試結果沿用上方 M0 驗收紀錄。
