@@ -27,6 +27,8 @@
 
 ## 2026-11-09 產品規格補充（Asia/Taipei）
 
-- Codex 將智慧冰箱情境整理至 [PROGRESS.md](PROGRESS.md)，供 M1–M5 逐階段驗收。使用者指定的 PDF 報告、公開／公告版本、證據定位及發明構想隱私已列入。
+- Codex 在 [PROGRESS.md](PROGRESS.md) 記錄適用於不同技術領域的 M1–M5 驗收條件。智慧冰箱是可替換的例子。使用者指定的 PDF 報告、公開／公告版本、證據定位及發明構想隱私已列入。
 - 本次修改 PROGRESS 與 HANDOFF。API、資料庫遷移、程式碼與里程碑狀態無異動。
 - 本次重新執行 `python scripts/smoke.py`，通過存活、Web 代理的 pgvector 就緒與繁中首頁檢查。其餘測試結果沿用上方 M0 驗收紀錄。
+
+- 本次釐清驗收輸入可替換，只修改上述兩份文件。執行 `git diff --check`，通過。程式測試沿用前述紀錄。
