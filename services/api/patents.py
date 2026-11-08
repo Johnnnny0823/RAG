@@ -12,11 +12,12 @@ from fastapi import APIRouter, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import SQLAlchemyError
 
 from services.api.db import engine
+from services.retrieval.lexical import TOKENIZER_VERSION, tokenize
 
 logger = logging.getLogger(__name__)
 NumberType = Literal["application", "publication", "grant"]
@@ -86,6 +87,25 @@ class PatentSearchResults(BaseModel):
     has_more: bool
 
 
+class LexicalPatentHit(PatentVersion):
+    score: float
+
+
+class LexicalSearchResults(BaseModel):
+    items: list[LexicalPatentHit]
+    tokenizer_version: str
+    limit: int
+    offset: int
+    has_more: bool
+
+
+class LexicalSearchRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=160)
+    ipc: str | None = Field(default=None, max_length=24)
+    limit: int = Field(default=20, ge=1, le=100)
+    offset: int = Field(default=0, ge=0, le=10000)
+
+
 class PartyName(BaseModel):
     zh: str | None = None
     en: str | None = None
@@ -150,9 +170,11 @@ SUMMARY_FIELDS = """
     NULLIF(d.kind_code, '') AS kind_code, a.filing_date, d.publication_date,
     d.title_zh, d.title_en, d.metadata_jsonb->>'content_scope' AS content_scope
 """
-PUBLIC_DOCUMENTS = """
+DOCUMENTS_FROM = """
     FROM patent_documents d
     JOIN patent_applications a ON a.id = d.application_id
+"""
+PUBLIC_DOCUMENT_FILTER = """
     WHERE d.jurisdiction = 'TW' AND a.jurisdiction = 'TW'
       AND EXISTS (
         SELECT 1 FROM document_artifacts da
@@ -163,11 +185,39 @@ PUBLIC_DOCUMENTS = """
           AND ia.status IN ('parsed', 'partial') AND b.status IN ('complete', 'partial')
       )
 """
+PUBLIC_DOCUMENTS = DOCUMENTS_FROM + PUBLIC_DOCUMENT_FILTER
 NUMBER_FILTERS = {
     "application": "a.application_no = %s",
     "publication": "d.publication_no = %s AND d.document_stage = 'publication'",
     "grant": "d.publication_no = %s AND d.document_stage = 'grant'",
 }
+
+LEXICAL_SEARCH = f"""
+    WITH query AS (
+        SELECT plainto_tsquery('simple', %s) AS terms
+    ), matches AS (
+        SELECT t.document_id, max(
+            ts_rank(t.terms, q.terms) *
+            CASE WHEN t.field IN ('title_zh', 'title_en') THEN 3
+                 WHEN t.field IN ('abstract_zh', 'abstract_en') THEN 2 ELSE 1 END
+        ) AS score
+        FROM patent_lexical_chunks t CROSS JOIN query q
+        WHERE t.tokenizer_version = %s AND t.terms @@ q.terms
+        GROUP BY t.document_id
+    )
+    SELECT {SUMMARY_FIELDS}, m.score
+    {DOCUMENTS_FROM} JOIN matches m ON m.document_id = d.id
+    {PUBLIC_DOCUMENT_FILTER}
+      AND (%s::text IS NULL OR EXISTS (
+          SELECT 1 FROM patent_classifications c
+          WHERE c.document_id = d.id AND c.scheme = 'IPC'
+            AND CASE WHEN length(%s::text) = 4
+                     THEN starts_with(replace(upper(c.code), ' ', ''), %s)
+                     ELSE replace(upper(c.code), ' ', '') = %s END
+      ))
+    ORDER BY m.score DESC, d.id
+    LIMIT %s OFFSET %s
+"""
 
 
 def normalize_number(number: str, number_type: NumberType) -> str:
@@ -282,6 +332,48 @@ def search_patents(
         limit=limit,
         offset=offset,
         has_more=len(rows) > limit,
+    )
+
+
+@router.post("/search", response_model=LexicalSearchResults)
+def lexical_search(request: LexicalSearchRequest):
+    terms = " ".join(tokenize(request.query))
+    if not terms:
+        return api_error(422, "INVALID_REQUEST", "請提供可檢索的文字。")
+    ipc = None
+    if request.ipc is not None:
+        ipc = "".join(unicodedata.normalize("NFKC", request.ipc).upper().split())
+        if not re.fullmatch(r"[A-H][0-9]{2}[A-Z](?:[0-9]{1,4}/[0-9]{1,6})?", ipc):
+            return api_error(
+                422, "INVALID_REQUEST", "IPC 格式不符，例如 G01R 或 G01R27/02。"
+            )
+    try:
+        with engine.connect() as conn:
+            rows = (
+                conn.exec_driver_sql(
+                    LEXICAL_SEARCH,
+                    (
+                        terms,
+                        TOKENIZER_VERSION,
+                        ipc,
+                        ipc,
+                        ipc,
+                        ipc,
+                        request.limit + 1,
+                        request.offset,
+                    ),
+                )
+                .mappings()
+                .all()
+            )
+    except SQLAlchemyError:
+        return unavailable()
+    return LexicalSearchResults(
+        items=[LexicalPatentHit.model_validate(row) for row in rows[: request.limit]],
+        tokenizer_version=TOKENIZER_VERSION,
+        limit=request.limit,
+        offset=request.offset,
+        has_more=len(rows) > request.limit,
     )
 
 

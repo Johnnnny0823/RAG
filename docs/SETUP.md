@@ -82,3 +82,16 @@ python scripts/smoke_patents.py
 ```
 
 本機 [OpenAPI](http://127.0.0.1:18003/docs) 可試查公開號 `202640162` 與公告號 `I941082`。重現需要上述 M1 樣本，空資料庫會回傳空清單。
+
+## M2 詞彙索引與驗收
+
+在同一個含 M1 語料的專案套用 `0003_lexical`。每次匯入後執行索引命令，會新增尚未處理的文件版本。
+
+```powershell
+docker compose -p $project run --rm --build migrate
+docker compose -p $project run --rm --no-deps migrate python -m services.retrieval.index_lexical
+docker compose -p $project build api
+docker compose -p $project run --rm --no-deps -p 127.0.0.1:18004:8000 api
+```
+
+另開終端執行 `python scripts/smoke_lexical.py` 與 `python scripts/smoke_patents.py --api http://127.0.0.1:18004`。重跑索引命令預期新增零筆。

@@ -1,5 +1,30 @@
 # Agent Handoff
 
+## M2 詞彙檢索檢查點
+
+- Date/time (timezone): 2026-11-09 02:12（Asia/Taipei，UTC+8）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點為 `a9b446d`。
+- Current milestone and status: M2 IN_PROGRESS。M1 DONE。
+- Goal of this session: 用真實語料驗證繁中／英文詞彙檢索、IPC 篩選和增量索引。
+- Files changed (with purpose): `services/retrieval/` 提供分詞和增量索引，`services/api/patents.py` 提供詞彙端點。`tests/test_lexical.py` 和 `scripts/smoke_lexical.py` 驗收分詞、錯誤與真實語料。
+- Database migrations added/applied: `0003_lexical` 建立衍生詞彙片段和 GIN 索引。已從 M1 資料庫升級及從空資料庫遷移，預設開發資料庫未套用。
+- API/Schema changes: `POST /api/v1/patents/search` 接受詞彙查詢、IPC 與分頁。見 [API.md](API.md)。
+- Commands actually run and results:
+  - `python -m services.retrieval.index_lexical` 建立 143 個真實文件版本的 1,654 個片段，重跑新增零筆。乾淨隔離庫依次匯入兩期各 5 筆後，索引分別新增 5 筆和 5 筆，第三次新增零筆。
+  - `python scripts/smoke_lexical.py`、`python scripts/smoke_patents.py --api http://127.0.0.1:18004` 和 `python scripts/smoke.py` 通過。四個已知目標的詞彙案例均第 1 名，IPC 排除與分頁通過。
+  - `EXPLAIN (ANALYZE, BUFFERS)` 確認英詞加 IPC 案例使用 GIN，單次 SQL 執行 0.555 ms。
+  - Ruff 格式和 lint 通過，`pytest -q --basetemp=<new-directory>` 27 項通過，1 則既有 Starlette 棄用警告。
+- Tests NOT run and reason: 遠端 CI 未執行。詞彙驗收屬已知目標冒煙，尚無人工相關性標註與向量驗收。
+- Data sources checked (exact URL/date) and license/access notes: 重用 [M1 的 TIPO 正式語料](DATA_SOURCES.md)，無新增擷取。
+- Known bugs / risks / blockers: 漢字雙字基線需同一片段出現全部查詢詞，不處理同義詞、簡繁轉換或跨段比對。詞彙索引在匯入後需明確執行更新命令。
+- Decisions made (ADR links): [DECISIONS.md](DECISIONS.md) 記錄分詞、排序與實測查詢計畫。
+- Uncommitted changes / file ownership warnings: 真實資料留在隔離資料庫及配對原始檔。驗收 API 綁定 `127.0.0.1:18004`。
+- Next 1–3 concrete actions:
+  1. 加入可替換嵌入模型、模型版本記錄和 pgvector 索引，實測真實語料的語意端點。
+  2. 完成 M2 驗收後，M3 接查詢特徵、混合檢索、重排及證據驗證。
+- Exact reproduction steps: 見 [SETUP.md](SETUP.md) 的「M2 詞彙索引與驗收」。
+
 ## M2 精確號碼與詳情 API 檢查點
 
 - Date/time (timezone): 2026-11-09 02:07（Asia/Taipei，UTC+8）。
