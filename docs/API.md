@@ -28,3 +28,9 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 `POST /api/v1/patents/search` 接受 JSON，例如 `{"query":"動態導通電阻","ipc":"G01R","limit":20,"offset":0}`。查詢為 1–160 字元。`ipc` 可省略，四碼子類採前綴比對，完整分類符號採精確比對，支援全半形正規化。回傳 `items`、`tokenizer_version`、`limit`、`offset`、`has_more`。
 
 每個結果包含文件版本欄位及詞彙排序分數 `score`。分數用於同一查詢的排序。搜尋以正文片段為單位，查詢詞須出現在同一標題、摘要、請求項或說明書段落中。重複匹配片段彙整至同一文件版本。查詢正文不寫入資料庫。語料匯入後需執行詞彙索引更新，見 [SETUP.md](SETUP.md)。
+
+## 語意檢索
+
+`POST /api/v1/patents/search/semantic` 使用與詞彙檢索相同的請求欄位。回傳文件版本、模型名稱、權重 SHA-256、處理流程版本及分頁。先依正式語料與 IPC 篩選，再以各文件片段的最高餘弦相似度排序。分數用於檢索排序。
+
+語意查詢正文只傳送到管理者設定的本機 Ollama，應用程式不保存正文。模型服務未設定或不可用時回傳 503 `EMBEDDING_UNAVAILABLE`，設定模型尚無索引時回傳 503 `SEMANTIC_INDEX_UNAVAILABLE`。

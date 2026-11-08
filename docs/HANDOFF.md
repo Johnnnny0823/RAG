@@ -1,5 +1,30 @@
 # Agent Handoff
 
+## M2 語意檢索驗收
+
+- Date/time (timezone): 2026-11-09 02:18（Asia/Taipei，UTC+8）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點為 `d266abb`。
+- Current milestone and status: M2 DONE。M3 NOT_STARTED。
+- Goal of this session: 用本機嵌入模型與 PostgreSQL pgvector 驗證真實 TIPO 語料的語意查詢。
+- Files changed (with purpose): `services/retrieval/embeddings.py` 驗證本機模型，`index_semantic.py` 產生分段向量。API 加入語意路由與 IPC 共用條件。Compose／環境範本加入可選模型設定。新增測試與語意冒煙驗收。
+- Database migrations added/applied: `0004_semantic` 建立模型版本及片段向量表。驗收資料庫由 `0003_lexical` 升級，另從全新資料卷遷移至 head 成功。
+- API/Schema changes: `POST /api/v1/patents/search/semantic` 提供模型識別、IPC、排序及分頁。見 [API.md](API.md)。
+- Commands actually run and results:
+  - 本機 Ollama 0.13.5 搭配已安裝的 `qwen3-embedding:0.6b`，實測 1,024 維。 `python -m services.retrieval.index_semantic` 產生 143 個文件版本的 1,724 筆向量，重跑新增零筆。
+  - `python scripts/smoke_semantic.py` 兩個已知目標中英文改寫皆第一名，IPC、分頁和模型欄位通過。精確、詞彙與 M0 冒煙測試通過。
+  - 最終 SQL `EXPLAIN (ANALYZE, BUFFERS)` 英文加 IPC 案例使用向量複合主鍵定位候選。一次本機執行 1.316 ms，未含模型推論。
+  - Ruff 格式、lint、`pytest -q --basetemp=<new-directory>` 通過，31 項測試及 1 則既有 Starlette 棄用警告。
+- Tests NOT run and reason: 遠端 CI 未執行。語意驗收屬小規模已知目標冒煙，ANN 和人工相關性評估尚未執行。
+- Data sources checked (exact URL/date) and license/access notes: 重用 [M1 官方語料](DATA_SOURCES.md)，無新增擷取。2026-11-09 核對 [Qwen 模型卡](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) 與 [Ollama 嵌入 API](https://docs.ollama.com/api/embed)。
+- Known bugs / risks / blockers: 向量維度固定為 1,024。模型與向量索引須同 digest 和 pipeline。共享 Ollama 僅用公開資料驗收；敏感查詢需私有模型服務。現採精確距離搜尋，未上 ANN。
+- Decisions made (ADR links): [DECISIONS.md](DECISIONS.md) 記錄版本、分段與排序。
+- Uncommitted changes / file ownership warnings: 驗收 API 綁定 `127.0.0.1:18005`，資料在隔離資料卷。預設開發環境未設定嵌入模型。
+- Next 1–3 concrete actions:
+  1. M3 將詞彙與向量候選以 RRF 合併，區分版本並保存可重現的排序資訊。
+  2. 實作可編輯的查詢特徵、重排及按文件版本與原文位置驗證的證據。
+- Exact reproduction steps: 見 [SETUP.md](SETUP.md) 的「M2 本機語意索引」。
+
 ## M2 詞彙檢索檢查點
 
 - Date/time (timezone): 2026-11-09 02:12（Asia/Taipei，UTC+8）。

@@ -8,6 +8,9 @@ x-api: &api
     PGUSER: ${POSTGRES_USER:?Copy .env.example to .env}
     PGPASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env}
     PGDATABASE: ${POSTGRES_DB:?Copy .env.example to .env}
+    EMBEDDING_URL: ${EMBEDDING_URL:-}
+    EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+    EMBEDDING_DIGEST: ${EMBEDDING_DIGEST:-}
 services:
   db:
     image: pgvector/pgvector:0.8.2-pg16

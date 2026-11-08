@@ -28,3 +28,9 @@ TIPO 資料格式與版本鍵、斷詞策略、嵌入模型與部署環境待後
 - 使用 `han-bigram-v1`，對連續漢字取相鄰雙字，英數保留連續詞，統一字寬與大小寫。PostgreSQL `simple` 接收已切好的詞，以 `ts_rank` 排序並對標題和摘要加權。此基線沒有 BM25、同義詞、簡繁轉換或跨片段語意比對。 [PostgreSQL 16 全文搜尋索引文件](https://www.postgresql.org/docs/16/textsearch-indexes.html)
 - 已匯入文件以版本 UUID 與分詞器版本追蹤索引。索引程式與標記在同一交易寫入，原文表仍供證據定位。新匯入資料須執行索引程式。
 - 143 個真實文件版本共 1,654 個文字片段。四個已知目標的中英文案例均在第 1 名命中，屬冒煙驗收，相關性評估留待後續。一次 `EXPLAIN (ANALYZE, BUFFERS)` 的英文加 IPC 查詢使用 `ix_patent_lexical_terms`，執行 0.555 ms，分類表採循序掃描。
+
+## M2 語意基線
+
+- 重用環境已安裝的多語 Qwen3-Embedding-0.6B。Ollama adapter 以設定切換本機模型，版本由模型名稱、SHA-256 與處理流程識別。每次嵌入前後驗證 digest，維度為 1,024。本機請求停用代理及重新導向。 [Qwen 模型卡](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) · [Ollama 嵌入 API](https://docs.ollama.com/api/embed)
+- 對標題、摘要、請求項和段落分別嵌入。長文字以 1,000 字元窗口與 100 字元重疊分段，記錄原文起訖。索引與查詢必須使用同一組模型識別，更新只處理該模型尚未索引的文件。
+- 驗收使用 pgvector 精確餘弦距離，先依語料與 IPC 過濾，再以每份文件最相近的片段計分。B01J 英文改寫案例的查詢計畫使用向量表的複合主鍵定位候選片段，SQL 執行 1.316 ms，未含模型推論。大語料上的 ANN 與整體相關性留待實測。 [pgvector 文件](https://github.com/pgvector/pgvector)

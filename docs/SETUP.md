@@ -95,3 +95,22 @@ docker compose -p $project run --rm --no-deps -p 127.0.0.1:18004:8000 api
 ```
 
 另開終端執行 `python scripts/smoke_lexical.py` 與 `python scripts/smoke_patents.py --api http://127.0.0.1:18004`。重跑索引命令預期新增零筆。
+
+## M2 本機語意索引
+
+準備一個由本機管理的 Ollama，並載入 `qwen3-embedding:0.6b`。驗收使用 Ollama 0.13.5，模型 digest 為 `ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d`。用 `GET http://127.0.0.1:11434/api/tags` 確認實際值。若更換模型，需以相容的 1,024 維模型另建索引。
+
+Docker Desktop 可從容器以 `host.docker.internal` 連到主機管理的模型服務。處理未公開發明前，應將模型服務限制在受控的本機或私有網路。此次共享環境只以公開語料及測試查詢驗收。
+
+```powershell
+$env:EMBEDDING_URL = 'http://host.docker.internal:11434'
+$env:EMBEDDING_MODEL = 'qwen3-embedding:0.6b'
+$env:EMBEDDING_DIGEST = 'ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d'
+docker compose -p $project run --rm --build migrate
+docker compose -p $project run --rm --no-deps migrate python -m services.retrieval.index_lexical
+docker compose -p $project run --rm --no-deps migrate python -m services.retrieval.index_semantic
+docker compose -p $project build api
+docker compose -p $project run --rm --no-deps -p 127.0.0.1:18005:8000 api
+```
+
+另開終端執行 `python scripts/smoke_semantic.py`。模型未設定時，精確查詢與詞彙檢索仍可使用。

@@ -17,6 +17,13 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.exc import SQLAlchemyError
 
 from services.api.db import engine
+from services.retrieval.embeddings import (
+    EmbeddingError,
+    LocalEmbeddingModel,
+    PIPELINE,
+    model_id,
+    vector_literal,
+)
 from services.retrieval.lexical import TOKENIZER_VERSION, tokenize
 
 logger = logging.getLogger(__name__)
@@ -28,6 +35,8 @@ ErrorCode = Literal[
     "INVALID_REQUEST",
     "PATENT_NOT_FOUND",
     "DATA_SOURCE_UNAVAILABLE",
+    "EMBEDDING_UNAVAILABLE",
+    "SEMANTIC_INDEX_UNAVAILABLE",
 ]
 
 
@@ -99,11 +108,18 @@ class LexicalSearchResults(BaseModel):
     has_more: bool
 
 
-class LexicalSearchRequest(BaseModel):
+class RankedSearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=160)
     ipc: str | None = Field(default=None, max_length=24)
     limit: int = Field(default=20, ge=1, le=100)
     offset: int = Field(default=0, ge=0, le=10000)
+
+
+class SemanticSearchResults(PatentSearchResults):
+    items: list[LexicalPatentHit]
+    model_name: str
+    model_digest: str
+    pipeline: str
 
 
 class PartyName(BaseModel):
@@ -192,6 +208,16 @@ NUMBER_FILTERS = {
     "grant": "d.publication_no = %s AND d.document_stage = 'grant'",
 }
 
+IPC_FILTER = """
+    AND (%s::text IS NULL OR EXISTS (
+        SELECT 1 FROM patent_classifications c
+        WHERE c.document_id = d.id AND c.scheme = 'IPC'
+          AND CASE WHEN length(%s::text) = 4
+                   THEN starts_with(replace(upper(c.code), ' ', ''), %s)
+                   ELSE replace(upper(c.code), ' ', '') = %s END
+    ))
+"""
+
 LEXICAL_SEARCH = f"""
     WITH query AS (
         SELECT plainto_tsquery('simple', %s) AS terms
@@ -208,16 +234,36 @@ LEXICAL_SEARCH = f"""
     SELECT {SUMMARY_FIELDS}, m.score
     {DOCUMENTS_FROM} JOIN matches m ON m.document_id = d.id
     {PUBLIC_DOCUMENT_FILTER}
-      AND (%s::text IS NULL OR EXISTS (
-          SELECT 1 FROM patent_classifications c
-          WHERE c.document_id = d.id AND c.scheme = 'IPC'
-            AND CASE WHEN length(%s::text) = 4
-                     THEN starts_with(replace(upper(c.code), ' ', ''), %s)
-                     ELSE replace(upper(c.code), ' ', '') = %s END
-      ))
+    {IPC_FILTER}
     ORDER BY m.score DESC, d.id
     LIMIT %s OFFSET %s
 """
+
+SEMANTIC_SEARCH = f"""
+    WITH candidates AS (
+        SELECT {SUMMARY_FIELDS}
+        {PUBLIC_DOCUMENTS}
+        {IPC_FILTER}
+    ), matches AS (
+        SELECT t.document_id, 1 - min(t.embedding <=> %s::vector) AS score
+        FROM patent_dense_chunks t JOIN candidates c ON c.document_id = t.document_id
+        WHERE t.model_id = %s
+        GROUP BY t.document_id
+    )
+    SELECT c.*, m.score
+    FROM candidates c JOIN matches m ON m.document_id = c.document_id
+    ORDER BY m.score DESC, c.document_id
+    LIMIT %s OFFSET %s
+"""
+
+
+def normalize_ipc(value: str | None) -> str | None:
+    if value is None:
+        return None
+    ipc = "".join(unicodedata.normalize("NFKC", value).upper().split())
+    if not re.fullmatch(r"[A-H][0-9]{2}[A-Z](?:[0-9]{1,4}/[0-9]{1,6})?", ipc):
+        raise ValueError("IPC 格式不符，例如 G01R 或 G01R27/02。")
+    return ipc
 
 
 def normalize_number(number: str, number_type: NumberType) -> str:
@@ -336,17 +382,14 @@ def search_patents(
 
 
 @router.post("/search", response_model=LexicalSearchResults)
-def lexical_search(request: LexicalSearchRequest):
+def lexical_search(request: RankedSearchRequest):
     terms = " ".join(tokenize(request.query))
     if not terms:
         return api_error(422, "INVALID_REQUEST", "請提供可檢索的文字。")
-    ipc = None
-    if request.ipc is not None:
-        ipc = "".join(unicodedata.normalize("NFKC", request.ipc).upper().split())
-        if not re.fullmatch(r"[A-H][0-9]{2}[A-Z](?:[0-9]{1,4}/[0-9]{1,6})?", ipc):
-            return api_error(
-                422, "INVALID_REQUEST", "IPC 格式不符，例如 G01R 或 G01R27/02。"
-            )
+    try:
+        ipc = normalize_ipc(request.ipc)
+    except ValueError as error:
+        return api_error(422, "INVALID_REQUEST", str(error))
     try:
         with engine.connect() as conn:
             rows = (
@@ -371,6 +414,63 @@ def lexical_search(request: LexicalSearchRequest):
     return LexicalSearchResults(
         items=[LexicalPatentHit.model_validate(row) for row in rows[: request.limit]],
         tokenizer_version=TOKENIZER_VERSION,
+        limit=request.limit,
+        offset=request.offset,
+        has_more=len(rows) > request.limit,
+    )
+
+
+@router.post("/search/semantic", response_model=SemanticSearchResults)
+def semantic_search(request: RankedSearchRequest):
+    query = request.query.strip()
+    if not query:
+        return api_error(422, "INVALID_REQUEST", "請提供可檢索的文字。")
+    try:
+        ipc = normalize_ipc(request.ipc)
+    except ValueError as error:
+        return api_error(422, "INVALID_REQUEST", str(error))
+    try:
+        model = LocalEmbeddingModel.from_env()
+        with engine.connect() as conn:
+            identity = model_id(conn, model)
+            if (
+                identity is None
+                or not conn.exec_driver_sql(
+                    "SELECT EXISTS (SELECT 1 FROM patent_dense_chunks WHERE model_id = %s)",
+                    (identity,),
+                ).scalar_one()
+            ):
+                return api_error(
+                    503, "SEMANTIC_INDEX_UNAVAILABLE", "指定模型的語意索引尚未建立。"
+                )
+        embedding = vector_literal(model.embed_query(query))
+        with engine.connect() as conn:
+            rows = (
+                conn.exec_driver_sql(
+                    SEMANTIC_SEARCH,
+                    (
+                        ipc,
+                        ipc,
+                        ipc,
+                        ipc,
+                        embedding,
+                        identity,
+                        request.limit + 1,
+                        request.offset,
+                    ),
+                )
+                .mappings()
+                .all()
+            )
+    except EmbeddingError:
+        return api_error(503, "EMBEDDING_UNAVAILABLE", "目前無法使用本機嵌入模型。")
+    except SQLAlchemyError:
+        return unavailable()
+    return SemanticSearchResults(
+        items=[LexicalPatentHit.model_validate(row) for row in rows[: request.limit]],
+        model_name=model.name,
+        model_digest=model.digest,
+        pipeline=PIPELINE,
         limit=request.limit,
         offset=request.offset,
         has_more=len(rows) > request.limit,

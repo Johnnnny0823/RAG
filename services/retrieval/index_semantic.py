@@ -1,0 +1,87 @@
+"""Embed missing indexed document versions with the configured local model."""
+
+from services.api.db import engine
+from services.retrieval.embeddings import (
+    DIMENSIONS,
+    LocalEmbeddingModel,
+    model_id,
+    vector_literal,
+)
+from services.retrieval.index_lexical import CHUNKS
+from services.retrieval.lexical import TOKENIZER_VERSION
+
+MISSING = """
+    SELECT DISTINCT t.document_id FROM patent_lexical_chunks t
+    WHERE t.tokenizer_version = %s AND t.field <> 'indexed'
+      AND NOT EXISTS (
+        SELECT 1 FROM patent_dense_chunks v WHERE v.model_id = %s AND v.document_id = t.document_id
+      )
+    ORDER BY t.document_id LIMIT 8
+"""
+
+INSERT = """
+    INSERT INTO patent_dense_chunks
+        (model_id, document_id, field, ordinal, char_start, char_end, embedding)
+    VALUES (%s, %s, %s, %s, %s, %s, %s::vector)
+    ON CONFLICT DO NOTHING
+"""
+
+
+def windows(body):
+    for start in range(0, len(body), 900):
+        end = min(start + 1000, len(body))
+        if body[start:end].strip():
+            yield start, end, body[start:end]
+        if end == len(body):
+            break
+
+
+def index_missing(model: LocalEmbeddingModel) -> tuple[int, int]:
+    model.verify_digest()
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            """INSERT INTO patent_embedding_models (provider, model_name, digest, pipeline, dimensions)
+               VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING""",
+            (*model.identity, DIMENSIONS),
+        )
+        identity = model_id(conn, model)
+
+    documents = vectors = 0
+    while True:
+        with engine.connect() as conn:
+            document_ids = list(
+                conn.exec_driver_sql(MISSING, (TOKENIZER_VERSION, identity)).scalars()
+            )
+            if not document_ids:
+                return documents, vectors
+            chunks = [
+                (document_id, field, ordinal, start, end, text)
+                for document_id, field, ordinal, body in conn.exec_driver_sql(
+                    CHUNKS, (document_ids,) * 3
+                )
+                for start, end, text in windows(body)
+            ]
+        embeddings = []
+        for offset in range(0, len(chunks), 24):
+            embeddings.extend(
+                model.embed([row[-1] for row in chunks[offset : offset + 24]])
+            )
+        with engine.begin() as conn:
+            conn.exec_driver_sql(
+                INSERT,
+                [
+                    (identity, *row[:-1], vector_literal(vector))
+                    for row, vector in zip(chunks, embeddings, strict=True)
+                ],
+            )
+        documents += len(document_ids)
+        vectors += len(chunks)
+        print(
+            f"Indexed {documents} versions and {vectors} vectors in this run",
+            flush=True,
+        )
+
+
+if __name__ == "__main__":
+    documents, vectors = index_missing(LocalEmbeddingModel.from_env())
+    print(f"Semantic index update complete: {documents} versions and {vectors} vectors")
