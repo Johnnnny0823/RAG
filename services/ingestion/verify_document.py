@@ -23,7 +23,8 @@ def verify(
                WHERE d.jurisdiction = 'TW' AND d.document_stage = %s
                  AND d.publication_no = %s
                  AND (da.record_locator = '/invention-specification'
-                      OR (d.document_stage = 'grant' AND a.source_locator = 'index.xml'))""",
+                      OR (d.document_stage = 'grant' AND
+                          starts_with(da.record_locator, '/tw-patent-grants/tw-patent-grant[')))""",
             (stage, publication_no),
         ).one()
         payload = LocalObjectStore(root).read(RawArtifact(checksum, key, size))

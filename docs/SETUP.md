@@ -59,3 +59,14 @@ docker compose -p $project run --rm --no-deps -v "$($data.FullName):/inputs" mig
 docker compose -p $project run --rm --no-deps -v "$($data.FullName):/inputs" migrate python -m services.ingestion.import_issue --verified-tipo --index /inputs/grant-s01.xml --grant-number I941082 --batch 053028 --objects /inputs/objects
 docker compose -p $project run --rm --no-deps -v "$($data.FullName):/inputs:ro" migrate python -m services.ingestion.verify_document I941082 --grant-issue 053028 --objects /inputs/objects
 ```
+
+### 第二期增量匯入
+
+在原本的資料卷和原始檔目錄追加第二期。使用下列指令可將該期 URL 與索引雜湊寫入資料庫。第一次應新增 25 筆書目，重跑同一匯入命令應回傳 `reused: true`。
+
+```powershell
+$second = 'ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024018/index.xml'
+python -m services.ingestion.download --index-url $second --index-out (Join-Path $data.FullName 'issue-024018.xml')
+docker compose -p $project build migrate
+docker compose -p $project run --rm --no-deps -v "$($data.FullName):/inputs" migrate python -m services.ingestion.import_issue --verified-tipo --index /inputs/issue-024018.xml --index-source-url $second --batch 024018 --limit 25 --objects /inputs/objects
+```

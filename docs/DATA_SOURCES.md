@@ -17,6 +17,8 @@
 
 ## 使用與歸屬
 
+- 2026-11-09 另取得 [第 24 卷第 18 期 FTPS 索引](ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024018/index.xml)。傳輸完成且檔案大小符合官方 FTPS `SIZE`，共 12,667,509 bytes，SHA-256 `96c0ac33d8ece8da926dec02432d54ff1dca46678c90adb4d84cbf822df2be3c`，索引宣告及實際皆為 1,984 筆。匯入首 25 筆書目驗證跨期增量，並保存該官方 URL。
+
 - 2026-11-09 核對 [專利說明書(1案1XML檔)目錄](https://data.gov.tw/dataset/15987)。提供者為經濟部智慧財產局，目錄列每月更新及政府資料開放授權第 1 版。官方 [最新期 S01 XML 索引](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01) 回傳第 53 卷第 28 期共 1,640 筆，15,590,834 bytes，SHA-256 `f8268c23fa3032d81841819135f3f3089c7b10d447ec00f83330a73459a0c84e`。解析器從 `tw-patent-grants/tw-patent-grant` 核對公告號、證書號、申請號及 `claims/claim[@num]`。已驗證公告號 `I941082` 有 13 項請求項，其申請號 `114106690` 與公開案 `202640162` 相同。此次匯入的公告來源範圍為書目和請求項。下載頻率限制未確認。
 - 2026-11-09 由公開清單選取 20 筆個案，Windows 主機在驗證 TLS 憑證下全部成功下載。容器預設信任鏈驗證未通過，使用主機快取可離線匯入。20 份有 17 份通過全文解析，3 份來源的 `claim` 缺 `num`，保存原檔與錯誤並保留書目。
 

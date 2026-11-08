@@ -1,5 +1,30 @@
 # Agent Handoff
 
+## M1 跨期增量驗收
+
+- Date/time (timezone): 2026-11-09 02:02（Asia/Taipei，UTC+8）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `c498b07`。
+- Current milestone and status: M1 DONE，M2 NOT_STARTED。
+- Goal of this session: 驗證第二個官方公開卷期的增量匯入，確認先前文件版本與證據仍可追溯。
+- Files changed (with purpose): `services/ingestion/import_issue.py` 驗證並保存索引的官方 URL，`verify_document.py` 以文件定位查找公告來源；新增來源 URL 回歸測試並更新開發文件。
+- Database migrations added/applied: 無新遷移。沿用隔離驗收資料庫 `patentscope-m1-proof` 的 `0002_ingestion`。
+- API/Schema changes: REST 與 Schema 無變更。匯入 CLI 新增可選的 `--index-source-url`。
+- Commands actually run and results:
+  - `python -m services.ingestion.download` 從官方 FTPS 取得第 24 卷第 18 期索引；XML 宣告與實際皆為 1,984 筆。
+  - `import_issue --verified-tipo --batch 024018 --limit 25 --index-source-url <official-url>` 第一次新增 25 個書目版本，第二次 `reused: true`。比較 SQL 快照確認原有 118 個文件 ID 和內容雜湊全數保留，既有 256 項請求項數量相同，批次只增加一筆。資料庫可查到第二期官方 URL 和相符的 SHA-256。
+  - `verify_document` 再次逐項核對同一申請案的公開與公告版本，各 13 項請求項；公開版另核對 41 段說明書。
+  - Ruff 格式及 lint、`pytest -q --basetemp=<new-directory>` 的 18 項測試、本機冒煙測試皆通過。保留一則既有 Starlette 棄用警告。
+- Tests NOT run and reason: 未在遠端執行 CI。此次完成的是已驗證來源的匯入 PoC，尚未測量生產資料庫索引、全量下載或檢索品質。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-09 核對 [政府目錄 15996](https://data.gov.tw/dataset/15996)，並從 [官方 FTPS 第二期索引](ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024018/index.xml) 取得樣本。完整雜湊與授權見 [DATA_SOURCES.md](DATA_SOURCES.md)。
+- Known bugs / risks / blockers: 125 個公開號中有 17 份公開全文；另有 1 份公告請求項，未取得該公告的說明書全文。3 份原始公開 XML 缺請求項編號而隔離。尚未整合更廣的資料來源、法律狀態或排程更新。
+- Decisions made (ADR links): [DECISIONS.md](DECISIONS.md) 記錄來源 URL 與卷期約束。
+- Uncommitted changes / file ownership warnings: 真實 XML 保存在本機暫存路徑，驗收資料卷保留。樣本未併入預設開發資料卷。
+- Next 1–3 concrete actions:
+  1. M2 建立精確申請號、公開號、公告號查詢及文件詳情 API。證據和本文以文件版本 ID 查詢。
+  2. 為繁體中文設計可測的詞彙檢索基線，記錄查詢計畫並加上 pgvector 索引與可替換的嵌入模型。
+- Exact reproduction steps: 見 [SETUP.md](SETUP.md) 的「第二期增量匯入」。
+
 ## M1 批次全文與公告版本檢查點
 
 - Date/time (timezone): 2026-11-09 01:58（Asia/Taipei，UTC+8）。

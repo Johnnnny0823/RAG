@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,6 +22,19 @@ from services.ingestion.specification import Claim, Section, parse_specification
 PARSER_VERSION = "tipo-issue-1"
 DATASET_URL = "https://data.gov.tw/dataset/15996"
 LICENSE_URL = "https://data.gov.tw/license"
+GRANT_INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01"
+PUBLICATION_INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10"
+
+
+def validate_index_source(url: str, batch: str, *, grant: bool) -> None:
+    if url == (GRANT_INDEX_URL if grant else PUBLICATION_INDEX_URL):
+        return
+    archived = re.fullmatch(
+        r"ftps://ftp\.tipo\.gov\.tw/InventionPubXML/[0-9]{3}/InventionPubXML_([0-9]{6})/index\.xml",
+        url,
+    )
+    if grant or archived is None or archived[1] != batch:
+        raise ValueError("Index source URL must match the official dataset and issue")
 
 
 @dataclass(frozen=True)
@@ -222,6 +236,8 @@ def import_issue(args):
         "limit": args.limit,
         "specs": {number: raw.checksum for number, raw in specs_raw.items()},
     }
+    if args.index_source_url:
+        manifest["index_source_url"] = args.index_source_url
     if args.grant_number:
         manifest["grant_number"] = args.grant_number
     if official_manifest is not None:
@@ -284,7 +300,7 @@ def import_issue(args):
         index_id = insert_artifact(
             conn,
             batch_id,
-            "index.xml",
+            args.index_source_url or "index.xml",
             index_raw,
             "quarantined" if index_error else "partial" if issues else "parsed",
             "\n".join(filter(None, [index_error, *issue_errors])) or None,
@@ -375,6 +391,7 @@ def import_issue(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--index", type=Path, required=True)
+    parser.add_argument("--index-source-url", help="Official URL of the supplied index")
     parser.add_argument(
         "--batch", required=True, help="Official issue ID or DEMO batch ID"
     )
@@ -407,6 +424,15 @@ def main():
     args = parser.parse_args()
     if not 1 <= args.limit <= 500:
         parser.error("--limit must be between 1 and 500")
+    if args.index_source_url:
+        if args.demo:
+            parser.error("--index-source-url requires --verified-tipo")
+        try:
+            validate_index_source(
+                args.index_source_url, args.batch, grant=bool(args.grant_number)
+            )
+        except ValueError as error:
+            parser.error(str(error))
     if bool(args.manifest) != bool(args.manifest_url) or (
         args.manifest and (args.demo or args.spec)
     ):
