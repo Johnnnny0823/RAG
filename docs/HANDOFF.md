@@ -1,6 +1,31 @@
 # Agent Handoff
 
-## M1 官方資料匯入檢查點
+## M1 批次全文與公告版本檢查點
+
+- Date/time (timezone): 2026-11-09 01:58（Asia/Taipei，UTC+8）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點為 `adb612c`。
+- Current milestone and status: M1 IN_PROGRESS。M0 DONE。
+- Goal of this session: 由 TIPO 清單下載批次全文，並以同一申請案核對公開與公告版本。
+- Files changed (with purpose): `services/ingestion/` 增加清單核對、主機快取、公告索引解析及來源回溯。 `tests/` 新增清單、離線快取、重試及公告驗證。更新來源、決策、設定與進度文件。
+- Database migrations added/applied: 沿用隔離資料庫 `patentscope-m1-proof` 的 `0002_ingestion`。無新遷移。
+- API/Schema changes: REST 無變更。公告文件以 `grant` 階段及 `claims_only` 範圍保存。
+- Commands actually run and results:
+  - Windows 主機 `import_issue --fetch-only --limit 20` 成功取得 20 份官方 XML。容器預設信任存放區未通過官方 FTPS 憑證鏈驗證，已確認下載失敗會記錄原因。透過 `--cache-only` 匯入 17 份全文，另 3 份因來源缺少請求項編號隔離，重跑回傳 `reused: true`。
+  - 匯入 S01 公告 `I941082` 並重跑，第二次回傳 `reused: true`。SQL 確認同一申請號 `114106690` 保留公告、公開全文及公開書目三筆版本。逐項核對兩版各 13 項請求項與公開版 41 段說明書。
+  - Ruff 格式、lint、`pytest -q --basetemp=<new-directory>` 的 17 項測試及 `python scripts/smoke.py` 通過。仍有 1 則既有 Starlette 棄用警告。
+- Tests NOT run and reason: 同一來源跨卷期增量尚缺第二期公開樣本。遠端 CI 尚未執行。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-09 核對並實取 [官方 S01 公告索引](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01)，由 [目錄 15987](https://data.gov.tw/dataset/15987) 連結，適用政府資料開放授權第 1 版。公開卷期與 FTPS 證據見 [DATA_SOURCES.md](DATA_SOURCES.md)。
+- Known bugs / risks / blockers: 3 份公開 XML 缺請求項編號，需比對官方公報再決定映射。容器直接 FTPS 需另有可信憑證鏈，現可由主機驗證後快取。尚未驗證跨期發現、更新和公告全文。
+- Decisions made (ADR links): [DECISIONS.md](DECISIONS.md) 記錄逐筆限速、來源配對及缺號隔離。
+- Uncommitted changes / file ownership warnings: 真實 XML 不進 Git。隔離資料卷與 `%TEMP%/patentscope-m1-run/objects` 保留配對。
+- Next 1–3 concrete actions:
+  1. 取得第二個公開卷期的官方索引，驗證只新增該期的資料及同一期重跑去重。
+  2. 核對缺號來源是否有可驗證的正式編號，以及公告全文來源。記錄涵蓋率後完成 M1 驗收。
+  3. M1 驗收後進入 M2，從專利編號精確查找及文件詳情 API 開始。
+- Exact reproduction steps: 見 [SETUP.md](SETUP.md) 的「以官方清單補入全文」及「公告版本比對」。
+
+## M1 初次官方資料匯入紀錄
 
 - Date/time (timezone): 2026-11-09 01:50（Asia/Taipei，UTC+8）。
 - Agent: Codex，官方來源研究代理負責 [DATA_SOURCES.md](DATA_SOURCES.md)。

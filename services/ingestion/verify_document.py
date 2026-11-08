@@ -5,10 +5,14 @@ from pathlib import Path
 
 from services.api.db import engine
 from services.ingestion.artifacts import LocalObjectStore, RawArtifact
+from services.ingestion.grant_index import parse_grant
 from services.ingestion.specification import parse_specification
 
 
-def verify(publication_no: str, root: Path) -> tuple[int, int]:
+def verify(
+    publication_no: str, root: Path, grant_issue: str | None = None
+) -> tuple[int, int]:
+    stage = "grant" if grant_issue else "publication"
     with engine.connect() as conn:
         document_id, application_no, checksum, key, size = conn.exec_driver_sql(
             """SELECT DISTINCT d.id, p.application_no, a.checksum, a.object_key, a.size_bytes
@@ -16,12 +20,22 @@ def verify(publication_no: str, root: Path) -> tuple[int, int]:
                JOIN patent_applications p ON p.id = d.application_id
                JOIN document_artifacts da ON da.document_id = d.id
                JOIN ingestion_artifacts a ON a.id = da.artifact_id
-               WHERE d.jurisdiction = 'TW' AND d.document_stage = 'publication'
-                 AND d.publication_no = %s AND da.record_locator = '/invention-specification'""",
-            (publication_no,),
+               WHERE d.jurisdiction = 'TW' AND d.document_stage = %s
+                 AND d.publication_no = %s
+                 AND (da.record_locator = '/invention-specification'
+                      OR (d.document_stage = 'grant' AND a.source_locator = 'index.xml'))""",
+            (stage, publication_no),
         ).one()
         payload = LocalObjectStore(root).read(RawArtifact(checksum, key, size))
-        sections, claims = parse_specification(payload, application_no)
+        if grant_issue:
+            grant, claims = parse_grant(payload, grant_issue, publication_no)
+            if grant.application_no != application_no:
+                raise ValueError(
+                    "Archived grant application number differs from the database"
+                )
+            sections = []
+        else:
+            sections, claims = parse_specification(payload, application_no)
         stored_claims = (
             conn.exec_driver_sql(
                 """SELECT claim_number, text, independent_flag_nullable,
@@ -63,8 +77,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("publication_no")
     parser.add_argument("--objects", type=Path, required=True)
+    parser.add_argument("--grant-issue")
     args = parser.parse_args()
-    claims, sections = verify(args.publication_no, args.objects)
+    claims, sections = verify(args.publication_no, args.objects, args.grant_issue)
     print(
         f"Verified {claims} claims and {sections} description paragraphs against archived XML"
     )

@@ -36,3 +36,26 @@ docker compose -p $project run --rm --no-deps -v "$($data.FullName):/inputs:ro" 
 ```
 
 重跑匯入應回傳 `reused: true`。預期批次為 `partial`，其中 99 筆只有書目與可取得的摘要，1 筆包含全文。驗證命令會從 DB 連回原始物件、重新解析，並比對所有已保存的請求項和說明書段落。原始資料與資料庫須一起保存。Windows 若遇到 Bake 錯誤，沿用上方的排查方式。
+
+### 以官方清單補入全文
+
+用同一個資料目錄、Compose 專案及已安裝依賴的主機 Python。主機使用系統信任存放區驗證 FTPS，容器使用已下載快取。每次對 TIPO 的個案傳輸依序執行，間隔至少一秒。
+
+```powershell
+$manifest = 'ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index_all.xml'
+python -m services.ingestion.download --index-url $manifest --index-out (Join-Path $data.FullName 'index_all.xml')
+python -m services.ingestion.import_issue --verified-tipo --index (Join-Path $data.FullName 'index.xml') --manifest (Join-Path $data.FullName 'index_all.xml') --manifest-url $manifest --batch 024019 --limit 20 --objects (Join-Path $data.FullName 'objects') --fetch-only
+docker compose -p $project build migrate
+docker compose -p $project run --rm --no-deps -v "$($data.FullName):/inputs" migrate python -m services.ingestion.import_issue --verified-tipo --index /inputs/index.xml --manifest /inputs/index_all.xml --manifest-url $manifest --batch 024019 --limit 20 --objects /inputs/objects --cache-only
+```
+
+若主機下載部分失敗，可重跑 `--fetch-only`。匯入會保留已取得的檔案及未取得的個案資訊。此清單驗收樣本的 20 份 XML 有 17 份可解析為全文，3 份缺請求項編號而隔離。
+
+### 公告版本比對
+
+官方 [S01 最新期索引](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01) 會更新，使用以下指令前先核對 [來源紀錄](DATA_SOURCES.md) 的期別與檔案雜湊。驗收檔案為第 53 卷第 28 期，放在同一資料目錄的 `grant-s01.xml`。
+
+```powershell
+docker compose -p $project run --rm --no-deps -v "$($data.FullName):/inputs" migrate python -m services.ingestion.import_issue --verified-tipo --index /inputs/grant-s01.xml --grant-number I941082 --batch 053028 --objects /inputs/objects
+docker compose -p $project run --rm --no-deps -v "$($data.FullName):/inputs:ro" migrate python -m services.ingestion.verify_document I941082 --grant-issue 053028 --objects /inputs/objects
+```
