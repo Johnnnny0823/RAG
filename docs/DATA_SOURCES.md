@@ -1,0 +1,20 @@
+# TIPO 官方資料來源
+
+核對日期為 2026-11-09（Asia/Taipei）。實測限於一個最新期索引、少量查詢樣本及個別檔案。主入口為 [智慧財產局專利商標開放資料下載網站](https://cloud.tipo.gov.tw/S220/opdata)。
+
+| dataset_name | official_url | publisher | checked_at | coverage | format | update_frequency | license/terms | access_method | rate_limits | example_record | parser_version | known_gaps |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 發明公開說明書(1案1XML檔) | [政府目錄 15996](https://data.gov.tw/dataset/15996)、[TIPO 資料集](https://cloud.tipo.gov.tw/S220/opdata/detail/InventionPubXML) | 經濟部智慧財產局 | 2026-11-09 | 臺灣發明公開說明書及其期別索引。本次索引為第 24 卷第 19 期，共 2,384 筆。 | UTF-8 XML。索引與個案說明書使用不同根元素。 | 政府目錄列每月。索引只反映下載時回傳的期別。 | [政府資料開放授權條款第 1 版](https://data.gov.tw/license) | [HTTPS 最新期索引](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10)、個案檔循 TIPO 指定 FTPS 連結。 | 未見可確認的 HTTP／FTPS 每秒或每日配額。 | 申請號 `113133932`、公開號 `202639611`。個案 XML 有 19 項請求項。 | 以匯入程式寫入的版本為準。官方樣本 DTD 版本為 `A103.1.0`。 | 索引含摘要與書目，請求項和說明書段落須另取個案檔。索引不直接給每筆完整日期或個案 FTPS 路徑，FTPS 舊連結可能失效。 |
+| 發明公開案 | [政府目錄 41663](https://data.gov.tw/dataset/41663)、[TIPO API 目錄](https://cloud.tipo.gov.tw/S220/opdata/detail/API02) | 經濟部智慧財產局 | 2026-11-09 | 臺灣發明公開案書目。官方 API 說明以申請案號前三碼自 062 起及已公開案件界定範圍。 | UTF-8 XML、JSON 或計數，官方範例實測為 XML。 | 政府目錄列每月。官方 API 說明表 2 列每月 1 日、21 日；[TIPO 檔案資料集頁](https://cloud.tipo.gov.tw/S220/opdata/detail/PatentPub)列 6 日、21 日。先以實際發布的期別及擷取時間紀錄新鮮度。 | [政府資料開放授權條款第 1 版](https://data.gov.tw/license) | [官方 API 說明 PDF](https://cloud.tipo.gov.tw/S220/opdata/api/file/api/patent)、[Swagger 定義](https://cloud.tipo.gov.tw/S220/opdata/api/file/oas)。一般 API 需 TIPO 核發 `tk`；政府目錄提供公開前 10 筆範例連結。 | PDF 表 3 的 `top` 為 1–5,000，預設 25，這是單次回傳筆數。每秒與每日配額未確認。 | 2026-10-01 公開、2024-09-06 申請的 `202639611`／`113133932`，回傳個案 FTPS 連結。 | 本次僅驗證原始 XML。 | 書目 API 未提供請求項原文或可直接採用的 kind code。前 10 筆歷史案的個案連結皆空，近期案也可能回傳無法下載的路徑。範例憑證僅供本次小量驗證，不寫入 Git。 |
+
+## 實測樣本與欄位
+
+- [HTTPS 最新期索引 S10](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10) 回傳 HTTP 200，附件名稱 `index.xml`，15,253,438 bytes，SHA-256 `7befed78be2cc6067266f13afd4a34f6feca4730b9a717f3f99890d551da9b69`。該網址會隨期別更新，重抓時須計算實際檔案雜湊。[第 24 卷第 19 期 FTPS 索引](ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index.xml) 回傳 `226`，檔案與 HTTPS 版本逐位元相同。`tw-patent-applications` 的宣告及實際筆數均為 2,384，公開號各異。案號在 `application-reference/document-id/doc-number`，公開號在 `publication-reference/document-id/doc-number`，另外有 `publication-number` 屬性。其餘欄位含 `volno`／`isuno`、中英文標題、IPC（保留來源分類版次屬性）、申請人／發明人及 `description/isu-abst[@lang]` 摘要。掃描完整索引未發現日期或請求項元素。
+- 發明公開案 API 回傳 HTTP 200，`API/status=ok`，前 10 筆範例位於 `API/tw-patent-pub/patentcontent`。精確查詢公開號 `202639611` 回傳 `notice-no=202639611`、`appl-no=113133932`、`notice-date=2026/10/01`、`appl-date=2024/09/06`，以及下方說明書路徑。日期來自書目 API；說明書根元素的 `filing-date=20250217135940` 與書目申請日不同，應獨立保存來源語義。
+- [個案說明書 FTPS 檔](ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639611/113133932-A0304.xml) 經匿名 implicit FTPS（990，驗證 TLS 憑證，資料連線重用控制連線的 TLS session）回傳 `226 Transfer complete`。傳輸 118,139 bytes，符合 `SIZE`，SHA-256 為 `0537aedd633f9c63e7fe06790732cb0bf06e240e0bebf360c725abf9bc98d70a`。XML 可完整解析，根元素 `invention-specification` 的 `application-num` 為 `113133932`，與索引一致。`claims/claim` 有 `num`、`dependency` 及混合內容的 `claim-text`。說明書段落如 `description/technical-field/p[@general]` 可保存段落識別。原檔有外部 DTD 宣告，匯入程式須關閉外部資源載入與實體擴展。
+- [同一期別的 FTPS `index_all.xml`](ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index_all.xml) 回傳 `226`，檔案大小 16,470,926 bytes，SHA-256 為 `2b338d71f59e0de4d987bd3651f0b9044f64182fab6bcda664beae57467a728f`。2,384 個公開號及其順序與 S10 相同，每筆都有唯一的 `specification-files/@xml-file`，且皆屬該期目錄。首筆相對路徑與該資料集年份目錄 `/InventionPubXML/115` 組合後等於上方已成功下載的個案網址。這提供無須 API 憑證的個案連結探索方式。此清單的其他個案檔案可用性與其他期別的路徑規則仍待檢查。
+- [官方 FTP 操作教學](https://cloud.tipo.gov.tw/S220/opdata/information/ftp)說明可使用工具下載期別目錄。本機 curl 對上述說明書兩次收到最後狀態 `426`，即使檔案雜湊相同也應視為失敗並改用能成功完成傳輸的客戶端。另一個 2026-10-16 近期案的說明書連結回傳 `550 No such file`；同案書目 XML 可成功下載。因此，個案連結和實際可用性須分開紀錄。
+
+## 使用與歸屬
+
+保存提供機關、資料集名稱、釋出年份與期別、授權網址、擷取時間與原檔雜湊。後續在詳情及報告呈現政府資料授權所需的顯名聲明。授權範圍不包括專利權及商標權；書目與公開說明書不提供即時法律狀態結論。樣本原檔含公開個人資料欄位，留在未追蹤的資料目錄，正式顯示與索引僅選取產品需要的欄位。 [官方授權及顯名聲明格式](https://data.gov.tw/license)

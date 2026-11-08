@@ -3,7 +3,7 @@
 | 里程碑 | 狀態 | 證據 |
 | --- | --- | --- |
 | M0 專案與基礎契約 | DONE | 2026-11-09，全新暫存工作副本與獨立資料卷通過 Compose 建置、Alembic 遷移和 [HTTP 冒煙測試](../scripts/smoke.py)。[API 測試](../tests/test_health.py) 4 項通過。 |
-| M1 TIPO 資料匯入 PoC | NOT_STARTED | 待核對官方資料集、授權、樣本與欄位。 |
+| M1 TIPO 資料匯入 PoC | IN_PROGRESS | 2026-11-09，隔離資料庫匯入 100 筆官方公開案，含 1 筆全文。原檔回溯與同批重跑已驗證，批次全文與公告文件待驗。見 [來源](DATA_SOURCES.md) 與 [操作](SETUP.md)。 |
 | M2 基礎檢索 | NOT_STARTED | 依賴 M1 建立真實語料。 |
 | M3 混合檢索與可解釋性 | NOT_STARTED | 依賴基礎檢索及來源定位。 |
 | M4 研究介面 | NOT_STARTED | M0 的狀態頁只顯示本機服務狀態。 |

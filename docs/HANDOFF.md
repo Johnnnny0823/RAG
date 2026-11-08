@@ -1,5 +1,33 @@
 # Agent Handoff
 
+## M1 官方資料匯入檢查點
+
+- Date/time (timezone): 2026-11-09 01:50（Asia/Taipei，UTC+8）。
+- Agent: Codex，官方來源研究代理負責 [DATA_SOURCES.md](DATA_SOURCES.md)。
+- Branch / commit SHA: `main`，本文件所在的 M1 檢查點提交，起點為 `cb55380`。
+- Current milestone and status: M1 IN_PROGRESS。M0 DONE。
+- Goal of this session: 取得真正的 TIPO XML 並驗證從原始檔、PostgreSQL 到原文定位的匯入流程。
+- Files changed (with purpose): `services/ingestion/` 提供下載、原檔雜湊保存、解析、匯入及回溯驗證。Dockerfile 包含匯入模組。測試涵蓋原始物件校驗、錯誤 XML 隔離、文件定位與卷期檢查。SETUP、PROGRESS、DECISIONS 與 DATA_SOURCES 記錄操作、證據與決策。
+- Database migrations added/applied: `0002_ingestion` 建立來源、批次、原始物件關聯、申請案、文件版本、IPC、說明書段落和請求項。新建隔離資料卷從 base 遷移到 `0002_ingestion`，降版在會丟失資料的情況下拒絕。預設開發資料卷未套用本次遷移。
+- API/Schema changes: REST 契約無變更。資料表以文件階段及來源雜湊保留版本；此次只驗證發明公開文件。
+- Commands actually run and results:
+  - `python -m services.ingestion.download` 成功取得官方 HTTPS 卷期索引、相同卷期的 FTPS 索引及個案 XML。兩份索引的 SHA-256 一致，個案雜湊符合來源紀錄。
+  - `docker compose -p patentscope-m1-proof run --rm --build migrate` 在新資料卷成功。以 `import_issue --verified-tipo --batch 024019 --limit 100` 匯入 99 筆書目與 1 筆全文，0 筆無效紀錄，0 筆個案隔離。再次匯入回傳 `reused: true`，SQL 確認共 100 筆申請案、100 筆文件、1 個批次。
+  - `python -m services.ingestion.verify_document 202639611` 核對原始 SHA-256、19 項請求項與 122 段說明書文字和 XPath。
+  - `python -m ruff format --check .` 與 `python -m ruff check .` 通過。`python -m pytest -q --basetemp=<new-directory>` 14 項通過，1 則既有 Starlette 棄用警告。首次使用既有 Windows pytest 暫存路徑時有 2 個測試設定權限錯誤，改用新路徑後通過。`python scripts/smoke.py` 通過。
+- Tests NOT run and reason: GitHub Actions 遠端工作未執行。跨卷期增量、公告樣本與批次全文尚未接入。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-09 核對 [政府目錄 15996](https://data.gov.tw/dataset/15996) 與 [政府資料開放授權](https://data.gov.tw/license)，測試 HTTPS 及 FTPS。FTPS 期別 `index_all.xml` 含 2,384 個不需 API 金鑰的個案路徑；實際批次成功率與請求頻率限制待確認。完整路徑、雜湊和限制見 [DATA_SOURCES.md](DATA_SOURCES.md)。
+- Known bugs / risks / blockers: 匯入全文暫由操作者以公開號指定個案檔，程式檢查 XML 申請號一致；仍需從官方清單自動綁定每個來源 URL 與公開號。說明書資料限已驗證的 A103.1.0 格式。來源索引不提供日期或 kind code 時保留空值。尚無真實公告樣本及目前法律狀態。
+- Decisions made (ADR links): [DECISIONS.md](DECISIONS.md) 記錄 M1 的原始檔與文件版本策略。
+- Uncommitted changes / file ownership warnings: 真實 XML 不進 Git。隔離驗收資料卷 `patentscope-m1-proof_postgres-data` 保留，容器已停止，原始物件位於本機 `%TEMP%/patentscope-m1-run/objects`。重新啟動前保留資料卷與物件目錄的配對。
+- Next 1–3 concrete actions:
+  1. 接上已驗證的 FTPS `index_all.xml`，以清單綁定來源 URL 和公開號，限速分批取得全文並保存實際下載狀態及可重試錯誤。
+  2. 取得並驗證官方公告樣本，確認申請案、公開及公告版本可共存，並測試同一文件的新版本不覆寫既有原文。
+  3. 實測跨卷期增量匯入，記錄全文覆蓋率與失敗原因，完成 M1 驗收後再進 M2。
+- Exact reproduction steps: 見 [SETUP.md](SETUP.md) 的 M1 官方樣本指令；如要重用已驗證資料庫，先執行 `docker compose -p patentscope-m1-proof up -d --wait db`，以保留的物件目錄執行回溯驗證。
+
+## M0 歷史交接
+
 - Date/time (timezone): 2026-11-09 01:30（Asia/Taipei，UTC+8）
 - Agent: Codex
 - Branch / commit SHA: `main`，M0 實作提交為 `199419b`。
