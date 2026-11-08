@@ -1,5 +1,29 @@
 # Agent Handoff
 
+## M2 精確號碼與詳情 API 檢查點
+
+- Date/time (timezone): 2026-11-09 02:07（Asia/Taipei，UTC+8）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點為 `a8ae20f`。
+- Current milestone and status: M2 IN_PROGRESS。M1 DONE。
+- Goal of this session: 用真實臺灣專利語料驗證精確申請、公開、公告號查詢及版本隔離。
+- Files changed (with purpose): `services/api/patents.py` 提供查詢、詳情、請求項與來源契約，`main.py` 掛載路由。測試覆蓋輸入、錯誤和 URL 篩選，`scripts/smoke_patents.py` 驗收真實語料。
+- Database migrations added/applied: 無新遷移。使用既有 `0002_ingestion` 的隔離資料庫。
+- API/Schema changes: 新增 `GET /api/v1/patents`、`GET /api/v1/patents/{document_id}` 及 `GET /api/v1/patents/{document_id}/claims`。詳見 [API.md](API.md)。
+- Commands actually run and results:
+  - Ruff 格式及 lint、`pytest -q --basetemp=<new-directory>` 通過，25 項通過及 1 則既有 Starlette 棄用警告。
+  - 建置隔離 API 並在 18003 埠以 `python scripts/smoke_patents.py` 驗證真實查詢。驗收涵蓋分頁、空結果、404、同案公告與公開版本各 13 項請求項、書目版本空請求項及原檔雜湊定位。第二期資料的 FTPS URL 正常回傳。
+  - 三種精確查詢皆執行 `EXPLAIN (ANALYZE, BUFFERS)`，結果見 [DECISIONS.md](DECISIONS.md)。`python scripts/smoke.py` 通過。
+- Tests NOT run and reason: 未在遠端執行 CI。尚無詞彙及向量檢索可驗收。
+- Data sources checked (exact URL/date) and license/access notes: 本次重用 [M1 已驗證的官方資料](DATA_SOURCES.md)，無新增擷取。
+- Known bugs / risks / blockers: 詳情只回傳語料實際保存的欄位。請求項依賴、附件、法律狀態、詞彙及向量搜尋待接入。
+- Decisions made (ADR links): [DECISIONS.md](DECISIONS.md) 記錄指定號碼類型、可見來源及版本選擇。
+- Uncommitted changes / file ownership warnings: 真實語料留在隔離資料庫及配對的原始檔目錄。隔離 API 綁定 `127.0.0.1:18003`。
+- Next 1–3 concrete actions:
+  1. 實作可評估的繁中詞彙檢索、IPC 篩選和索引更新，記錄實際查詢計畫。
+  2. 增加可替換的嵌入模型、模型版本紀錄與 pgvector 語意檢索。用真實語料驗收 M2 後再進 M3。
+- Exact reproduction steps: 見 [SETUP.md](SETUP.md) 的「M2 精確專利號查詢驗收」。
+
 ## M1 跨期增量驗收
 
 - Date/time (timezone): 2026-11-09 02:02（Asia/Taipei，UTC+8）。

@@ -70,3 +70,15 @@ python -m services.ingestion.download --index-url $second --index-out (Join-Path
 docker compose -p $project build migrate
 docker compose -p $project run --rm --no-deps -v "$($data.FullName):/inputs" migrate python -m services.ingestion.import_issue --verified-tipo --index /inputs/issue-024018.xml --index-source-url $second --batch 024018 --limit 25 --objects /inputs/objects
 ```
+
+## M2 精確專利號查詢驗收
+
+完成上方三批匯入後，對同一個有資料的 Compose 專案啟動 API，另開終端執行真實語料冒煙測試。
+
+```powershell
+docker compose -p $project build api
+docker compose -p $project run --rm --no-deps -p 127.0.0.1:18003:8000 api
+python scripts/smoke_patents.py
+```
+
+本機 [OpenAPI](http://127.0.0.1:18003/docs) 可試查公開號 `202640162` 與公告號 `I941082`。重現需要上述 M1 樣本，空資料庫會回傳空清單。

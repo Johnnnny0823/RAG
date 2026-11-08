@@ -1,0 +1,371 @@
+"""Read-only endpoints for indexed Taiwanese patent document versions."""
+
+import logging
+import re
+import unicodedata
+from datetime import date, datetime
+from typing import Annotated, Literal
+from urllib.parse import urlsplit
+from uuid import UUID, uuid4
+
+from fastapi import APIRouter, Query
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
+from pydantic import BaseModel
+from sqlalchemy.engine import Connection
+from sqlalchemy.exc import SQLAlchemyError
+
+from services.api.db import engine
+
+logger = logging.getLogger(__name__)
+NumberType = Literal["application", "publication", "grant"]
+ContentScope = Literal["fulltext", "claims_only", "metadata_and_abstract"]
+DocumentStage = Literal["publication", "grant"]
+ErrorCode = Literal[
+    "INVALID_PATENT_NUMBER",
+    "INVALID_REQUEST",
+    "PATENT_NOT_FOUND",
+    "DATA_SOURCE_UNAVAILABLE",
+]
+
+
+class PatentRoute(APIRoute):
+    def get_route_handler(self):
+        handler = super().get_route_handler()
+
+        async def handle(request):
+            try:
+                return await handler(request)
+            except RequestValidationError:
+                return api_error(
+                    422, "INVALID_REQUEST", "請檢查查詢參數或文件版本 ID。"
+                )
+
+        return handle
+
+
+class PatentError(BaseModel):
+    code: ErrorCode
+    message: str
+    request_id: UUID
+
+
+class PatentErrorEnvelope(BaseModel):
+    error: PatentError
+
+
+router = APIRouter(
+    prefix="/api/v1/patents",
+    tags=["patents"],
+    route_class=PatentRoute,
+    responses={
+        422: {"model": PatentErrorEnvelope},
+        503: {"model": PatentErrorEnvelope},
+    },
+)
+
+
+class PatentVersion(BaseModel):
+    document_id: UUID
+    application_no: str
+    publication_no: str
+    document_stage: DocumentStage
+    kind_code: str | None
+    filing_date: date | None
+    publication_date: date | None
+    title_zh: str | None
+    title_en: str | None
+    content_scope: ContentScope
+
+
+class PatentSearchResults(BaseModel):
+    items: list[PatentVersion]
+    limit: int
+    offset: int
+    has_more: bool
+
+
+class PartyName(BaseModel):
+    zh: str | None = None
+    en: str | None = None
+
+
+class Classification(BaseModel):
+    scheme: str
+    code: str
+    version: str
+
+
+class SourceArtifact(BaseModel):
+    dataset_name: str
+    publisher: str
+    dataset_url: str | None
+    license_url: str | None
+    batch_key: str
+    ingested_at: datetime
+    source_url: str | None
+    artifact_sha256: str
+    record_locator: str
+
+
+class SourceLocation(BaseModel):
+    xpath: str
+    artifact_sha256: str
+
+
+class PatentSection(BaseModel):
+    section_type: str
+    ordinal: int
+    original_text: str
+    source: SourceLocation
+
+
+class PatentDetail(PatentVersion):
+    abstract_zh: str | None
+    abstract_en: str | None
+    applicants: list[PartyName]
+    inventors: list[PartyName]
+    classifications: list[Classification]
+    document_sha256: str
+    parser_version: str
+    sources: list[SourceArtifact]
+    sections: list[PatentSection]
+
+
+class PatentClaim(BaseModel):
+    claim_number: int
+    text: str
+    independent: bool | None
+    source: SourceLocation
+
+
+class PatentClaims(BaseModel):
+    document_id: UUID
+    claims: list[PatentClaim]
+
+
+SUMMARY_FIELDS = """
+    d.id AS document_id, a.application_no, d.publication_no, d.document_stage,
+    NULLIF(d.kind_code, '') AS kind_code, a.filing_date, d.publication_date,
+    d.title_zh, d.title_en, d.metadata_jsonb->>'content_scope' AS content_scope
+"""
+PUBLIC_DOCUMENTS = """
+    FROM patent_documents d
+    JOIN patent_applications a ON a.id = d.application_id
+    WHERE d.jurisdiction = 'TW' AND a.jurisdiction = 'TW'
+      AND EXISTS (
+        SELECT 1 FROM document_artifacts da
+        JOIN ingestion_artifacts ia ON ia.id = da.artifact_id
+        JOIN ingestion_batches b ON b.id = ia.batch_id
+        JOIN source_datasets s ON s.id = b.dataset_id
+        WHERE da.document_id = d.id AND NOT s.is_demo
+          AND ia.status IN ('parsed', 'partial') AND b.status IN ('complete', 'partial')
+      )
+"""
+NUMBER_FILTERS = {
+    "application": "a.application_no = %s",
+    "publication": "d.publication_no = %s AND d.document_stage = 'publication'",
+    "grant": "d.publication_no = %s AND d.document_stage = 'grant'",
+}
+
+
+def normalize_number(number: str, number_type: NumberType) -> str:
+    normalized = unicodedata.normalize("NFKC", number).strip().upper()
+    pattern = r"I[0-9]{1,12}" if number_type == "grant" else r"[0-9]{9}"
+    if not re.fullmatch(pattern, normalized):
+        raise ValueError("專利號碼格式與查詢類型不符。")
+    return normalized
+
+
+def api_error(status: int, code: ErrorCode, message: str) -> JSONResponse:
+    error = PatentError(code=code, message=message, request_id=uuid4())
+    if status == 503:
+        logger.warning("Patent lookup unavailable request_id=%s", error.request_id)
+    return JSONResponse(
+        status_code=status,
+        content=PatentErrorEnvelope(error=error).model_dump(mode="json"),
+    )
+
+
+def unavailable() -> JSONResponse:
+    return api_error(503, "DATA_SOURCE_UNAVAILABLE", "目前無法查詢專利資料庫。")
+
+
+def not_found() -> JSONResponse:
+    return api_error(404, "PATENT_NOT_FOUND", "找不到此文件版本。")
+
+
+def source_url(locator: str | None) -> str | None:
+    if not locator:
+        return None
+    try:
+        url = urlsplit(locator)
+    except ValueError:
+        return None
+    if url.query or url.fragment:
+        return None
+    if (url.scheme, url.netloc) in {
+        ("https", "data.gov.tw"),
+        ("https", "cloud.tipo.gov.tw"),
+        ("ftps", "ftp.tipo.gov.tw"),
+    }:
+        return locator
+    return None
+
+
+def document_sources(conn: Connection, document_id: UUID) -> list[SourceArtifact]:
+    rows = conn.exec_driver_sql(
+        """SELECT DISTINCT s.name AS dataset_name, s.publisher, s.official_url AS dataset_url,
+                  s.license_notes AS license_url, b.batch_key, b.finished_at AS ingested_at,
+                  ia.source_locator, ia.checksum AS artifact_sha256, da.record_locator
+           FROM document_artifacts da
+           JOIN ingestion_artifacts ia ON ia.id = da.artifact_id
+           JOIN ingestion_batches b ON b.id = ia.batch_id
+           JOIN source_datasets s ON s.id = b.dataset_id
+           WHERE da.document_id = %s AND NOT s.is_demo
+             AND ia.status IN ('parsed', 'partial') AND b.status IN ('complete', 'partial')
+           ORDER BY b.finished_at DESC, ia.checksum, da.record_locator, ia.source_locator,
+                    s.name, s.publisher, s.official_url, s.license_notes, b.batch_key""",
+        (document_id,),
+    ).mappings()
+    return [
+        SourceArtifact(
+            dataset_name=row["dataset_name"],
+            publisher=row["publisher"],
+            dataset_url=source_url(row["dataset_url"]),
+            license_url=source_url(row["license_url"]),
+            batch_key=row["batch_key"],
+            ingested_at=row["ingested_at"],
+            source_url=source_url(row["source_locator"]),
+            artifact_sha256=row["artifact_sha256"],
+            record_locator=row["record_locator"],
+        )
+        for row in rows
+    ]
+
+
+@router.get(
+    "",
+    response_model=PatentSearchResults,
+)
+def search_patents(
+    number: Annotated[str, Query(min_length=1, max_length=32)],
+    number_type: NumberType,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0, le=10000)] = 0,
+):
+    try:
+        number = normalize_number(number, number_type)
+    except ValueError as error:
+        return api_error(422, "INVALID_PATENT_NUMBER", str(error))
+    try:
+        with engine.connect() as conn:
+            rows = (
+                conn.exec_driver_sql(
+                    f"""SELECT {SUMMARY_FIELDS} {PUBLIC_DOCUMENTS}
+                    AND {NUMBER_FILTERS[number_type]}
+                    ORDER BY d.document_stage, d.publication_no,
+                       CASE d.metadata_jsonb->>'content_scope'
+                         WHEN 'fulltext' THEN 0 WHEN 'claims_only' THEN 1 ELSE 2 END,
+                       d.id
+                    LIMIT %s OFFSET %s""",
+                    (number, limit + 1, offset),
+                )
+                .mappings()
+                .all()
+            )
+    except SQLAlchemyError:
+        return unavailable()
+    return PatentSearchResults(
+        items=[PatentVersion.model_validate(row) for row in rows[:limit]],
+        limit=limit,
+        offset=offset,
+        has_more=len(rows) > limit,
+    )
+
+
+@router.get(
+    "/{document_id}",
+    response_model=PatentDetail,
+    responses={404: {"model": PatentErrorEnvelope}},
+)
+def patent_detail(document_id: UUID):
+    try:
+        with engine.connect() as conn:
+            row = (
+                conn.exec_driver_sql(
+                    f"""SELECT {SUMMARY_FIELDS}, d.abstract_zh, d.abstract_en,
+                        d.metadata_jsonb->'applicants' AS applicants,
+                        d.metadata_jsonb->'inventors' AS inventors,
+                        d.source_hash AS document_sha256, d.parser_version
+                    {PUBLIC_DOCUMENTS} AND d.id = %s""",
+                    (document_id,),
+                )
+                .mappings()
+                .one_or_none()
+            )
+            if row is None:
+                return not_found()
+            classifications = (
+                conn.exec_driver_sql(
+                    """SELECT scheme, code, version FROM patent_classifications
+                   WHERE document_id = %s ORDER BY scheme, code, version""",
+                    (document_id,),
+                )
+                .mappings()
+                .all()
+            )
+            sections = (
+                conn.exec_driver_sql(
+                    """SELECT section_type, ordinal, original_text, source_locator_jsonb AS source
+                   FROM patent_sections WHERE document_id = %s ORDER BY section_type, ordinal""",
+                    (document_id,),
+                )
+                .mappings()
+                .all()
+            )
+            sources = document_sources(conn, document_id)
+    except SQLAlchemyError:
+        return unavailable()
+    return PatentDetail.model_validate(
+        {
+            **row,
+            "applicants": row["applicants"] or [],
+            "inventors": row["inventors"] or [],
+            "classifications": classifications,
+            "sections": sections,
+            "sources": sources,
+        }
+    )
+
+
+@router.get(
+    "/{document_id}/claims",
+    response_model=PatentClaims,
+    responses={404: {"model": PatentErrorEnvelope}},
+)
+def patent_claims(document_id: UUID):
+    try:
+        with engine.connect() as conn:
+            exists = conn.exec_driver_sql(
+                f"SELECT d.id {PUBLIC_DOCUMENTS} AND d.id = %s", (document_id,)
+            ).scalar_one_or_none()
+            if exists is None:
+                return not_found()
+            rows = (
+                conn.exec_driver_sql(
+                    """SELECT claim_number, text, independent_flag_nullable AS independent,
+                          source_locator_jsonb AS source
+                   FROM patent_claims WHERE document_id = %s ORDER BY claim_number""",
+                    (document_id,),
+                )
+                .mappings()
+                .all()
+            )
+    except SQLAlchemyError:
+        return unavailable()
+    return PatentClaims(
+        document_id=document_id,
+        claims=[PatentClaim.model_validate(row) for row in rows],
+    )
