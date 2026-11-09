@@ -73,6 +73,9 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 - `POST /api/v1/projects` 接受 `name`（1–120 字）及選填 `description`（最多 2,000 字），建立私人研究專案並回傳 201。
 - `GET /api/v1/projects` 分頁列出目前帳號的專案，接受 `limit`、`offset`。
+- `GET /api/v1/projects/{project_id}` 回傳自己的專案詳情。
+- `PATCH /api/v1/projects/{project_id}` 更新 `name` 或 `description`。省略或傳入 `null` 的欄位保留原值，說明可用空字串清除。
+- `DELETE /api/v1/projects/{project_id}` 刪除空白專案，回傳 204。仍有搜尋、收藏或 AI Session 時回傳 409 `PROJECT_NOT_EMPTY`。
 - `PATCH /api/v1/search-runs/{run_id}/project` 接受 `{"project_id":"<UUID>"}`，將已保存搜尋歸檔至自己的專案。傳入 `null` 解除歸檔，候選與比對仍留在歷史。
 - `GET /api/v1/search-runs?project_id=<UUID>` 篩選指定專案內的搜尋。搜尋紀錄列表與詳情新增可空的 `project_id`。舊紀錄預設未歸檔。
 

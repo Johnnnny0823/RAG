@@ -83,6 +83,14 @@ async (page) => {
   await visible("此帳號還沒有保存的搜尋。");
   if (await page.getByRole("option", { name: projectName }).count()) throw new Error("Private project leaked");
   const headers = { Authorization: "Bearer " + otherToken };
+  const projectUrl = new URL(`/api/v1/projects/${projectId}`, page.url()).href;
+  for (const result of await Promise.all([
+    page.request.get(projectUrl, { headers }),
+    page.request.patch(projectUrl, { headers, data: { name: "cross-account fixture" } }),
+    page.request.delete(projectUrl, { headers }),
+  ])) {
+    if (result.status() !== 404) throw new Error("Cross-account project access was not isolated");
+  }
   const messageUrl = new URL(`/api/v1/sessions/${aiSession.id}/messages`, page.url()).href;
   const sessionListUrl = new URL(`/api/v1/sessions?project_id=${projectId}`, page.url()).href;
   for (const result of await Promise.all([
@@ -150,6 +158,32 @@ async (page) => {
   await visible("此專案還沒有收藏。");
   if (await note.count()) throw new Error("Removed bookmark note is still visible");
   if (await quote.innerText() !== originalQuote) throw new Error("Removing a bookmark affected saved evidence");
+  await page.getByText("管理研究專案", { exact: true }).click();
+  await page.getByLabel("修改專案名稱").fill("已更新的動態導通電阻研究");
+  await page.getByLabel("修改專案說明").fill("修改後的公開測試說明");
+  await button("保存專案資料").click();
+  await visible("專案資料已更新。");
+  await page.getByRole("paragraph").filter({ hasText: "修改後的公開測試說明" }).waitFor();
+  const updatedProject = await (await page.request.get(projectUrl, { headers: auth })).json();
+  if (updatedProject.name !== "已更新的動態導通電阻研究") throw new Error("Project rename did not persist");
+  await button("刪除空白專案").click();
+  const blockedDelete = page.waitForResponse((result) => result.url() === projectUrl && result.request().method() === "DELETE");
+  await button("確認刪除空白專案").click();
+  if ((await blockedDelete).status() !== 409) throw new Error("Non-empty project could be deleted");
+  await page.getByRole("alert").filter({ hasText: "專案仍有搜尋紀錄、收藏或 AI Session" }).waitFor();
+  if (!(await page.request.get(messageUrl, { headers: auth })).ok()) throw new Error("Failed project deletion affected its Session");
+  await button("取消刪除專案").click();
+  const emptyTitle = "待刪除空白專案";
+  await page.getByText("建立研究專案", { exact: true }).click();
+  await page.getByLabel("專案名稱", { exact: true }).fill(emptyTitle);
+  await button("新增研究專案").click();
+  const projectSelector = page.getByLabel("依研究專案篩選");
+  await projectSelector.selectOption({ label: emptyTitle });
+  await page.getByText("管理研究專案", { exact: true }).click();
+  await button("刪除空白專案").click();
+  await button("確認刪除空白專案").click();
+  await visible("空白專案已刪除。");
+  if (await projectSelector.getByRole("option", { name: emptyTitle }).count()) throw new Error("Deleted project is still selectable");
   await button("登出此頁").click();
-  return "Private browser smoke passed: AI sessions, projects, private notes, isolation and evidence replay";
+  return "Private browser smoke passed: project management, AI sessions, private notes, isolation and evidence replay";
 }

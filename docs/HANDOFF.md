@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## M4 研究專案管理
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `f3207d0`。
+- Current milestone and status: M4 IN_PROGRESS。
+- Goal of this session: 補齊私人研究專案詳情、改名、說明編輯與安全刪除。
+- Files changed (with purpose): `projects.py` 補齊專案操作，`patents.py` 新增衝突代碼，`research.tsx` 串接管理介面，`smoke_private_browser.js` 擴充流程。
+- Database migrations added/applied: 無新增，沿用 `0008_research_sessions`，用既有外鍵阻擋有相依資料的專案刪除。
+- API/Schema changes: 新增專案詳情 GET、PATCH、DELETE，見 [API.md](API.md)。
+- Commands actually run and results: Ruff 格式及 lint、Docker 內 TypeScript 與 Vite 建置、`smoke.py` 通過。pytest 44 項通過（1 則既有警告）。Playwright 完整回歸通過，驗證改名、更新說明、空白專案刪除、含 Session 專案拒絕刪除並保留資料，以及其他帳號查詢、修改與刪除皆回傳 404。
+- Tests NOT run and reason: 未做遠端 CI 與並發刪除壓力測試。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 TIPO 資料](DATA_SOURCES.md)，無新增下載。
+- Known bugs / risks / blockers: 有資料的專案無法刪除。跨文件比較仍缺矩陣，結果目前僅能按 IPC 篩選，M4 尚未結案。
+- Decisions made (ADR links): 見 [DECISIONS.md](DECISIONS.md) 的 M4 研究專案刪除。
+- Uncommitted changes / file ownership warnings: 驗收 Web 在 `18114`，API 在 `18014`，驗收僅刪除自行建立的空白測試專案。
+- Next 1–3 concrete actions: 加入跨文件特徵比對矩陣及日期、文件種類、申請人篩選，再重跑 M4 完整驗收。
+- Exact reproduction steps: 見 [M4 瀏覽器驗收](SETUP.md#m4-瀏覽器驗收)，本次使用 Web `18114`、API `18014`。
+
 ## M4 私人 AI Session
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

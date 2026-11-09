@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, StringConstraints
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from services.api.db import engine
 from services.api.identity import Account, require_account
@@ -24,15 +24,22 @@ router = APIRouter(
     responses={code: {"model": PatentErrorEnvelope} for code in (401, 404, 422, 503)},
 )
 Owner = Annotated[Account, Depends(require_account)]
+ProjectName = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)
+]
+ProjectDescription = Annotated[
+    str, StringConstraints(strip_whitespace=True, max_length=2000)
+]
 
 
 class ProjectInput(BaseModel):
-    name: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)
-    ]
-    description: Annotated[
-        str, StringConstraints(strip_whitespace=True, max_length=2000)
-    ] = ""
+    name: ProjectName
+    description: ProjectDescription = ""
+
+
+class ProjectPatch(BaseModel):
+    name: ProjectName | None = None
+    description: ProjectDescription | None = None
 
 
 class Project(ProjectInput):
@@ -85,3 +92,72 @@ def list_projects(
         return unavailable()
     response.headers["Cache-Control"] = "no-store"
     return [Project.model_validate(row) for row in rows]
+
+
+@router.get("/{project_id}", response_model=Project)
+def get_project(project_id: UUID, account: Owner, response: Response):
+    try:
+        with engine.connect() as conn:
+            row = (
+                conn.exec_driver_sql(
+                    """SELECT id, name, description, created_at FROM projects
+                   WHERE id=%s AND owner_user_id=%s""",
+                    (project_id, account.id),
+                )
+                .mappings()
+                .one_or_none()
+            )
+    except SQLAlchemyError:
+        return unavailable()
+    if row is None:
+        return project_missing()
+    response.headers["Cache-Control"] = "no-store"
+    return Project.model_validate(row)
+
+
+@router.patch("/{project_id}", response_model=Project)
+def update_project(
+    project_id: UUID, payload: ProjectPatch, account: Owner, response: Response
+):
+    try:
+        with engine.begin() as conn:
+            row = (
+                conn.exec_driver_sql(
+                    """UPDATE projects SET name=COALESCE(%s, name), description=COALESCE(%s, description)
+                   WHERE id=%s AND owner_user_id=%s RETURNING id, name, description, created_at""",
+                    (payload.name, payload.description, project_id, account.id),
+                )
+                .mappings()
+                .one_or_none()
+            )
+    except SQLAlchemyError:
+        return unavailable()
+    if row is None:
+        return project_missing()
+    response.headers["Cache-Control"] = "no-store"
+    return Project.model_validate(row)
+
+
+@router.delete(
+    "/{project_id}", status_code=204, responses={409: {"model": PatentErrorEnvelope}}
+)
+def delete_project(project_id: UUID, account: Owner):
+    try:
+        with engine.begin() as conn:
+            removed = conn.exec_driver_sql(
+                "DELETE FROM projects WHERE id=%s AND owner_user_id=%s RETURNING id",
+                (project_id, account.id),
+            ).scalar_one_or_none()
+    except IntegrityError as error:
+        if getattr(error.orig, "sqlstate", None) == "23503":
+            return api_error(
+                409,
+                "PROJECT_NOT_EMPTY",
+                "專案仍有搜尋紀錄、收藏或 AI Session，無法刪除。",
+            )
+        return unavailable()
+    except SQLAlchemyError:
+        return unavailable()
+    if removed is None:
+        return project_missing()
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})

@@ -100,6 +100,7 @@ async function request<T>(path: string, payload?: object, token?: string, method
     const body = await response.json().catch(() => null);
     throw new Error(body?.error?.message || `服務回應錯誤（HTTP ${response.status}）`);
   }
+  if (response.status === 204) return undefined as T;
   return response.json();
 }
 
@@ -121,6 +122,9 @@ export function Research() {
   const [saved, setSaved] = useState<SavedRun | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectFilter, setProjectFilter] = useState("");
+  const [confirmProjectRemoval, setConfirmProjectRemoval] = useState(false);
+  const [projectMessage, setProjectMessage] = useState("");
+  const activeProject = projects.find((project) => project.id === projectFilter);
   const [assignment, setAssignment] = useState("");
   const [bookmarks, setBookmarks] = useState<Bookmark[] | null>(null);
   const [bookmarkOffset, setBookmarkOffset] = useState(0);
@@ -135,6 +139,8 @@ export function Research() {
     setSaved(null);
     setProjects([]);
     setProjectFilter("");
+    setConfirmProjectRemoval(false);
+    setProjectMessage("");
     setAssignment("");
     setBookmarks(null);
     setBookmarkOffset(0);
@@ -190,6 +196,33 @@ export function Research() {
   async function createProject(payload: { name: string; description: string }, token: string) {
     const project = await request<Project>("/projects", payload, token);
     setProjects([project, ...projects].slice(0, 100));
+  }
+
+  function selectProject(projectId: string) {
+    setProjectFilter(projectId);
+    setConfirmProjectRemoval(false);
+    setProjectMessage("");
+    setHistory(null);
+    setHistoryOffset(0);
+    setBookmarks(null);
+    setBookmarkOffset(0);
+    setBookmarkMessage("");
+    setPendingRemoval(null);
+  }
+
+  async function editProject(projectId: string, payload: { name: string; description: string }, token: string) {
+    const updated = await request<Project>(`/projects/${projectId}`, payload, token, "PATCH");
+    setProjects((current) => current.map((project) => project.id === updated.id ? updated : project));
+    setProjectMessage("專案資料已更新。");
+  }
+
+  async function deleteProject(projectId: string, token: string) {
+    await request<void>(`/projects/${projectId}`, undefined, token, "DELETE");
+    setProjects((current) => current.filter((project) => project.id !== projectId));
+    if (bookmarkProject === projectId) setBookmarkProject("");
+    if (assignment === projectId) setAssignment("");
+    selectProject("");
+    setProjectMessage("空白專案已刪除。");
   }
 
   async function assignProject(record: SavedRun, token: string) {
@@ -341,20 +374,36 @@ export function Research() {
             </form>
           </details>
           <label className="research-field">依研究專案篩選
-            <select value={projectFilter} disabled={!!busy} onChange={(event) => {
-              setProjectFilter(event.target.value);
-              setHistory(null);
-              setHistoryOffset(0);
-              setBookmarks(null);
-              setBookmarkOffset(0);
-              setBookmarkMessage("");
-              setPendingRemoval(null);
-            }}>
+            <select value={projectFilter} disabled={!!busy} onChange={(event) => selectProject(event.target.value)}>
               <option value="">所有搜尋紀錄</option>
               {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
             </select>
           </label>
-          {projectFilter && <p className="my-2 whitespace-pre-wrap break-words text-sm">{projects.find((project) => project.id === projectFilter)?.description}</p>}
+          {projectMessage && <p role="status" className="my-2 text-sm text-teal-900">{projectMessage}</p>}
+          {activeProject && <>
+            <p className="my-2 whitespace-pre-wrap break-words text-sm">{activeProject.description}</p>
+            <details className="my-3" key={activeProject.id}>
+              <summary>管理研究專案</summary>
+              <form className="my-3" onSubmit={(event) => {
+                event.preventDefault();
+                const data = new FormData(event.currentTarget);
+                void run("正在更新研究專案…", () => editProject(activeProject.id, {
+                  name: String(data.get("name")), description: String(data.get("description")),
+                }, session.token));
+              }}>
+                <fieldset disabled={!!busy}>
+                  <label className="research-field">修改專案名稱<input name="name" defaultValue={activeProject.name} maxLength={120} required /></label>
+                  <label className="research-field">修改專案說明<textarea name="description" defaultValue={activeProject.description} rows={2} maxLength={2000} /></label>
+                  <button type="submit">保存專案資料</button>
+                </fieldset>
+              </form>
+              <p className="mb-2 text-sm">僅可刪除沒有搜尋紀錄、收藏或 AI Session 的專案。</p>
+              {confirmProjectRemoval ? <div className="flex flex-wrap gap-2">
+                <button disabled={!!busy} onClick={() => void run("正在刪除研究專案…", () => deleteProject(activeProject.id, session.token))}>確認刪除空白專案</button>
+                <button disabled={!!busy} onClick={() => setConfirmProjectRemoval(false)}>取消刪除專案</button>
+              </div> : <button disabled={!!busy} onClick={() => setConfirmProjectRemoval(true)}>刪除空白專案</button>}
+            </details>
+          </>}
           {projectFilter && <ResearchSessions key={projectFilter} projectId={projectFilter} token={session.token}
             request={request} run={run} busy={!!busy} onUse={(idea, features) => {
               setQuery(idea);
