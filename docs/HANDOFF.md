@@ -1,5 +1,25 @@
 # Agent Handoff
 
+## M4 查詢、詳情與比對介面
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `cfb56d7`。
+- Current milestone and status: M4 IN_PROGRESS。
+- Goal of this session: 從 Web 輸入構想、編輯技術特徵，使用實際專利 API 檢索及查證。
+- Files changed (with purpose): `apps/web/src/research.tsx` 實作查詢、特徵、排名、文件及證據。 `main.tsx` 整合頁面並保留服務狀態。 `style.css` 加入響應式表單與版面。
+- Database migrations added/applied: 本次無新增或重跑遷移，沿用 M3 已驗證的 `0005_search_runs`。
+- API/Schema changes: 無。前端串接查詢拆解、混合檢索、文件詳情、請求項與版本比對預覽。
+- Commands actually run and results: `npm run build` 型別檢查與編譯通過。`docker compose -p patentscope-m1-proof build web` 通過。`python scripts/smoke.py --api http://127.0.0.1:18010 --web http://127.0.0.1:18110` 通過。以 Playwright CLI 操作瀏覽器，取得中英文檢索詞，修改特徵，以 G01R 找到公開 202640162 與公告 I941082，展開詳情及證據定位並讀取原文、偏移和雜湊。A01B 顯示空結果，無效 IPC 顯示 HTTP 422 錯誤訊息。390 px 檢查無水平溢出。
+- 另以 `docker compose -p patentscope-m1-proof run --rm --no-deps web npm run build` 驗證鎖定依賴下的型別及 Vite 7.3.7 建置，通過。
+- Tests NOT run and reason: 本次只改前端，沿用上次後端 pytest。尚未做完整鍵盤、跨瀏覽器、重排分頁及研究保存的瀏覽器驗收。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 TIPO 資料](DATA_SOURCES.md)，無新擷取。瀏覽器確認詳情呈現已保存的來源連結，未另行下載原始檔。
+- Known bugs / risks / blockers: 頁面尚無 favicon，瀏覽器會產生 404。預覽每次翻頁會重新呼叫檢索；使用重排時跨請求的順序可能變動。登入、歷史、研究專案與 PDF 尚未接入。
+- Decisions made (ADR links): 見 [DECISIONS.md](DECISIONS.md) 的 M4 瀏覽器檢索預覽。
+- Uncommitted changes / file ownership warnings: Web 驗收綁定 `127.0.0.1:18110`，代理到獨立 TIPO 測試 API。
+- Next 1–3 concrete actions: 串接登入與保存歷史。新增研究專案、收藏與筆記，再驗收跨帳號及瀏覽器流程。
+- Exact reproduction steps: 見 [M4 瀏覽器驗收](SETUP.md#m4-瀏覽器驗收)。
+
 ## M3 私人搜尋紀錄驗收
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

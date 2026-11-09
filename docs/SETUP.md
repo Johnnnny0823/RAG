@@ -151,3 +151,15 @@ docker compose -p $project run --rm --no-deps -p 127.0.0.1:18010:8000 api
 ```
 
 另開終端執行 `python scripts/smoke_search_runs.py`。腳本會在資料庫留下測試帳號、公開測試查詢與比對紀錄，請使用隔離資料庫。
+
+## M4 瀏覽器驗收
+
+保持上方的 API 運行。從 `apps/web` 執行下列指令，開啟 `http://127.0.0.1:18110`。
+
+```powershell
+npm ci
+$env:API_PROXY_TARGET = 'http://127.0.0.1:18010'
+node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 18110 --strictPort
+```
+
+輸入「動態導通電阻」並執行 AI 拆解。將特徵描述改為「動態導通電阻量測電路」，保留同名繁中檢索詞，並設定 IPC 為 `G01R`。搜尋並開啟公開文件 `202640162` 的全文版本，確認請求項、說明書與來源，再比對並展開原文定位。改用 `A01B` 驗證空結果，輸入 `INVALID` 驗證錯誤訊息。結果取決於當前語料、模型與已確認特徵。

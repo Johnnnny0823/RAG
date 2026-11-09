@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { Research } from "./research";
 
 import "./style.css";
 
@@ -42,10 +43,13 @@ function App() {
   }, [attempt]);
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16 text-slate-900">
-      <h1 className="text-3xl font-semibold">PatentScope AI</h1>
-      <p className="mt-3 text-slate-700">台灣專利研究平台 · 本機開發環境</p>
-      <section className="mt-8 rounded-lg border border-slate-300 p-5">
+    <main className="mx-auto max-w-6xl px-4 py-10 text-slate-900 sm:px-8">
+      <header className="mb-8 border-b border-slate-200 pb-6">
+        <p className="mb-2 text-sm font-semibold text-teal-800">臺灣專利研究平台</p>
+        <h1 className="text-3xl font-semibold sm:text-4xl">PatentScope AI</h1>
+      </header>
+      <Research />
+      <section className="mt-8 rounded-lg border border-slate-300 bg-white p-5">
         <h2 className="text-lg font-semibold">服務狀態</h2>
         <p className="mt-2" role="status">{statusText[status]}</p>
         <button
@@ -59,7 +63,6 @@ function App() {
           重新檢查
         </button>
       </section>
-      <p className="mt-5 text-sm text-slate-700">目前語料庫尚未建立，專利搜尋將於後續里程碑提供。</p>
     </main>
   );
 }

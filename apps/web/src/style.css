@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+@layer base {
+  body { @apply bg-slate-50; }
+}
+
+@layer components {
+  .research-panel { @apply min-w-0 rounded-xl border border-slate-300 bg-white p-4 sm:p-6; }
+  .research-panel h2 { @apply text-lg font-semibold; }
+  .research-panel h3, .research-panel dt { @apply font-semibold; }
+  .research-panel button { @apply rounded-md border border-slate-400 px-3 py-1.5 font-medium hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50; }
+  .research-panel .research-primary { @apply border-teal-800 bg-teal-800 text-white hover:bg-teal-900; }
+  .research-panel a { @apply text-teal-800 underline; }
+  .research-panel summary { @apply cursor-pointer font-medium; }
+  .research-field { @apply mb-3 block text-sm font-medium; }
+  .research-field :is(input, textarea) { @apply mt-1 block w-full rounded-md border border-slate-400 bg-white px-3 py-2 text-base font-normal focus-visible:outline-2 focus-visible:outline-teal-800; }
+}
