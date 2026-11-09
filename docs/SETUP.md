@@ -175,3 +175,8 @@ npx --yes --package @playwright/cli@0.1.23 playwright-cli -s=patent-private open
 npx --yes --package @playwright/cli@0.1.23 playwright-cli -s=patent-private run-code --filename scripts/smoke_private_browser.js
 npx --yes --package @playwright/cli@0.1.23 playwright-cli -s=patent-private close
 ```
+## M5 私人 PDF 驗收
+
+重建 API 映像以安裝 ReportLab 及 AR PL UMing 臺灣字型。從私人歷史開啟已保存搜尋，完成至少一份候選比對，點選「匯出 PDF 報告」。在 Windows 直接執行 API 時，將 `REPORT_FONT_PATH` 設為可嵌入的繁中字型 TTF 或 TTC 路徑。自訂 TTC 可用 `REPORT_FONT_INDEX` 選擇字型。
+
+以隔離語料執行 `python scripts/smoke_search_runs.py --api http://127.0.0.1:18017 --pdf-output <驗收路徑.pdf>`，核對擁有者可下載，訪客及其他帳號無法取得。腳本會建立兩個測試帳號及公開測試紀錄。

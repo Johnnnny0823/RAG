@@ -50,6 +50,7 @@ ErrorCode = Literal[
     "PROJECT_NOT_EMPTY",
     "BOOKMARK_NOT_FOUND",
     "SESSION_NOT_FOUND",
+    "REPORT_UNAVAILABLE",
 ]
 
 
@@ -453,34 +454,44 @@ def source_url(locator: str | None) -> str | None:
 
 
 def document_sources(conn: Connection, document_id: UUID) -> list[SourceArtifact]:
+    return document_sources_by_id(conn, [document_id]).get(document_id, [])
+
+
+def document_sources_by_id(
+    conn: Connection, document_ids: list[UUID]
+) -> dict[UUID, list[SourceArtifact]]:
+    if not document_ids:
+        return {}
     rows = conn.exec_driver_sql(
-        """SELECT DISTINCT s.name AS dataset_name, s.publisher, s.official_url AS dataset_url,
+        """SELECT DISTINCT da.document_id, s.name AS dataset_name, s.publisher, s.official_url AS dataset_url,
                   s.license_notes AS license_url, b.batch_key, b.finished_at AS ingested_at,
                   ia.source_locator, ia.checksum AS artifact_sha256, da.record_locator
            FROM document_artifacts da
            JOIN ingestion_artifacts ia ON ia.id = da.artifact_id
            JOIN ingestion_batches b ON b.id = ia.batch_id
            JOIN source_datasets s ON s.id = b.dataset_id
-           WHERE da.document_id = %s AND NOT s.is_demo
+           WHERE da.document_id = ANY(%s::uuid[]) AND NOT s.is_demo
              AND ia.status IN ('parsed', 'partial') AND b.status IN ('complete', 'partial')
            ORDER BY b.finished_at DESC, ia.checksum, da.record_locator, ia.source_locator,
                     s.name, s.publisher, s.official_url, s.license_notes, b.batch_key""",
-        (document_id,),
+        (document_ids,),
     ).mappings()
-    return [
-        SourceArtifact(
-            dataset_name=row["dataset_name"],
-            publisher=row["publisher"],
-            dataset_url=source_url(row["dataset_url"]),
-            license_url=source_url(row["license_url"]),
-            batch_key=row["batch_key"],
-            ingested_at=row["ingested_at"],
-            source_url=source_url(row["source_locator"]),
-            artifact_sha256=row["artifact_sha256"],
-            record_locator=row["record_locator"],
+    sources: dict[UUID, list[SourceArtifact]] = {}
+    for row in rows:
+        sources.setdefault(row["document_id"], []).append(
+            SourceArtifact(
+                dataset_name=row["dataset_name"],
+                publisher=row["publisher"],
+                dataset_url=source_url(row["dataset_url"]),
+                license_url=source_url(row["license_url"]),
+                batch_key=row["batch_key"],
+                ingested_at=row["ingested_at"],
+                source_url=source_url(row["source_locator"]),
+                artifact_sha256=row["artifact_sha256"],
+                record_locator=row["record_locator"],
+            )
         )
-        for row in rows
-    ]
+    return sources
 
 
 @router.get(

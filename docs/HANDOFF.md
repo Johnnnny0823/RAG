@@ -1,5 +1,25 @@
 # Agent Handoff
 
+## M5 私人繁中 PDF 匯出
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `827bffa`。
+- Current milestone and status: M5 IN_PROGRESS。
+- Goal of this session: 讓搜尋紀錄擁有者能匯出有原文與來源的繁中報告。
+- Files changed (with purpose): `reports.py` 產生 PDF，`patents.py` 批次讀取來源，`main.py` 掛載路由，`requirements.txt` 與 API Dockerfile 加入 PDF／字型依賴，`research.tsx` 提供下載，冒煙腳本驗證流程。
+- Database migrations added/applied: 無，沿用 `0008_research_sessions`。
+- API/Schema changes: 增加 `GET /api/v1/search-runs/{run_id}/report.pdf`。
+- Commands actually run and results: pytest 44 項、Ruff 與 Docker 前端建置通過。使用 `smoke_search_runs.py --pdf-output` 在 `18017` 驗證擁有者下載、訪客 401、其他帳號 404。以 pypdf 與 Poppler 檢查 2 頁 A4、繁中、臺灣字型、真實專利與來源連結及原文定位。
+- Playwright 在 `18116` 驗證瀏覽器下載及私人工作台回歸。首跑的本機模型等待超過 Playwright 預設 30 秒，腳本改用 120 秒等待後通過。
+- Tests NOT run and reason: 未驗證大量候選匯出負載、遠端 CI 及多種 PDF 閱讀器。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 TIPO 資料](DATA_SOURCES.md)，未新增下載。PDF 技術參考見 [DECISIONS.md](DECISIONS.md)。
+- Known bugs / risks / blockers: 同步下載，沒有報告佇列或伺服器端報告存檔。報告以已保存候選為準，匯出時讀取候選的現有來源；完整歷史語料快照與檢索品質仍待驗證。
+- Decisions made (ADR links): 見 [DECISIONS.md](DECISIONS.md) 的 M5 私人報告輸出。
+- Uncommitted changes / file ownership warnings: 驗收報告是公開測試樣本，僅存在本機暫存目錄。
+- Next 1–3 concrete actions: 建立人工作標準與相關性測試集，實作三種檢索的品質與延遲評估，再完成 M5 隱私驗收。
+- Exact reproduction steps: 見 [M5 私人 PDF 驗收](SETUP.md#m5-私人-pdf-驗收)。
+
 ## M4 文件篩選與里程碑驗收
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

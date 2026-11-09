@@ -1,5 +1,10 @@
 # 架構決策
 
+## M5 私人報告輸出
+
+- 以保存的搜尋紀錄 UUID 作為匯出入口。沿用所有權驗證，依當次保存的候選、特徵與引文生成，並即時補入可查證的官方來源連結。首版同步產生 PDF，避免另外留存一份含未公開構想的檔案。
+- 使用 ReportLab 及容器內的 AR PL UMing 臺灣字型。 [ReportLab 字型文件](https://docs.reportlab.com/reportlab/userguide/ch3_fonts/) [Debian 字型套件](https://packages.debian.org/trixie/fonts-arphic-uming)
+
 ## M4 文件篩選
 
 - 詞彙、向量與混合檢索使用同一段參數化 SQL 篩選，先於候選分支的排序截斷。使用官方文件版本的公開／公告日期與申請人欄位，指定日期時排除未知值。保存搜尋以既有請求欄位保留條件，舊紀錄預設無條件。

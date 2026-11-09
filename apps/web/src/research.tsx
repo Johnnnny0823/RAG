@@ -205,6 +205,25 @@ export function Research() {
     showSavedPage(record);
   }
 
+  async function downloadReport(runId: string, token: string) {
+    const response = await fetch(`/api/v1/search-runs/${runId}/report.pdf`, {
+      headers: { Authorization: "Bearer " + token },
+      cache: "no-store",
+      signal: AbortSignal.timeout(180_000),
+    });
+    if (response.status === 401) throw new SessionExpired("登入已失效，請重新登入。");
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      throw new Error(body?.error?.message || "目前無法匯出 PDF。");
+    }
+    const url = URL.createObjectURL(await response.blob());
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `patentscope-${runId}.pdf`;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   async function createProject(payload: { name: string; description: string }, token: string) {
     const project = await request<Project>("/projects", payload, token);
     setProjects([project, ...projects].slice(0, 100));
@@ -591,6 +610,7 @@ export function Research() {
                 </select>
               </label>
               <button disabled={!!busy || assignment === (saved.project_id ?? "")} onClick={() => void run("正在更新歸檔…", () => assignProject(saved, session.token))}>更新歸檔</button>
+              <button className="ml-2" disabled={!!busy} onClick={() => void run("正在匯出私人 PDF…", () => downloadReport(saved.id, session.token))}>匯出 PDF 報告</button>
             </div>}
             {saved && <details className="mb-3">
               <summary>已保存的檢索策略</summary>

@@ -106,3 +106,8 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 | GET | `/api/v1/sessions/{session_id}/messages` | 回傳最近 `limit` 筆（預設 40）並按保存順序排列。可用 `before` 指定同一 Session 內的訊息 UUID 讀取更早的訊息。 |
 
 需要 Bearer token。未知或跨帳號的專案與 Session 回傳 404。AI 草稿含結構化特徵及模型識別。每次拆解使用當次輸入，搜尋結果與證據由原有搜尋紀錄端點保存。
+## 私人研究報告
+
+`GET /api/v1/search-runs/{run_id}/report.pdf` 用 Bearer token 驗證搜尋紀錄所有權，成功回傳 `application/pdf` 及附件檔名。未登入為 401，其他帳號的紀錄或不存在的紀錄為 404。回應標示 `private, no-store`。
+
+報告同步產生，涵蓋當次保存的構想、篩選、檢索設定、候選順位及已保存比對。官方來源連結於匯出時讀取。伺服器不留存 PDF 檔案，瀏覽器會下載一份本機副本。

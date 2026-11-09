@@ -1,4 +1,5 @@
 async (page) => {
+  page.setDefaultTimeout(120_000);
   const button = (name) => page.getByRole("button", { name, exact: true });
   const visible = (text) => page.getByText(text).waitFor({ state: "visible", timeout: 180_000 });
   const password = "browser-smoke-" + Date.now();
@@ -172,6 +173,12 @@ async (page) => {
   await visible("目前歸檔 · " + projectName);
   await matrix.getByRole("columnheader", { name: /公開 202640162/ }).waitFor();
   await matrix.getByRole("columnheader", { name: /公告 I941082/ }).waitFor();
+  const downloadEvent = page.waitForEvent("download");
+  await button("匯出 PDF 報告").click();
+  const download = await downloadEvent;
+  if (download.suggestedFilename() !== `patentscope-${id}.pdf` || await download.failure()) {
+    throw new Error("The browser could not download the private report");
+  }
   await page.getByText("已保存的檢索策略", { exact: true }).click();
   await page.getByText("動態導通電阻量測電路", { exact: true }).filter({ visible: true }).first().waitFor();
   await patent.getByRole("button").click();
@@ -214,5 +221,5 @@ async (page) => {
   await visible("空白專案已刪除。");
   if (await projectSelector.getByRole("option", { name: emptyTitle }).count()) throw new Error("Deleted project is still selectable");
   await button("登出此頁").click();
-  return "Private browser smoke passed: metadata filters, comparison matrix, projects, AI sessions and isolation";
+  return "Private browser smoke passed: PDF export, metadata filters, comparison matrix and isolation";
 }

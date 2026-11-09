@@ -3,12 +3,13 @@
 import argparse
 import json
 import secrets
+from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from uuid import uuid4
 
 
-def smoke(base_url):
+def smoke(base_url, pdf_output=None):
     def call(path, *, payload=None, token=None, status=200):
         headers = {"Content-Type": "application/json"}
         if token:
@@ -78,6 +79,23 @@ def smoke(base_url):
     after = call(path, token=first)
     assert after["items"] == details["items"]
     assert after["comparisons"] == [comparison]
+    if pdf_output is not None:
+        report_path = path + "/report.pdf"
+        call(report_path, status=401)
+        call(report_path, token=second, status=404)
+        request = Request(
+            base_url + "/api/v1" + report_path,
+            headers={"Authorization": "Bearer " + first},
+        )
+        with urlopen(request, timeout=100) as response:
+            assert response.headers.get_content_type() == "application/pdf"
+            assert "no-store" in response.headers["Cache-Control"]
+            pdf = response.read()
+        assert pdf.startswith(b"%PDF-")
+        pdf_output.write_bytes(pdf)
+        print(
+            "Private report smoke passed: owner download and unauthenticated/cross-account rejection"
+        )
     print(
         "Saved-search smoke passed: login, ownership, complete rankings and immutable evidence"
     )
@@ -86,4 +104,6 @@ def smoke(base_url):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--api", default="http://127.0.0.1:18010")
-    smoke(parser.parse_args().api)
+    parser.add_argument("--pdf-output", type=Path)
+    args = parser.parse_args()
+    smoke(args.api, args.pdf_output)
