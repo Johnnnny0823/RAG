@@ -7,12 +7,19 @@ from urllib.parse import urlencode
 from evaluate_search import request
 
 CASES = (
-    ("publication", "202640162", "fulltext", "動態導通電阻量測電路"),
-    ("grant", "I941082", "claims_only", "動態導通電阻量測電路"),
-    ("publication", "202639611", "fulltext", "光硬化性樹脂組成物"),
-    ("publication", "202639448", "fulltext", "廢水自動監控及添加系統"),
-    ("publication", "202640537", "fulltext", "根據解剖影像辨識人體輪廓"),
-    ("publication", "202640162", "metadata_and_abstract", "動態導通電阻量測電路"),
+    ("publication", "202640162", "fulltext", "動態導通電阻量測電路", "claim"),
+    ("grant", "I941082", "claims_only", "動態導通電阻量測電路", "claim"),
+    ("publication", "202639611", "fulltext", "光硬化性樹脂組成物", "claim"),
+    (
+        "publication",
+        "202639611",
+        "fulltext",
+        "可將長波長光轉換為短波長光",
+        "disclosure",
+    ),
+    ("publication", "202639448", "fulltext", "廢水自動監控及添加系統", "claim"),
+    ("publication", "202640537", "fulltext", "根據解剖影像辨識人體輪廓", "claim"),
+    ("publication", "202640162", "metadata_and_abstract", "動態導通電阻量測電路", None),
 )
 ABSENT = "不存在的驗收字串甲乙丙丁"
 POSITIVE = {"supported", "partially_supported"}
@@ -48,13 +55,25 @@ def verify_citation(citation, detail, claims):
 
 def evaluate(api):
     results = []
-    for stage, number, scope, query in CASES:
+    document_ids = set()
+    for stage, number, scope, query, expected_kind in CASES:
         params = urlencode({"number": number, "number_type": stage})
         items = request(api, "/patents?" + params)["items"]
         document = next(item for item in items if item["content_scope"] == scope)
+        document_ids.add(document["document_id"])
         path = "/patents/" + document["document_id"]
         detail = request(api, path)
         claims = request(api, path + "/claims")["claims"]
+        if expected_kind == "disclosure" and (
+            any(query in row["text"] for row in claims)
+            or not any(
+                row["section_type"] == expected_kind and query in row["original_text"]
+                for row in detail["sections"]
+            )
+        ):
+            raise ValueError(
+                f"Section-only fixture does not match the indexed source: {number}"
+            )
         features = [
             {
                 "feature_id": feature_id,
@@ -89,6 +108,7 @@ def evaluate(api):
                     "scope": scope,
                     "document_id": document["document_id"],
                     "feature_id": feature_id,
+                    "query": query if feature_id == "f1" else ABSENT,
                     "verdict": item["verdict"],
                     "citation_present": citation is not None,
                     "citation_kind": citation["kind"] if citation else None,
@@ -112,6 +132,15 @@ def evaluate(api):
             judgments["f1"]["evidence"] or judgments["f1"]["verdict"] != "uncertain"
         ):
             raise ValueError(f"Metadata-only version must be uncertain: {number}")
+        evidence = judgments["f1"]["evidence"]
+        if expected_kind is not None and (
+            evidence is None
+            or evidence["kind"] != expected_kind
+            or judgments["f1"]["verdict"] not in POSITIVE
+        ):
+            raise ValueError(
+                f"Expected {expected_kind} citation not returned: {number}/{query}"
+            )
 
     emitted = [row for row in results if row["citation_present"]]
     verified = sum(row["citation_verified"] for row in emitted)
@@ -119,7 +148,8 @@ def evaluate(api):
         row["verdict"] in POSITIVE and not row["citation_present"] for row in results
     )
     return {
-        "document_versions": len(CASES),
+        "comparison_requests": len(CASES),
+        "document_versions": len(document_ids),
         "feature_verdicts": len(results),
         "citations_emitted": len(emitted),
         "citations_verified": verified,

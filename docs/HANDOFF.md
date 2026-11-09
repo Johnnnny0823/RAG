@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## M5 說明書段落引用
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `ce82fe7`。
+- Current milestone and status: M5 IN_PROGRESS。
+- Goal of this session: 驗證比較可回傳只在說明書出現的真實引文。
+- Files changed (with purpose): `evaluate_citations.py` 加入段落專用案例及預期引文種類驗證。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。
+- Commands actually run and results: 對 `18022` 完成 7 次比對、14 個判定。6 段引文全部核對通過，含 1 段發明內容。另以 `verify_document 202639611` 從唯讀存檔 XML 驗證 19 項請求項及 122 個說明書段落。Ruff、pytest 47 項通過。
+- Tests NOT run and reason: 尚無人工複核的語義判定或相關性分數。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 官方樣本](DATA_SOURCES.md) 的存檔，無新增下載。
+- Known bugs / risks / blockers: 段落引文實測只涵蓋一個指定發明內容段落。35 組候選仍待人工複核。
+- Decisions made (ADR links): [引文核對方式](EVALUATION.md#2026-11-09-引文核對)。
+- Uncommitted changes / file ownership warnings: 無。
+- Next 1–3 concrete actions: 人工複核候選池及重跑基線，逐項核對部署與品質驗收。
+- Exact reproduction steps: 見 [README 檢索評估](../README.md#檢索評估) 和 [M1 官方樣本重現](SETUP.md#m1-官方樣本重現)。
+
 ## M5 人工複核候選池
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。
