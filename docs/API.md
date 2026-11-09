@@ -105,6 +105,7 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 | GET | `/api/v1/sessions` | 以 `project_id` 指定專案，支援 `limit`、`offset`。 |
 | POST | `/api/v1/sessions/{session_id}/messages` | 接受 `{"query":"…"}`（1–160 字）。本機拆解成功才一起保存並回傳 `user` 和 `assistant` 兩筆訊息。 |
 | GET | `/api/v1/sessions/{session_id}/messages` | 回傳最近 `limit` 筆（預設 40）並按保存順序排列。可用 `before` 指定同一 Session 內的訊息 UUID 讀取更早的訊息。 |
+| DELETE | `/api/v1/sessions/{session_id}` | 擁有者永久刪除 Session 與全部訊息，回傳 204。 |
 
 需要 Bearer token。未知或跨帳號的專案與 Session 回傳 404。AI 草稿含結構化特徵及模型識別。每次拆解使用當次輸入，搜尋結果與證據由原有搜尋紀錄端點保存。
 ## 私人研究報告

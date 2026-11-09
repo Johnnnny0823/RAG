@@ -157,6 +157,23 @@ def list_messages(
     return rows
 
 
+@router.delete("/{session_id}", status_code=204)
+def delete_session(session_id: UUID, account: Owner):
+    try:
+        with engine.begin() as conn:
+            removed = conn.exec_driver_sql(
+                """DELETE FROM sessions s USING projects p
+                   WHERE s.project_id=p.id AND s.id=%s AND p.owner_user_id=%s
+                   RETURNING s.id""",
+                (session_id, account.id),
+            ).scalar_one_or_none()
+    except SQLAlchemyError:
+        return unavailable()
+    if removed is None:
+        return session_missing()
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
 @router.post("/{session_id}/messages", response_model=list[Message], status_code=201)
 def add_turn(
     session_id: UUID, payload: AnalyzeRequest, account: Owner, response: Response

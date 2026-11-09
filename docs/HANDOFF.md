@@ -1,5 +1,25 @@
 # Agent Handoff
 
+## M5 AI Session 自助刪除
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `d9e5196`。
+- Current milestone and status: M5 IN_PROGRESS。
+- Goal of this session: 讓擁有者從專案刪除個別 Session 與訊息。
+- Files changed (with purpose): `sessions.py` 加入所有權限定刪除，`research-sessions.tsx` 串接確認與清除，`smoke_private_browser.js` 擴充驗收。
+- Database migrations added/applied: `0009_session_message_cascade` 將訊息外鍵改為級聯刪除，保留既有訊息。
+- API/Schema changes: `DELETE /api/v1/sessions/{session_id}`。
+- Commands actually run and results: Ruff、pytest 46 項（1 則既有警告）、TypeScript 與 Vite 建置通過。
+- 已有語料及全新資料卷都遷移至 `0009_session_message_cascade`。Playwright 工作台回歸通過，涵蓋取消、跨帳號 404、擁有者刪除、後續訊息讀寫 404 及專案保留。PostgreSQL 查得目標 Session 與訊息均為 0 筆。
+- Tests NOT run and reason: 未做併發負載與外部備份清除。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 TIPO 資料](DATA_SOURCES.md)。
+- Known bugs / risks / blockers: 本機下載及獨立保存的搜尋由各自位置管理。帳號整體刪除與擴大引用評估待完成。
+- Decisions made (ADR links): [M5 AI Session 刪除](DECISIONS.md#m5-ai-session-刪除)。
+- Uncommitted changes / file ownership warnings: 驗收 Web 在 `18121`，API 在 `18021`，只刪除驗收腳本新建的 Session。
+- Next 1–3 concrete actions: 補上帳號整體刪除，擴充人工複核與引用評估。
+- Exact reproduction steps: 先遷移到 `0009_session_message_cascade`，再跑 [瀏覽器驗收](SETUP.md#m4-瀏覽器驗收)。
+
 ## M5 已保存搜尋自助刪除
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

@@ -126,11 +126,13 @@ async (page) => {
     if (result.status() !== 404) throw new Error("Cross-account project access was not isolated");
   }
   const messageUrl = new URL(`/api/v1/sessions/${aiSession.id}/messages`, page.url()).href;
+  const sessionUrl = new URL(`/api/v1/sessions/${aiSession.id}`, page.url()).href;
   const sessionListUrl = new URL(`/api/v1/sessions?project_id=${projectId}`, page.url()).href;
   for (const result of await Promise.all([
     page.request.get(sessionListUrl, { headers }),
     page.request.get(messageUrl, { headers }),
     page.request.post(messageUrl, { headers, data: { query: idea } }),
+    page.request.delete(sessionUrl, { headers }),
   ])) {
     if (result.status() !== 404) throw new Error("Cross-account AI Session access was not isolated");
   }
@@ -235,9 +237,24 @@ async (page) => {
   if (deletedReport.status() !== 404 || !(await page.request.get(messageUrl, { headers: auth })).ok()) {
     throw new Error("Search deletion did not preserve the intended data boundary");
   }
+  await projectSelector.selectOption({ label: "已更新的動態導通電阻研究" });
+  await button("載入 AI Session").click();
+  await button(sessionTitle).click();
+  await button("刪除 AI Session").click();
+  await button("取消刪除 AI Session").click();
+  await visible("構想 · " + idea);
+  await button("刪除 AI Session").click();
+  await button("確認刪除 AI Session").click();
+  await visible("已刪除 AI Session 與訊息。");
+  await visible("此專案還沒有 AI Session。");
+  if ((await page.request.get(messageUrl, { headers: auth })).status() !== 404 ||
+      (await page.request.post(messageUrl, { headers: auth, data: { query: idea } })).status() !== 404 ||
+      !(await page.request.get(projectUrl, { headers: auth })).ok()) {
+    throw new Error("Session deletion did not preserve the intended data boundary");
+  }
   await button("登出此頁").click();
   await button("登入").waitFor();
   const revokedReport = await page.request.get(new URL(`/api/v1/search-runs/${id}/report.pdf`, page.url()).href, { headers: auth });
   if (revokedReport.status() !== 401) throw new Error("Logged-out token could still download the report");
-  return "Private browser smoke passed: PDF export, search deletion and isolation";
+  return "Private browser smoke passed: PDF export, search and session deletion, and isolation";
 }

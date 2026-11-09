@@ -168,7 +168,7 @@ node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 18110 --strictPort
 
 輸入「動態導通電阻」並執行 AI 拆解。將特徵描述改為「動態導通電阻量測電路」，保留同名繁中檢索詞，並設定 IPC 為 `G01R`。搜尋並開啟公開文件 `202640162` 的全文版本，確認請求項、說明書與來源，再比對並展開原文定位。改用 `A01B` 驗證空結果，輸入 `INVALID` 驗證錯誤訊息。結果取決於當前語料、模型與已確認特徵。
 
-私人歷史、專案歸檔與管理、收藏、筆記及 AI Session 可用 Playwright CLI 驗收。啟動前先對同一個隔離專案執行 `docker compose -p $project run --rm --build migrate`，並重建 API，使資料庫與 API 都包含 `0008_research_sessions`。以下命令由專案根目錄執行，會建立兩個測試帳號並留下公開測試查詢、比對、專案與 Session。腳本只會刪除本次建立的空白測試專案。
+私人歷史、專案歸檔與管理、收藏、筆記及 AI Session 可用 Playwright CLI 驗收。啟動前先對同一個隔離專案執行 `docker compose -p $project run --rm --build migrate`，並重建 API，使資料庫與 API 都包含 `0009_session_message_cascade`。以下命令由專案根目錄執行，會建立兩個測試帳號，並驗證刪除本次建立的搜尋、Session、收藏及空白專案。
 
 ```powershell
 npx --yes --package @playwright/cli@0.1.23 playwright-cli -s=patent-private open http://127.0.0.1:18110
@@ -181,7 +181,7 @@ npx --yes --package @playwright/cli@0.1.23 playwright-cli -s=patent-private clos
 
 Compose 開發環境預設只把 Web 與 API 映射到本機回環位址。模型傳輸限制為設定的本機 Ollama 位址，拒絕重新導向及環境代理，並核對模型摘要。模型仍會收到執行所需的構想、檢索詞或比對片段。Ollama 程序與主機端的記錄、存取及備份由部署者管理。
 
-瀏覽器只在頁面記憶體保留憑證。登出撤銷當前憑證。已保存的搜尋、AI Session、收藏與筆記留在 PostgreSQL 資料卷，尚無自動保留期限。已保存搜尋可從歷史開啟後刪除，連同候選順位及比對一併移除。收藏及其筆記也可移除。完整帳號與 AI Session 的刪除流程仍待實作。已下載的 PDF 與部署者備份須在各自位置管理。
+瀏覽器只在頁面記憶體保留憑證。登出撤銷當前憑證。已保存的搜尋、AI Session、收藏與筆記留在 PostgreSQL 資料卷，尚無自動保留期限。已保存搜尋可從歷史開啟後刪除，連同候選順位及比對一併移除。AI Session 可從專案面板刪除，連同構想與技術草稿移除。收藏及其筆記也可移除。完整帳號刪除仍待實作。已下載的 PDF 與部署者備份須在各自位置管理。
 
 ### Windows 全新資料卷啟動
 
