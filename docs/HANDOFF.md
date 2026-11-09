@@ -1,5 +1,25 @@
 # Agent Handoff
 
+## M5 帳號自助刪除
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `b46b52f`。
+- Current milestone and status: M5 IN_PROGRESS。
+- Goal of this session: 讓帳號擁有者重新驗證密碼後，自助刪除帳號、私人研究資料及所有登入憑證。
+- Files changed (with purpose): `identity.py` 負責交易刪除，`accounts.py`、`patents.py` 提供路由及錯誤碼，`research.tsx` 串接畫面，`smoke_private_browser.js` 驗證。
+- Database migrations added/applied: 無新增，沿用 `0009_session_message_cascade`。
+- API/Schema changes: `DELETE /api/v1/me`，成功 204，密碼不符 403。
+- Commands actually run and results: Ruff lint、pytest 46 項（1 則既有警告）、TypeScript 與 Vite 建置通過。
+- Playwright 完整工作台回歸通過。錯誤密碼回傳 403 且保留資料，正確密碼刪除後兩個登入均失效，也無法重新登入。直接查 PostgreSQL 確認該帳號、憑證、專案、搜尋、候選、收藏、Session 與訊息均為 0 筆，公開專利文件仍為 143 筆。
+- Tests NOT run and reason: 未測量大量帳號資料的刪除延遲、併發壓力及備份清除。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 TIPO 資料](DATA_SOURCES.md)，沒有新增擷取。
+- Known bugs / risks / blockers: 已下載 PDF 與備份由各自位置管理。人工複核及擴大引用評估仍待完成。
+- Decisions made (ADR links): [M5 帳號自助刪除](DECISIONS.md#m5-帳號自助刪除)。
+- Uncommitted changes / file ownership warnings: 驗收 Web 在 `18122`，API 在 `18022`，僅刪除新建測試帳號。
+- Next 1–3 concrete actions: 擴充人工複核候選池及引文測試，核對整體目標的剩餘驗收。
+- Exact reproduction steps: 依 [瀏覽器驗收](SETUP.md#m4-瀏覽器驗收) 重跑。帳號驗收會刪除本次新建的擁有者測試帳號。
+
 ## M5 AI Session 自助刪除
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

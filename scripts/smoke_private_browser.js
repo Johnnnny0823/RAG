@@ -256,5 +256,46 @@ async (page) => {
   await button("登入").waitFor();
   const revokedReport = await page.request.get(new URL(`/api/v1/search-runs/${id}/report.pdf`, page.url()).href, { headers: auth });
   if (revokedReport.status() !== 401) throw new Error("Logged-out token could still download the report");
-  return "Private browser smoke passed: PDF export, search and session deletion, and isolation";
+  const accountToken = await signIn(first, false);
+  const accountHeaders = { Authorization: "Bearer " + accountToken };
+  const apiUrl = (path) => new URL("/api/v1" + path, page.url()).href;
+  const loginAgain = await page.request.post(apiUrl("/auth/login"), { data: { email: first, password } });
+  const secondLogin = (await loginAgain.json()).access_token;
+  const beforeDeletion = await page.request.get(apiUrl("/me"), { headers: accountHeaders });
+  const accountId = (await beforeDeletion.json()).id;
+  const retainedSession = await page.request.post(apiUrl("/sessions"), {
+    headers: accountHeaders, data: { project_id: projectId, title: "帳號刪除測試" },
+  });
+  const retainedBookmark = await page.request.put(bookmarkItem, { headers: accountHeaders });
+  const retainedRun = await page.request.post(apiUrl("/search-runs"), {
+    headers: accountHeaders, data: { query: idea, ipc: "G01R", limit: 1 },
+  });
+  if (retainedSession.status() !== 201 || !retainedBookmark.ok() || retainedRun.status() !== 201) {
+    throw new Error("Account deletion fixtures could not be created");
+  }
+  const retainedSessionId = (await retainedSession.json()).id;
+  const retainedMessage = await page.request.post(apiUrl(`/sessions/${retainedSessionId}/messages`), {
+    headers: accountHeaders, data: { query: idea },
+  });
+  if (retainedMessage.status() !== 201) throw new Error("Account deletion message fixture could not be created");
+  await page.getByText("刪除帳號與私人資料", { exact: true }).click();
+  await page.getByLabel("確認帳號密碼").fill("incorrect-smoke-password");
+  await button("永久刪除我的帳號").click();
+  await page.getByRole("alert").filter({ hasText: "密碼驗證失敗" }).waitFor();
+  if (!(await page.request.get(projectUrl, { headers: accountHeaders })).ok()) throw new Error("Wrong password affected the project");
+  await page.getByLabel("確認帳號密碼").fill(password);
+  await button("永久刪除我的帳號").click();
+  await visible("帳號與伺服器上的私人研究資料已刪除。");
+  for (const token of [accountToken, secondLogin]) {
+    if ((await page.request.get(apiUrl("/me"), { headers: { Authorization: "Bearer " + token } })).status() !== 401) {
+      throw new Error("Account deletion left an active login");
+    }
+  }
+  const deletedLogin = await page.request.post(apiUrl("/auth/login"), { data: { email: first, password } });
+  if (deletedLogin.status() !== 401) throw new Error("Deleted account can still log in");
+  return {
+    result: "Private browser smoke passed: PDF export, private data deletion and isolation",
+    accountId, projectId, sessionId: retainedSessionId,
+    runId: (await retainedRun.json()).id,
+  };
 }

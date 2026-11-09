@@ -121,6 +121,7 @@ export function Research() {
   const [selected, setSelected] = useState<{ hit: PatentVersion; detail: Detail; claims: Claim[]; fromResults: boolean } | null>(null);
   const [previewComparisons, setPreviewComparisons] = useState<ComparedDocument[]>([]);
   const [session, setSession] = useState<{ token: string; email: string } | null>(null);
+  const [accountDeleted, setAccountDeleted] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [history, setHistory] = useState<RunSummary[] | null>(null);
   const [historyOffset, setHistoryOffset] = useState(0);
@@ -148,6 +149,7 @@ export function Research() {
 
   function leaveAccount() {
     setSession(null);
+    setAccountDeleted(false);
     setHistory(null);
     setHistoryOffset(0);
     setSaved(null);
@@ -417,6 +419,7 @@ export function Research() {
       {error && <p className="mb-4 rounded-lg bg-red-50 p-3 text-red-900" role="alert">{error}</p>}
       <section className="research-panel mb-6">
         <h2>私人搜尋歷史</h2>
+        {accountDeleted && <p role="status" className="my-2 text-sm text-teal-900">帳號與伺服器上的私人研究資料已刪除。</p>}
         {session ? <>
           <p className="my-2 break-all text-sm">目前帳號 · {session.email}</p>
           <details className="my-3">
@@ -512,6 +515,28 @@ export function Research() {
               leaveAccount();
             })}>登出此頁</button>
           </div>
+          <details className="my-3">
+            <summary>刪除帳號與私人資料</summary>
+            <p className="my-2 text-sm">此操作會永久刪除帳號、研究專案、搜尋、收藏與 AI Session，並撤銷所有登入。已下載的 PDF 和部署者備份須在各自位置管理。</p>
+            <form onSubmit={(event) => {
+              event.preventDefault();
+              const form = event.currentTarget;
+              const password = String(new FormData(form).get("password"));
+              form.reset();
+              void run("正在刪除帳號…", async () => {
+                await request<void>("/me", { password }, session.token, "DELETE");
+                leaveAccount();
+                setAccountDeleted(true);
+              });
+            }}>
+              <fieldset disabled={!!busy}>
+                <label className="research-field">確認帳號密碼
+                  <input name="password" type="password" autoComplete="current-password" minLength={12} maxLength={128} required />
+                </label>
+                <button type="submit">永久刪除我的帳號</button>
+              </fieldset>
+            </form>
+          </details>
           {history?.length === 0 && <p className="mt-3">{projectFilter ? "此專案還沒有搜尋紀錄。" : "此帳號還沒有保存的搜尋。"}</p>}
           {!!history?.length && <>
             <ul className="my-3 space-y-2">

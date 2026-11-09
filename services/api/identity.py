@@ -28,9 +28,12 @@ class IdentityUnavailable(Exception):
     pass
 
 
-class AccountInput(BaseModel):
-    email: str = Field(max_length=254)
+class PasswordConfirmation(BaseModel):
     password: SecretStr = Field(min_length=12, max_length=128)
+
+
+class AccountInput(PasswordConfirmation):
+    email: str = Field(max_length=254)
 
     @field_validator("email")
     @classmethod
@@ -122,6 +125,48 @@ def revoke_session(credentials: Credentials) -> None:
             )
     except SQLAlchemyError as error:
         raise IdentityUnavailable from error
+
+
+def delete_account(account: Account, payload: PasswordConfirmation) -> bool:
+    with engine.connect() as conn:
+        row = conn.exec_driver_sql(
+            "SELECT password_salt, password_hash FROM users WHERE id=%s", (account.id,)
+        ).one_or_none()
+    if row is None:
+        raise IdentityError
+    if not hmac.compare_digest(
+        password_hash(payload.password.get_secret_value(), row.password_salt),
+        row.password_hash,
+    ):
+        return False
+
+    with engine.begin() as conn:
+        params = (account.id,)
+        locked = conn.exec_driver_sql(
+            "SELECT id FROM users WHERE id=%s AND password_hash=%s FOR UPDATE",
+            (account.id, row.password_hash),
+        ).scalar_one_or_none()
+        if locked is None:
+            raise IdentityError
+        conn.exec_driver_sql(
+            "SELECT id FROM projects WHERE owner_user_id=%s ORDER BY id FOR UPDATE",
+            params,
+        ).all()
+        conn.exec_driver_sql("DELETE FROM search_runs WHERE user_id=%s", params)
+        conn.exec_driver_sql(
+            """DELETE FROM sessions s USING projects p
+               WHERE s.project_id=p.id AND p.owner_user_id=%s""",
+            params,
+        )
+        conn.exec_driver_sql(
+            """DELETE FROM saved_patents b USING projects p
+               WHERE b.project_id=p.id AND p.owner_user_id=%s""",
+            params,
+        )
+        conn.exec_driver_sql("DELETE FROM projects WHERE owner_user_id=%s", params)
+        conn.exec_driver_sql("DELETE FROM auth_sessions WHERE user_id=%s", params)
+        conn.exec_driver_sql("DELETE FROM users WHERE id=%s", params)
+    return True
 
 
 def require_account(credentials: Credentials) -> Account:

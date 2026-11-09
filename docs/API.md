@@ -66,6 +66,7 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 | POST | `/api/v1/auth/login` | 以相同欄位取得有效期 24 小時的 Bearer token。 |
 | POST | `/api/v1/auth/logout` | 撤銷請求提供的 Bearer token，回傳 204。重送同一憑證也回傳 204。 |
 | GET | `/api/v1/me` | 回傳目前帳號。 |
+| DELETE | `/api/v1/me` | 提供 Bearer token 與 JSON `{"password":"…"}`，重新核對密碼後刪除帳號及伺服器端私人研究資料，回傳 204。密碼不符回傳 403。 |
 | POST | `/api/v1/search-runs` | 接受混合檢索的請求格式。同步執行並保存後回傳 201、紀錄 UUID 和建立時間。 |
 | GET | `/api/v1/search-runs` | 分頁列出目前帳號的紀錄 UUID 與時間，接受 `limit`、`offset`。 |
 | GET | `/api/v1/search-runs/{run_id}` | 回傳原始請求、排序設定、候選集合及已保存的比對。 |

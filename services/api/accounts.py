@@ -9,6 +9,8 @@ from services.api.identity import (
     AccessToken,
     Account,
     AccountInput,
+    PasswordConfirmation,
+    delete_account,
     login_account,
     register_account,
     require_account,
@@ -59,6 +61,21 @@ def login(payload: AccountInput, response: Response):
 def me(account: Annotated[Account, Depends(require_account)], response: Response):
     response.headers["Cache-Control"] = "no-store"
     return account
+
+
+@router.delete("/me", status_code=204, responses={403: {"model": PatentErrorEnvelope}})
+def remove_account(
+    payload: PasswordConfirmation, account: Annotated[Account, Depends(require_account)]
+):
+    try:
+        deleted = delete_account(account, payload)
+    except SQLAlchemyError:
+        return unavailable()
+    if not deleted:
+        return api_error(
+            403, "PASSWORD_CONFIRMATION_FAILED", "密碼驗證失敗，帳號未刪除。"
+        )
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
 
 
 @router.post("/auth/logout", status_code=204)
