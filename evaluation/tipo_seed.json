@@ -1,0 +1,21 @@
+{
+  "label_status": "agent_reviewed_seed_not_human_validated",
+  "cases": [
+    {
+      "id": "dynamic-resistance",
+      "query": "動態導通電阻",
+      "ipc": "G01R",
+      "judgments": [
+        {"stage": "publication", "number": "202640162", "grade": 2, "basis": "公開全文請求項 1 明示動態導通電阻量測電路。"},
+        {"stage": "grant", "number": "I941082", "grade": 2, "basis": "同案公告請求項也涉及動態導通電阻量測電路。"}
+      ]
+    },
+    {
+      "id": "light-curable-resin",
+      "query": "光硬化性樹脂組成物",
+      "judgments": [
+        {"stage": "publication", "number": "202639611", "grade": 2, "basis": "官方公開文件標題明列光硬化性樹脂組成物。"}
+      ]
+    }
+  ]
+}

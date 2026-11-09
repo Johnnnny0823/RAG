@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## M5 檢索種子基線
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `e80c728`。
+- Current milestone and status: M5 IN_PROGRESS。
+- Goal of this session: 用同一標註池重跑詞彙、向量與混合重排。
+- Files changed (with purpose): `evaluation/tipo_seed.json` 保存種子標註，`scripts/evaluate_search.py` 輸出排名、分數、延遲及模型資訊，`tests/test_evaluate_search.py` 測試未標註與版本重複計分。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。
+- Commands actually run and results: Ruff 與 pytest 46 項通過。對 `18017` 各模式跑四次，分數與延遲見 [EVALUATION.md](EVALUATION.md)。`smoke_comparison.py` 驗證引文逐字、版本及缺少證據。
+- Tests NOT run and reason: 尚無人工複核的完整標註池、跨領域引用準確率、每次查詢硬體成本或負載測試。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 官方語料](DATA_SOURCES.md)，核對 TIPO 公開 `202640162`、`202639611` 與公告 `I941082`。
+- Known bugs / risks / blockers: 種子標註由 Codex 查核，兩筆查詢不能支持普遍成效結論。
+- Decisions made (ADR links): [評估計分約定](EVALUATION.md)。
+- Uncommitted changes / file ownership warnings: 無。個別執行輸出留於本機暫存。
+- Next 1–3 concrete actions: 擴充可人工複核的候選池，完成隱私收尾及重現部署驗收。
+- Exact reproduction steps: 見 [README 檢索評估](../README.md#檢索評估)。
+
 ## M5 私人繁中 PDF 匯出
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

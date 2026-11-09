@@ -46,3 +46,14 @@ npm run build --prefix apps/web
 - [架構決策](docs/DECISIONS.md)
 - [里程碑進度](docs/PROGRESS.md)
 - [交接紀錄](docs/HANDOFF.md)
+
+## 檢索評估
+
+在已匯入官方樣本、完成詞彙與向量索引並啟用本機重排序的 API 上執行。依 [環境安裝與排查](docs/SETUP.md) 啟動隔離語料服務，並將 `--api` 指向該服務。
+
+```powershell
+python scripts/evaluate_search.py --api http://127.0.0.1:18017 --repeats 2
+python scripts/smoke_comparison.py --api http://127.0.0.1:18017
+```
+
+種子集與分數解讀見 [檢索評估紀錄](docs/EVALUATION.md)。
