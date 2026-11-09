@@ -48,6 +48,7 @@ ErrorCode = Literal[
     "RUN_NOT_FOUND",
     "PROJECT_NOT_FOUND",
     "BOOKMARK_NOT_FOUND",
+    "SESSION_NOT_FOUND",
 ]
 
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { ResearchSessions } from "./research-sessions";
 
-type Feature = {
+export type Feature = {
   feature_id: string;
   description_zh: string;
   keywords_zh: string[];
@@ -354,6 +355,13 @@ export function Research() {
             </select>
           </label>
           {projectFilter && <p className="my-2 whitespace-pre-wrap break-words text-sm">{projects.find((project) => project.id === projectFilter)?.description}</p>}
+          {projectFilter && <ResearchSessions key={projectFilter} projectId={projectFilter} token={session.token}
+            request={request} run={run} busy={!!busy} onUse={(idea, features) => {
+              setQuery(idea);
+              setDrafts(features.map((feature) => ({
+                ...feature, keywords_zh: feature.keywords_zh.join("，"), keywords_en: feature.keywords_en.join(", "),
+              })));
+            }} />}
           {projectFilter && <section className="my-4 rounded-lg border border-slate-200 p-3">
             <h3>專案收藏</h3>
             <button className="my-2" disabled={!!busy} onClick={() => void run("正在載入收藏…", () => loadBookmarks(projectFilter, session.token))}>載入專案收藏</button>

@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## M4 私人 AI Session
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `6eb4a32`。
+- Current milestone and status: M4 IN_PROGRESS。
+- Goal of this session: 在研究專案中保存及回顧本機 AI 拆解，並將草稿帶回檢索表單。
+- Files changed (with purpose): `0008_research_sessions.py` 建立 Session 與訊息，`sessions.py` 實作所有權與分析保存，`main.py`、`patents.py` 掛載路由與錯誤碼，`research-sessions.tsx` 和 `research.tsx` 串接介面，`smoke_private_browser.js` 驗收。
+- Database migrations added/applied: `0008_research_sessions` 已套用至含 TIPO 語料的隔離資料庫，亦在 `patentscope-m4-session-clean` 新資料卷驗證遷移與 head。
+- API/Schema changes: Session 建立、列表、訊息歷史及本機拆解，見 [API.md](API.md)。
+- Commands actually run and results: Ruff 格式與 lint、pytest 44 項、Docker 內 TypeScript 與 Vite 建置通過。Playwright 在 `18113` 驗證本機 Qwen 草稿保存、帶入表單、重新登入後讀回、訊息游標順序與另一帳號的列表、讀取及提交均 404。同一流程也通過真實 TIPO 搜尋、證據、專案歸檔及收藏筆記回歸。
+- Tests NOT run and reason: 未做遠端 CI、模型停機模擬或多瀏覽器並發。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 TIPO 資料](DATA_SOURCES.md) 與本機模型，未新增下載。
+- Known bugs / risks / blockers: 各輪拆解目前獨立。Session 列表介面顯示最近 100 筆。專案改名與刪除、PDF 和品質評估待實作。
+- Decisions made (ADR links): 見 [DECISIONS.md](DECISIONS.md) 的 M4 AI Session。
+- Uncommitted changes / file ownership warnings: 驗收 Web 在 `18113`，API 在 `18013`，測試僅用公開構想。
+- Next 1–3 concrete actions: 加入專案改名及安全刪除，驗收 M4 後依序開始 M5 報告與評估。
+- Exact reproduction steps: 見 [M4 瀏覽器驗收](SETUP.md#m4-瀏覽器驗收)。本次使用 Web `18113`、API `18013`。
+
 ## M4 專利收藏與筆記
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

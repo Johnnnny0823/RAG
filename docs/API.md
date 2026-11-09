@@ -90,3 +90,14 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 | DELETE | `/{document_id}` | 移除該專案的收藏與筆記。 |
 
 跨帳號、未知專案或不存在的收藏回傳 404。移除收藏後，已保存的搜尋及比對仍可在歷史中讀取。
+
+### AI Session
+
+| 方法 | 路徑 | 行為 |
+| --- | --- | --- |
+| POST | `/api/v1/sessions` | 用 `project_id` 與 `title`（1–120 字）建立 Session。 |
+| GET | `/api/v1/sessions` | 以 `project_id` 指定專案，支援 `limit`、`offset`。 |
+| POST | `/api/v1/sessions/{session_id}/messages` | 接受 `{"query":"…"}`（1–160 字）。本機拆解成功才一起保存並回傳 `user` 和 `assistant` 兩筆訊息。 |
+| GET | `/api/v1/sessions/{session_id}/messages` | 回傳最近 `limit` 筆（預設 40）並按保存順序排列。可用 `before` 指定同一 Session 內的訊息 UUID 讀取更早的訊息。 |
+
+需要 Bearer token。未知或跨帳號的專案與 Session 回傳 404。AI 草稿含結構化特徵及模型識別。每次拆解使用當次輸入，搜尋結果與證據由原有搜尋紀錄端點保存。

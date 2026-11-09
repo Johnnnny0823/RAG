@@ -50,6 +50,22 @@ async (page) => {
   await button("收藏此版本").click();
   await visible("已收藏此文件版本。");
   await page.getByLabel("依研究專案篩選").selectOption({ label: projectName });
+  const sessionTitle = "公開技術拆解驗收";
+  await page.getByLabel("Session 名稱").fill(sessionTitle);
+  const sessionResponse = page.waitForResponse((response) =>
+    response.url().endsWith("/api/v1/sessions") && response.request().method() === "POST"
+  );
+  await button("建立 AI Session").click();
+  const aiSession = await (await sessionResponse).json();
+  await visible("目前 Session · " + sessionTitle);
+  const idea = "動態導通電阻";
+  await page.getByLabel("Session 構想（最多 160 字）").fill(idea);
+  await button("拆解並保存至 Session").click();
+  await button("帶入檢索表單").click();
+  await visible("已帶入構想及技術草稿，可在檢索前編輯。");
+  if (await page.getByLabel("構想描述（最多 160 字）").inputValue() !== idea) {
+    throw new Error("Saved AI analysis could not be applied");
+  }
   await button("載入專案收藏").click();
   const note = page.getByLabel("私人筆記 · 202640162");
   await note.fill("驗收筆記：核對公開文件的請求項。");
@@ -67,6 +83,15 @@ async (page) => {
   await visible("此帳號還沒有保存的搜尋。");
   if (await page.getByRole("option", { name: projectName }).count()) throw new Error("Private project leaked");
   const headers = { Authorization: "Bearer " + otherToken };
+  const messageUrl = new URL(`/api/v1/sessions/${aiSession.id}/messages`, page.url()).href;
+  const sessionListUrl = new URL(`/api/v1/sessions?project_id=${projectId}`, page.url()).href;
+  for (const result of await Promise.all([
+    page.request.get(sessionListUrl, { headers }),
+    page.request.get(messageUrl, { headers }),
+    page.request.post(messageUrl, { headers, data: { query: idea } }),
+  ])) {
+    if (result.status() !== 404) throw new Error("Cross-account AI Session access was not isolated");
+  }
   const filtered = await page.request.get(new URL("/api/v1/search-runs?project_id=" + projectId, page.url()).href, { headers });
   const moved = await page.request.patch(new URL(`/api/v1/search-runs/${id}/project`, page.url()).href, {
     headers, data: { project_id: null },
@@ -90,6 +115,18 @@ async (page) => {
     if (response.status() !== 404) throw new Error("Cross-account bookmark mutation was not blocked");
   }
   await page.getByLabel("依研究專案篩選").selectOption({ label: projectName });
+  await button("載入 AI Session").click();
+  await button(sessionTitle).click();
+  await visible("構想 · " + idea);
+  await visible(/AI 技術草稿 · qwen/);
+  const auth = { Authorization: "Bearer " + ownerToken };
+  const messages = await (await page.request.get(messageUrl, { headers: auth })).json();
+  if (messages.length !== 2 || messages[0].role !== "user" || messages[1].role !== "assistant" ||
+      !messages[1].content.features.length || !messages[1].content.model_digest) {
+    throw new Error("Stored AI turn is incomplete");
+  }
+  const earlier = await (await page.request.get(messageUrl + "?limit=1&before=" + messages[1].id, { headers: auth })).json();
+  if (earlier.length !== 1 || earlier[0].id !== messages[0].id) throw new Error("AI message cursor lost ordering");
   await button("載入專案收藏").click();
   if (await note.inputValue() !== items[0].note) throw new Error("Bookmark note did not persist");
   await page.getByRole("article").filter({ has: note }).getByRole("button", { name: "動態導通電阻量測電路", exact: true }).click();
@@ -114,5 +151,5 @@ async (page) => {
   if (await note.count()) throw new Error("Removed bookmark note is still visible");
   if (await quote.innerText() !== originalQuote) throw new Error("Removing a bookmark affected saved evidence");
   await button("登出此頁").click();
-  return "Private browser smoke passed: project assignment, bookmarks, private notes, isolation and evidence replay";
+  return "Private browser smoke passed: AI sessions, projects, private notes, isolation and evidence replay";
 }
