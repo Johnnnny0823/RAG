@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
 from services.api.db import check_database
+from services.api.comparisons import router as comparisons_router
 from services.api.patents import router as patents_router
 from services.api.queries import router as queries_router
 
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="PatentScope AI", version="0.1.0")
 app.include_router(patents_router)
 app.include_router(queries_router)
+app.include_router(comparisons_router)
 
 
 class HealthResponse(BaseModel):

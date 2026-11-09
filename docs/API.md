@@ -48,3 +48,8 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 呼叫端可以編輯或刪除草稿特徵，再將已確認的 `features` 陣列連同原始 `query` 傳給混合檢索。每個特徵 ID 須唯一，回傳 `applied_feature_ids`。詞彙分支對原始查詢及已確認詞組取聯集，詞組內須全部命中。向量分支附加特徵描述與檢索詞，展開上限 1,600 字元。IPC 候選供檢視，真正的 IPC 篩選由獨立的 `ipc` 欄位控制。必要條件標記及提取把握供後續比對，目前不參與硬篩選或排序。
 
 分析模型未設定、無法連線或回應未通過結構驗證時回傳 503 `ANALYSIS_UNAVAILABLE`。兩個端點目前均不保存正文。
+## 文件版本技術比對預覽
+
+`POST /api/v1/patents/{document_id}/compare` 接受 1–5 項已確認的 `features`。以指定版本中可回溯的請求項和說明書搜尋字詞，每項特徵至多選一段原文供本機模型判定。回傳 `supported`、`partially_supported`、`uncertain` 或 `not_found_in_checked_content`。最後一種表示在已檢視的內容未找到字詞。只有書目的版本回傳不確定。
+
+引文由後端從保存的原文擷取，附原檔 SHA-256、XPath、段落或請求項序號，以及以 Unicode 字元計算的起訖位置（終點不包含）。回傳文件版本及模型識別。本預覽不保存構想或判定。

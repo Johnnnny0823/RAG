@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## M3 文件版本比對預覽
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `7cb46b0`。
+- Current milestone and status: M3 IN_PROGRESS。
+- Goal of this session: 用本機模型判定已確認技術特徵，逐字核對版本內的原文證據。
+- Files changed (with purpose): `comparisons.py` 提供比對 API，`evidence.py` 負責片段選取及模型結果驗證，新增單元和真實語料冒煙測試。
+- Database migrations added/applied: 無。沿用 `0004_semantic`。
+- API/Schema changes: `POST /api/v1/patents/{document_id}/compare`，詳見 [API.md](API.md)。
+- Commands actually run and results: Ruff 格式與 lint、pytest 39 項通過（既有警告一則）。`python scripts/smoke_comparison.py` 用真實文件 `202640162` 得到 supported，核對引文、偏移、XPath、雜湊、書目版無證據及無詞命中。精確查詢冒煙測試通過。
+- Tests NOT run and reason: 遠端 CI、整體比對品質及召回率未驗。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 官方樣本](DATA_SOURCES.md)，本次無新增擷取。
+- Known bugs / risks / blockers: 只選一段字詞命中的片段。原文依資料庫中已保存的版本與檔案雜湊追溯，請求時未重新讀取 XML。結果暫未持久化。
+- Decisions made (ADR links): [DECISIONS.md](DECISIONS.md) 記錄版本與選段限制。
+- Uncommitted changes / file ownership warnings: 隔離 API 為 `127.0.0.1:18008`，只使用公開樣本與測試特徵。
+- Next 1–3 concrete actions: 加入候選重排和可重現搜尋紀錄，再串接已驗證證據。
+- Exact reproduction steps: 沿用上一節模型設定與資料庫，重新建置 API 並映射到 `127.0.0.1:18008`，執行 `python scripts/smoke_comparison.py`。
+
 ## M3 技術特徵與查詢展開
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei，UTC+8）。
