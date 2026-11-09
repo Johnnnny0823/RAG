@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## M3 候選重排
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `c786db2`。
+- Current milestone and status: M3 IN_PROGRESS。
+- Goal of this session: 接上本機模型重排並保留原始融合順位。
+- Files changed (with purpose): `patents.py` 接入重排，`rerank.py` 驗證候選排列，新增重排測試及真實語料驗收。
+- Database migrations added/applied: 無。
+- API/Schema changes: 混合查詢新增 `rerank` 選項與排序來源欄位，見 [API.md](API.md)。
+- Commands actually run and results: Ruff 格式、lint 與 pytest 44 項通過。真實語料三筆的融合順位由 `[1,2,3]` 重排為 `[2,1,3]`，保留版本及原分數。
+- Tests NOT run and reason: 遠端 CI 與相關性改善評估未執行。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 官方樣本](DATA_SOURCES.md)。
+- Known bugs / risks / blockers: 重排最多讀取八筆標題及摘要，模型排序仍需人工評估。此端點不保存執行紀錄。
+- Decisions made (ADR links): 見 [DECISIONS.md](DECISIONS.md)。
+- Uncommitted changes / file ownership warnings: 驗收 API 綁定 `127.0.0.1:18009`。
+- Next 1–3 concrete actions: 建立有存取隔離的搜尋執行紀錄，保存候選順位、模型版本及已驗證證據。
+- Exact reproduction steps: 沿用本機嵌入及分析模型設定，重建 API 並映射到 18009，執行 `python scripts/smoke_rerank.py`。
+
 ## M3 文件版本比對預覽
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

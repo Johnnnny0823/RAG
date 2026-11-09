@@ -26,6 +26,8 @@ from services.retrieval.embeddings import (
 )
 from services.retrieval.lexical import TOKENIZER_VERSION, tokenize
 from services.retrieval.query_features import TechnicalFeature, expand_query
+from services.retrieval.ollama import LocalModelError, LocalOllamaModel
+from services.retrieval.rerank import RERANK_LIMIT, RERANK_VERSION, rerank_order
 from services.retrieval.fusion import CANDIDATE_LIMIT, RRF_K, fuse_rankings
 
 logger = logging.getLogger(__name__)
@@ -120,6 +122,7 @@ class RankedSearchRequest(BaseModel):
 
 class HybridSearchRequest(RankedSearchRequest):
     features: list[TechnicalFeature] = Field(default_factory=list, max_length=5)
+    rerank: bool = False
 
 
 class SemanticSearchResults(PatentSearchResults):
@@ -135,6 +138,15 @@ class HybridPatentHit(PatentVersion):
     lexical_score: float | None
     semantic_rank: int | None
     semantic_score: float | None
+    fusion_rank: int
+    rerank_rank: int | None
+
+
+class RerankMetadata(BaseModel):
+    model_name: str
+    model_digest: str
+    version: str
+    candidate_count: int
 
 
 class HybridSearchResults(BaseModel):
@@ -146,6 +158,7 @@ class HybridSearchResults(BaseModel):
     rrf_k: int
     candidate_limit: int
     applied_feature_ids: list[str]
+    reranker: RerankMetadata | None
     limit: int
     offset: int
     has_more: bool
@@ -544,6 +557,19 @@ def hybrid_search(request: HybridSearchRequest):
                 lexical_rows(conn, terms, ipc, CANDIDATE_LIMIT, 0) if terms else []
             )
             semantic = semantic_rows(conn, embedding, identity, ipc, CANDIDATE_LIMIT, 0)
+            ranked = fuse_rankings(lexical, semantic)
+            abstracts = {}
+            if request.rerank and len(ranked) > 1:
+                ids = [hit["document_id"] for hit in ranked[:RERANK_LIMIT]]
+                abstracts = dict(
+                    conn.exec_driver_sql(
+                        """SELECT id, left(coalesce(abstract_zh, abstract_en, ''), 180)
+                       FROM patent_documents WHERE id = ANY(%s::uuid[])""",
+                        (ids,),
+                    )
+                    .tuples()
+                    .all()
+                )
     except SemanticIndexUnavailable:
         return missing_semantic_index()
     except EmbeddingError:
@@ -551,7 +577,35 @@ def hybrid_search(request: HybridSearchRequest):
     except SQLAlchemyError:
         return unavailable()
 
-    ranked = fuse_rankings(lexical, semantic)
+    for rank, hit in enumerate(ranked, 1):
+        hit.update(fusion_rank=rank, rerank_rank=None)
+    reranker = None
+    if abstracts:
+        prefix = ranked[:RERANK_LIMIT]
+        candidates = [
+            {
+                "id": i,
+                "title": (hit["title_zh"] or hit["title_en"] or "")[:100],
+                "abstract": abstracts.get(hit["document_id"], ""),
+            }
+            for i, hit in enumerate(prefix, 1)
+        ]
+        try:
+            analyzer = LocalOllamaModel.from_env("ANALYSIS")
+            order = rerank_order(analyzer, semantic_query, candidates)
+        except LocalModelError:
+            return api_error(
+                503, "ANALYSIS_UNAVAILABLE", "本機模型目前無法重排專利候選。"
+            )
+        ranked[: len(prefix)] = [prefix[index - 1] for index in order]
+        for rank, hit in enumerate(ranked[: len(prefix)], 1):
+            hit["rerank_rank"] = rank
+        reranker = RerankMetadata(
+            model_name=analyzer.name,
+            model_digest=analyzer.digest,
+            version=RERANK_VERSION,
+            candidate_count=len(prefix),
+        )
     end = request.offset + request.limit
     return HybridSearchResults(
         items=[
@@ -564,6 +618,7 @@ def hybrid_search(request: HybridSearchRequest):
         rrf_k=RRF_K,
         candidate_limit=CANDIDATE_LIMIT,
         applied_feature_ids=feature_ids,
+        reranker=reranker,
         limit=request.limit,
         offset=request.offset,
         has_more=len(ranked) > end,
