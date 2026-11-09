@@ -55,3 +55,17 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 `POST /api/v1/patents/{document_id}/compare` 接受 1–5 項已確認的 `features`。以指定版本中可回溯的請求項和說明書搜尋字詞，每項特徵至多選一段原文供本機模型判定。回傳 `supported`、`partially_supported`、`uncertain` 或 `not_found_in_checked_content`。最後一種表示在已檢視的內容未找到字詞。只有書目的版本回傳不確定。
 
 引文由後端從保存的原文擷取，附原檔 SHA-256、XPath、段落或請求項序號，以及以 Unicode 字元計算的起訖位置（終點不包含）。回傳文件版本及模型識別。本預覽不保存構想或判定。
+
+## 私人搜尋紀錄
+
+| 方法 | 路徑 | 行為 |
+| --- | --- | --- |
+| POST | `/api/v1/auth/register` | 以 `email` 及 12–128 字元的 `password` 建立帳號，回傳 201。重複帳號回傳 409。 |
+| POST | `/api/v1/auth/login` | 以相同欄位取得有效期 24 小時的 Bearer token。 |
+| GET | `/api/v1/me` | 回傳目前帳號。 |
+| POST | `/api/v1/search-runs` | 接受混合檢索的請求格式。同步執行並保存後回傳 201、紀錄 UUID 和建立時間。 |
+| GET | `/api/v1/search-runs` | 分頁列出目前帳號的紀錄 UUID 與時間，接受 `limit`、`offset`。 |
+| GET | `/api/v1/search-runs/{run_id}` | 回傳原始請求、排序設定、候選集合及已保存的比對。 |
+| POST | `/api/v1/search-runs/{run_id}/comparisons/{document_id}` | 使用紀錄中的已確認特徵比對指定候選版本。重送回傳第一次保存的結果。 |
+
+`/me` 與紀錄端點使用 `Authorization: Bearer <token>`。無效憑證為 401，跨帳號或未知紀錄及候選為 404，未保存特徵的比對為 422。保存端點存下有上限的完整候選集合，詳情可讀取原始分支、融合與重排順位。範圍涵蓋該次返回的結果，尚無完整語料快照及重跑機制。比對與檢索預覽仍可獨立使用。

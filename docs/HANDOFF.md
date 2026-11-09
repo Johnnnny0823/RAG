@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## M3 私人搜尋紀錄驗收
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `a5e98c7`。
+- Current milestone and status: M3 DONE。M4 研究介面待開始。
+- Goal of this session: 讓使用者主動保存混合搜尋、候選順位及可回溯證據，驗證帳號隔離。
+- Files changed (with purpose): `accounts.py`、`identity.py` 建立本機帳號及驗證，`search_runs.py` 保存及讀取結果，`main.py` 掛載路由，`patents.py` 重用混合查詢與錯誤處理，`scripts/smoke_search_runs.py` 驗證隔離與保存。
+- Database migrations added/applied: `0005_search_runs` 已在含 TIPO 樣本的 `patentscope-m1-proof` 套用，亦在新建的 `patentscope-m3-check` 空資料卷遷移並查得 head。
+- API/Schema changes: 帳號、Bearer 驗證、搜尋歷史與候選比對保存，見 [API.md](API.md)。
+- Commands actually run and results: Ruff 格式及 lint 通過。預設 pytest 暫存目錄遇到 WinError 5（41 通過、3 個 setup error），改用 `pytest -q --basetemp <新建的獨立路徑>` 後 44 通過，1 則既有 Starlette 警告。以 `--api http://127.0.0.1:18010` 執行 `smoke_search_runs.py`、`smoke_hybrid.py`、`smoke_comparison.py` 均通過，涵蓋兩帳號隔離、排名快照、真實文件引文及缺少證據的結果。
+- Tests NOT run and reason: 遠端 CI 未觸發。本次無 UI 變更，瀏覽器工作流程留待 M4，檢索品質評估留待 M5。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 已記錄官方樣本](DATA_SOURCES.md)，本次無新增擷取。
+- Known bugs / risks / blockers: 搜尋與比對同步執行。紀錄屬於帳號，研究專案、登出、刪除流程、正式部署限流及完整語料重跑尚待後續實作。
+- Decisions made (ADR links): [DECISIONS.md](DECISIONS.md) 記錄保存與帳號隔離的設計。
+- Uncommitted changes / file ownership warnings: 本機驗收 API 綁定 `127.0.0.1:18010`，驗收資料庫含測試帳號及公開查詢。
+- Next 1–3 concrete actions: 串接 M4 查詢輸入與特徵編輯、候選詳情及證據顯示，再接研究專案、收藏及筆記並跑瀏覽器驗收。
+- Exact reproduction steps: 見 [M3 私人搜尋紀錄驗收](SETUP.md#m3-私人搜尋紀錄驗收)。
+
 ## M3 候選重排
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

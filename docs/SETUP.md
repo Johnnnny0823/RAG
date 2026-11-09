@@ -139,3 +139,15 @@ python scripts/smoke_query_features.py
 ```
 
 API 啟動後在另一終端跑冒煙測試。測試以同一個原始查詢比較編輯前後的分支排名。
+
+## M3 私人搜尋紀錄驗收
+
+沿用已匯入官方樣本的隔離專案及上方嵌入、分析模型設定。執行遷移並啟動 API。
+
+```powershell
+docker compose -p $project run --rm --build migrate
+docker compose -p $project build api
+docker compose -p $project run --rm --no-deps -p 127.0.0.1:18010:8000 api
+```
+
+另開終端執行 `python scripts/smoke_search_runs.py`。腳本會在資料庫留下測試帳號、公開測試查詢與比對紀錄，請使用隔離資料庫。

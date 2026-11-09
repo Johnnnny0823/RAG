@@ -1,0 +1,60 @@
+"""Local registration and login."""
+
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Response
+from sqlalchemy.exc import SQLAlchemyError
+
+from services.api.identity import (
+    AccessToken,
+    Account,
+    AccountInput,
+    login_account,
+    register_account,
+    require_account,
+)
+from services.api.patents import (
+    PatentErrorEnvelope,
+    PatentRoute,
+    api_error,
+    unavailable,
+)
+
+router = APIRouter(
+    prefix="/api/v1",
+    tags=["accounts"],
+    route_class=PatentRoute,
+    responses={code: {"model": PatentErrorEnvelope} for code in (401, 422, 503)},
+)
+
+
+@router.post(
+    "/auth/register",
+    response_model=Account,
+    status_code=201,
+    responses={409: {"model": PatentErrorEnvelope}},
+)
+def register(payload: AccountInput):
+    try:
+        account = register_account(payload)
+    except SQLAlchemyError:
+        return unavailable()
+    if account is None:
+        return api_error(409, "ACCOUNT_EXISTS", "此帳號已註冊。")
+    return account
+
+
+@router.post("/auth/login", response_model=AccessToken)
+def login(payload: AccountInput, response: Response):
+    try:
+        token = login_account(payload)
+    except SQLAlchemyError:
+        return unavailable()
+    response.headers["Cache-Control"] = "no-store"
+    return token
+
+
+@router.get("/me", response_model=Account)
+def me(account: Annotated[Account, Depends(require_account)], response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return account

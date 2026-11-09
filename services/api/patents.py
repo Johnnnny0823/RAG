@@ -17,6 +17,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.exc import SQLAlchemyError
 
 from services.api.db import engine
+from services.api.identity import IdentityError, IdentityUnavailable
 from services.retrieval.embeddings import (
     EmbeddingError,
     LocalEmbeddingModel,
@@ -42,6 +43,9 @@ ErrorCode = Literal[
     "EMBEDDING_UNAVAILABLE",
     "SEMANTIC_INDEX_UNAVAILABLE",
     "ANALYSIS_UNAVAILABLE",
+    "AUTH_REQUIRED",
+    "ACCOUNT_EXISTS",
+    "RUN_NOT_FOUND",
 ]
 
 
@@ -56,6 +60,12 @@ class PatentRoute(APIRoute):
                 return api_error(
                     422, "INVALID_REQUEST", "請檢查查詢參數或文件版本 ID。"
                 )
+            except IdentityError:
+                response = api_error(401, "AUTH_REQUIRED", "請登入或確認登入資訊。")
+                response.headers["WWW-Authenticate"] = "Bearer"
+                return response
+            except IdentityUnavailable:
+                return unavailable()
 
         return handle
 
@@ -533,6 +543,10 @@ def semantic_search(request: RankedSearchRequest):
 
 @router.post("/search/hybrid", response_model=HybridSearchResults)
 def hybrid_search(request: HybridSearchRequest):
+    return run_hybrid(request)
+
+
+def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
     query = request.query.strip()
     if not query:
         return api_error(422, "INVALID_REQUEST", "請提供可檢索的文字。")
@@ -606,11 +620,10 @@ def hybrid_search(request: HybridSearchRequest):
             version=RERANK_VERSION,
             candidate_count=len(prefix),
         )
-    end = request.offset + request.limit
+    start = 0 if full_snapshot else request.offset
+    end = len(ranked) if full_snapshot else start + request.limit
     return HybridSearchResults(
-        items=[
-            HybridPatentHit.model_validate(row) for row in ranked[request.offset : end]
-        ],
+        items=[HybridPatentHit.model_validate(row) for row in ranked[start:end]],
         tokenizer_version=TOKENIZER_VERSION,
         model_name=model.name,
         model_digest=model.digest,
