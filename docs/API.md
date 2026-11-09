@@ -77,3 +77,16 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 - `GET /api/v1/search-runs?project_id=<UUID>` 篩選指定專案內的搜尋。搜尋紀錄列表與詳情新增可空的 `project_id`。舊紀錄預設未歸檔。
 
 各端點需要 Bearer token。跨帳號或未知的紀錄及專案回傳 404。
+
+### 專案收藏及私人筆記
+
+以下路徑以 `/api/v1/projects/{project_id}/patents` 為前綴，需要 Bearer token。
+
+| 方法 | 相對路徑 | 行為 |
+| --- | --- | --- |
+| GET | 空 | 以 `limit`、`offset` 分頁列出收藏的文件版本與筆記。 |
+| PUT | `/{document_id}` | 收藏已索引的官方文件版本。重複操作保留既有筆記。 |
+| PATCH | `/{document_id}` | 更新 `{"note":"…"}`，最多 4,000 字，空字串可清除筆記。 |
+| DELETE | `/{document_id}` | 移除該專案的收藏與筆記。 |
+
+跨帳號、未知專案或不存在的收藏回傳 404。移除收藏後，已保存的搜尋及比對仍可在歷史中讀取。

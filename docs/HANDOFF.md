@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## M4 專利收藏與筆記
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `c3ca88f`。
+- Current milestone and status: M4 IN_PROGRESS。
+- Goal of this session: 在私人研究專案內收藏官方文件版本、編輯筆記及重新開啟全文。
+- Files changed (with purpose): `0007_saved_patents.py` 定義收藏表，`bookmarks.py` 提供所有權隔離 API，`main.py` 掛載路由，`patents.py` 加入錯誤碼，`research.tsx` 串接收藏與筆記，`smoke_private_browser.js` 增補驗收。
+- Database migrations added/applied: `0007_saved_patents` 已套用至含真實語料的 `patentscope-m1-proof`，亦在 `patentscope-m4-bookmark-clean` 新資料卷上遷移並核對 head。
+- API/Schema changes: 專案收藏列表、新增、筆記更新及移除，見 [API.md](API.md)。
+- Commands actually run and results: Ruff 格式及 lint 通過。pytest 44 項通過，1 則既有 Starlette 警告。Docker 內 `npm run build` 通過。Playwright `smoke_private_browser.js` 驗證收藏、筆記重讀、重複收藏保留筆記、從收藏開啟同一文件版本、其他帳號讀寫及刪除均回傳 404、移除收藏後既有證據仍可讀取。
+- Tests NOT run and reason: 未執行遠端 CI、跨瀏覽器或大量收藏測試。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 TIPO 資料](DATA_SOURCES.md)，使用公開文件 `202640162`，未新增下載。
+- Known bugs / risks / blockers: 收藏依目前選定專案顯示。移除收藏也會刪除該筆筆記。AI Session、專案改名與刪除、PDF 及品質評估待實作。
+- Decisions made (ADR links): 見 [DECISIONS.md](DECISIONS.md) 的 M4 專案收藏。
+- Uncommitted changes / file ownership warnings: 驗收 Web 在 `18112`，API 在 `18012`，測試帳號只使用公開資料。
+- Next 1–3 concrete actions: 完成具帳號隔離的 AI Session 與專案管理，再驗收 M4 工作台。
+- Exact reproduction steps: 見 [M4 瀏覽器驗收](SETUP.md#m4-瀏覽器驗收)，本次改用 Web `18112`、API `18012`。
+
 ## M4 研究專案與搜尋歸檔
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

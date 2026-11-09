@@ -13,7 +13,7 @@ type Draft = Omit<Feature, "keywords_zh" | "keywords_en"> & {
   keywords_zh: string;
   keywords_en: string;
 };
-type Hit = {
+type PatentVersion = {
   document_id: string;
   publication_no: string;
   application_no: string;
@@ -24,6 +24,9 @@ type Hit = {
   title_zh: string | null;
   title_en: string | null;
   content_scope: string;
+};
+type Bookmark = PatentVersion & { note: string };
+type Hit = PatentVersion & {
   lexical_rank: number | null;
   semantic_rank: number | null;
   fusion_rank: number;
@@ -74,20 +77,20 @@ const scope: Record<string, string> = {
 };
 const splitTerms = (value: string) => value.split(/[,，、\n]/).map((word) => word.trim()).filter(Boolean);
 const names = (parties: Party[]) => parties.map((party) => party.zh || party.en).filter(Boolean).join("、") || "未提供";
-const title = (hit: Hit) => hit.title_zh || hit.title_en || hit.publication_no;
+const title = (hit: PatentVersion) => hit.title_zh || hit.title_en || hit.publication_no;
 
 class SessionExpired extends Error {}
 
-async function request<T>(path: string, payload?: object, token?: string, method = "POST"): Promise<T> {
+async function request<T>(path: string, payload?: object, token?: string, method = payload ? "POST" : "GET"): Promise<T> {
   const headers = new Headers();
   if (payload) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", "Bearer " + token);
   const response = await fetch("/api/v1" + path, {
     cache: "no-store",
     headers,
+    method,
     signal: AbortSignal.timeout(180_000),
     ...(payload && {
-      method,
       body: JSON.stringify(payload),
     }),
   });
@@ -108,7 +111,7 @@ export function Research() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState<Search | null>(null);
   const [results, setResults] = useState<Results | null>(null);
-  const [selected, setSelected] = useState<{ hit: Hit; detail: Detail; claims: Claim[] } | null>(null);
+  const [selected, setSelected] = useState<{ hit: PatentVersion; detail: Detail; claims: Claim[]; fromResults: boolean } | null>(null);
   const [comparison, setComparison] = useState<Comparison | null>(null);
   const [session, setSession] = useState<{ token: string; email: string } | null>(null);
   const [registering, setRegistering] = useState(false);
@@ -118,6 +121,11 @@ export function Research() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectFilter, setProjectFilter] = useState("");
   const [assignment, setAssignment] = useState("");
+  const [bookmarks, setBookmarks] = useState<Bookmark[] | null>(null);
+  const [bookmarkOffset, setBookmarkOffset] = useState(0);
+  const [bookmarkProject, setBookmarkProject] = useState("");
+  const [bookmarkMessage, setBookmarkMessage] = useState("");
+  const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
 
   function leaveAccount() {
     setSession(null);
@@ -127,6 +135,11 @@ export function Research() {
     setProjects([]);
     setProjectFilter("");
     setAssignment("");
+    setBookmarks(null);
+    setBookmarkOffset(0);
+    setBookmarkProject("");
+    setBookmarkMessage("");
+    setPendingRemoval(null);
     setSearch(null);
     setResults(null);
     setSelected(null);
@@ -185,6 +198,31 @@ export function Research() {
     setSaved({ ...record, project_id: updated.project_id });
     setHistory(null);
     setHistoryOffset(0);
+  }
+
+  async function loadBookmarks(projectId: string, token: string, offset = 0) {
+    const rows = await request<Bookmark[]>(`/projects/${projectId}/patents?limit=21&offset=${offset}`, undefined, token);
+    setBookmarks(rows);
+    setBookmarkOffset(offset);
+  }
+
+  async function addBookmark(documentId: string, token: string) {
+    await request(`/projects/${bookmarkProject}/patents/${documentId}`, {}, token, "PUT");
+    setBookmarkMessage("已收藏此文件版本。");
+  }
+
+  async function updateBookmark(documentId: string, token: string, note: string) {
+    const updated = await request<{ note: string }>(`/projects/${projectFilter}/patents/${documentId}`, { note }, token, "PATCH");
+    setBookmarks((current) => current?.map((item) => item.document_id === documentId ? { ...item, note: updated.note } : item) ?? null);
+    setBookmarkMessage("筆記已保存。");
+  }
+
+  async function removeBookmark(documentId: string, token: string) {
+    await request(`/projects/${projectFilter}/patents/${documentId}`, undefined, token, "DELETE");
+    setPendingRemoval(null);
+    setBookmarkMessage("已移除收藏及其筆記。");
+    setBookmarks(null);
+    await loadBookmarks(projectFilter, token);
   }
 
   async function run(label: string, operation: () => Promise<void>) {
@@ -250,11 +288,13 @@ export function Research() {
     await loadResults(payload);
   }
 
-  async function openPatent(hit: Hit) {
+  async function openPatent(hit: PatentVersion, fromResults = true) {
     const path = "/patents/" + hit.document_id;
     const [detail, claims] = await Promise.all([request<Detail>(path), request<{ claims: Claim[] }>(path + "/claims")]);
-    setSelected({ hit, detail, claims: claims.claims });
-    setComparison(saved?.comparisons.find((item) => item.document_id === hit.document_id) ?? null);
+    setSelected({ hit, detail, claims: claims.claims, fromResults });
+    setBookmarkProject(fromResults ? saved?.project_id ?? projectFilter : projectFilter);
+    setBookmarkMessage("");
+    setComparison(fromResults ? saved?.comparisons.find((item) => item.document_id === hit.document_id) ?? null : null);
   }
 
   async function comparePatent(documentId: string, features: Feature[]) {
@@ -304,12 +344,46 @@ export function Research() {
               setProjectFilter(event.target.value);
               setHistory(null);
               setHistoryOffset(0);
+              setBookmarks(null);
+              setBookmarkOffset(0);
+              setBookmarkMessage("");
+              setPendingRemoval(null);
             }}>
               <option value="">所有搜尋紀錄</option>
               {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
             </select>
           </label>
           {projectFilter && <p className="my-2 whitespace-pre-wrap break-words text-sm">{projects.find((project) => project.id === projectFilter)?.description}</p>}
+          {projectFilter && <section className="my-4 rounded-lg border border-slate-200 p-3">
+            <h3>專案收藏</h3>
+            <button className="my-2" disabled={!!busy} onClick={() => void run("正在載入收藏…", () => loadBookmarks(projectFilter, session.token))}>載入專案收藏</button>
+            {bookmarkMessage && <p role="status" className="text-sm text-teal-900">{bookmarkMessage}</p>}
+            {bookmarks?.length === 0 && <p>此專案還沒有收藏。</p>}
+            {bookmarks?.slice(0, 20).map((item) => <article className="my-3 border-t border-slate-200 pt-3" key={item.document_id}>
+              <p className="text-sm">{stage[item.document_stage]} {item.publication_no} {item.kind_code} · {scope[item.content_scope]}</p>
+              <button className="my-2" disabled={!!busy} onClick={() => void run("正在載入收藏詳情…", () => openPatent(item, false))}>{title(item)}</button>
+              <form onSubmit={(event) => {
+                event.preventDefault();
+                const note = String(new FormData(event.currentTarget).get("note"));
+                void run("正在保存筆記…", () => updateBookmark(item.document_id, session.token, note));
+              }}>
+                <label className="research-field">私人筆記 · {item.publication_no}
+                  <textarea key={item.note} name="note" defaultValue={item.note} maxLength={4000} rows={2} disabled={!!busy} />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button disabled={!!busy} type="submit">保存筆記</button>
+                  {pendingRemoval === item.document_id ? <>
+                    <button disabled={!!busy} type="button" onClick={() => void run("正在移除收藏…", () => removeBookmark(item.document_id, session.token))}>確認移除收藏及筆記</button>
+                    <button disabled={!!busy} type="button" onClick={() => setPendingRemoval(null)}>取消移除</button>
+                  </> : <button disabled={!!busy} type="button" onClick={() => setPendingRemoval(item.document_id)}>移除收藏</button>}
+                </div>
+              </form>
+            </article>)}
+            {!!bookmarks?.length && <div className="flex gap-2">
+              <button disabled={!!busy || bookmarkOffset === 0} onClick={() => void run("正在載入收藏…", () => loadBookmarks(projectFilter, session.token, bookmarkOffset - 20))}>上一頁收藏</button>
+              <button disabled={!!busy || bookmarks.length < 21} onClick={() => void run("正在載入收藏…", () => loadBookmarks(projectFilter, session.token, bookmarkOffset + 20))}>下一頁收藏</button>
+            </div>}
+          </section>}
           <div className="flex flex-wrap gap-2">
             <button disabled={!!busy} onClick={() => void run("正在讀取歷史…", () => loadHistory(session.token))}>載入搜尋歷史</button>
             <button disabled={!!busy} onClick={leaveAccount}>登出此頁</button>
@@ -439,7 +513,7 @@ export function Research() {
           </>}
         </section>
       </div>
-      {selected && search && (
+      {selected && (
         <section className="research-panel mt-6">
           <h2>專利詳情</h2>
           <h3 className="mt-2 text-xl">{title(selected.hit)}</h3>
@@ -468,6 +542,17 @@ export function Research() {
                 : source.dataset_url ? <a className="ml-2" href={source.dataset_url} target="_blank" rel="noreferrer">官方資料集</a> : null}
             </li>)}
           </ul>
+          {session && projects.length > 0 && <div className="mb-4">
+            <label className="research-field">收藏至研究專案
+              <select disabled={!!busy} value={bookmarkProject} onChange={(event) => { setBookmarkProject(event.target.value); setBookmarkMessage(""); }}>
+                <option value="">選擇研究專案</option>
+                {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+              </select>
+            </label>
+            <button disabled={!!busy || !bookmarkProject} onClick={() => void run("正在收藏文件…", () => addBookmark(selected.hit.document_id, session.token))}>收藏此版本</button>
+            {bookmarkMessage && <p role="status" className="mt-2 text-sm text-teal-900">{bookmarkMessage}</p>}
+          </div>}
+          {search && selected.fromResults && <>
           <button disabled={!!busy || !search.features.length || (!!saved && !!comparison)} onClick={() => void run("正在核對技術特徵…", () => comparePatent(selected.hit.document_id, search.features))}>
             {saved ? comparison ? "已保存技術比對" : "比對並保存證據" : "比對本次搜尋特徵"}
           </button>
@@ -488,6 +573,7 @@ export function Research() {
               </> : <p>此項判定沒有可引用的原文證據。</p>}
             </article>)}
           </div>}
+          </>}
         </section>
       )}
     </>

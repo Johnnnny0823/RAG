@@ -47,6 +47,7 @@ ErrorCode = Literal[
     "ACCOUNT_EXISTS",
     "RUN_NOT_FOUND",
     "PROJECT_NOT_FOUND",
+    "BOOKMARK_NOT_FOUND",
 ]
 
 

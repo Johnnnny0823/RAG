@@ -164,7 +164,7 @@ node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 18110 --strictPort
 
 輸入「動態導通電阻」並執行 AI 拆解。將特徵描述改為「動態導通電阻量測電路」，保留同名繁中檢索詞，並設定 IPC 為 `G01R`。搜尋並開啟公開文件 `202640162` 的全文版本，確認請求項、說明書與來源，再比對並展開原文定位。改用 `A01B` 驗證空結果，輸入 `INVALID` 驗證錯誤訊息。結果取決於當前語料、模型與已確認特徵。
 
-私人歷史與專案歸檔可用 Playwright CLI 驗收。啟動前先對同一個隔離專案執行 `docker compose -p $project run --rm --build migrate`，並重建 API，使資料庫與 API 都包含 `0006_projects`。以下命令由專案根目錄執行，會建立兩個測試帳號並留下公開測試查詢、比對與專案。
+私人歷史、專案歸檔、收藏及筆記可用 Playwright CLI 驗收。啟動前先對同一個隔離專案執行 `docker compose -p $project run --rm --build migrate`，並重建 API，使資料庫與 API 都包含 `0007_saved_patents`。以下命令由專案根目錄執行，會建立兩個測試帳號並留下公開測試查詢、比對與專案。
 
 ```powershell
 npx --yes --package @playwright/cli@0.1.23 playwright-cli -s=patent-private open http://127.0.0.1:18110
