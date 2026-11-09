@@ -22,6 +22,9 @@ def smoke(base_url, pdf_output=None):
         try:
             with urlopen(request, timeout=300) as response:
                 assert response.status == status
+                if response.status == 204:
+                    assert not response.read()
+                    return None
                 return json.load(response)
         except HTTPError as error:
             assert error.code == status, (path, error.code)
@@ -80,9 +83,15 @@ def smoke(base_url, pdf_output=None):
     assert after["items"] == details["items"]
     assert after["comparisons"] == [comparison]
     if pdf_output is not None:
+        call(path + "/report.pdf", token=second, status=404)
+    call("/auth/logout", payload={}, token=second, status=204)
+    call("/auth/logout", payload={}, token=second, status=204)
+    call("/me", token=second, status=401)
+    assert call(path, token=first)["id"] == run["id"]
+    if pdf_output is not None:
         report_path = path + "/report.pdf"
         call(report_path, status=401)
-        call(report_path, token=second, status=404)
+        call(report_path, token=second, status=401)
         request = Request(
             base_url + "/api/v1" + report_path,
             headers={"Authorization": "Bearer " + first},

@@ -17,7 +17,7 @@ async (page) => {
     return (await (await loginResponse).json()).access_token;
   }
 
-  await signIn(first, true);
+  const initialToken = await signIn(first, true);
   await page.getByLabel("構想描述（最多 160 字）").fill("動態導通電阻");
   await button("新增特徵").click();
   await page.getByLabel("特徵描述", { exact: true }).fill("動態導通電阻量測電路");
@@ -103,7 +103,14 @@ async (page) => {
   const evidenceCell = matrix.getByRole("cell").filter({ hasText: originalQuote }).first();
   await evidenceCell.getByText("原文證據與定位", { exact: true }).click();
   await evidenceCell.getByText(/原始檔 SHA-256/).waitFor();
+  const bookmarkUrl = new URL(`/api/v1/projects/${projectId}/patents`, page.url()).href;
+  const ownBookmarks = await page.request.get(bookmarkUrl, { headers: { Authorization: "Bearer " + initialToken } });
+  const items = await ownBookmarks.json();
+  if (!ownBookmarks.ok() || items.length !== 1 || items[0].note !== "驗收筆記：核對公開文件的請求項。") {
+    throw new Error("Repeated bookmark save changed the note");
+  }
   await button("登出此頁").click();
+  await button("登入").waitFor();
   if (await quote.count() || await patent.count()) throw new Error("Private results remained after logout");
   const otherToken = await signIn(email("other"), true);
   await button("載入搜尋歷史").click();
@@ -132,15 +139,7 @@ async (page) => {
     headers, data: { project_id: null },
   });
   if (filtered.status() !== 404 || moved.status() !== 404) throw new Error("Project or run access was not isolated");
-  const bookmarkUrl = new URL(`/api/v1/projects/${projectId}/patents`, page.url()).href;
   if ((await page.request.get(bookmarkUrl, { headers })).status() !== 404) throw new Error("Private bookmarks leaked");
-  await button("登出此頁").click();
-  const ownerToken = await signIn(first, false);
-  const ownBookmarks = await page.request.get(bookmarkUrl, { headers: { Authorization: "Bearer " + ownerToken } });
-  const items = await ownBookmarks.json();
-  if (!ownBookmarks.ok() || items.length !== 1 || items[0].note !== "驗收筆記：核對公開文件的請求項。") {
-    throw new Error("Repeated bookmark save changed the note");
-  }
   const bookmarkItem = bookmarkUrl + "/" + items[0].document_id;
   for (const response of await Promise.all([
     page.request.put(bookmarkItem, { headers }),
@@ -149,6 +148,9 @@ async (page) => {
   ])) {
     if (response.status() !== 404) throw new Error("Cross-account bookmark mutation was not blocked");
   }
+  await button("登出此頁").click();
+  await button("登入").waitFor();
+  const ownerToken = await signIn(first, false);
   await page.getByLabel("依研究專案篩選").selectOption({ label: projectName });
   await button("載入 AI Session").click();
   await button(sessionTitle).click();
@@ -221,5 +223,8 @@ async (page) => {
   await visible("空白專案已刪除。");
   if (await projectSelector.getByRole("option", { name: emptyTitle }).count()) throw new Error("Deleted project is still selectable");
   await button("登出此頁").click();
+  await button("登入").waitFor();
+  const revokedReport = await page.request.get(new URL(`/api/v1/search-runs/${id}/report.pdf`, page.url()).href, { headers: auth });
+  if (revokedReport.status() !== 401) throw new Error("Logged-out token could still download the report");
   return "Private browser smoke passed: PDF export, metadata filters, comparison matrix and isolation";
 }

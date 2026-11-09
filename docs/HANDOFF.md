@@ -1,5 +1,25 @@
 # Agent Handoff
 
+## M5 登出憑證撤銷
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `e017083`。
+- Current milestone and status: M5 IN_PROGRESS。
+- Goal of this session: 撤銷當前登入憑證並驗證私人資源的存取。
+- Files changed (with purpose): `identity.py`、`accounts.py` 加入登出，`research.tsx` 串接，API 與瀏覽器冒煙腳本核對撤銷。
+- Database migrations added/applied: 無新增，沿用 `auth_sessions`。
+- API/Schema changes: `POST /api/v1/auth/logout` 回傳 204，撤銷本次 Bearer token。
+- Commands actually run and results: Ruff lint、pytest 46 項（1 則既有警告）、前端型別及 Vite 建置通過。使用同帳號兩個 token 核對單一憑證撤銷，另一個仍可讀取 `/me`。
+- Playwright 工作台回歸通過，確認登出後舊憑證下載 PDF 回傳 401。全新空資料卷以 Compose 啟動，Alembic head 為 `0008_research_sessions`，Web 代理、API 與 pgvector 通過 HTTP 冒煙測試。首次多服務建置遇到 BuildKit gRPC header 錯誤，改為逐服務建置後通過，操作記於 [SETUP.md](SETUP.md)。
+- Tests NOT run and reason: 尚未驗證外部部署反向代理或長時間高併發。
+- Data sources checked (exact URL/date) and license/access notes: 沿用既有 TIPO 驗收資料，無新增擷取。
+- Known bugs / risks / blockers: 登出處理單一憑證。自助研究資料刪除與定期清理仍待實作，部署者須管理模型主機存取及備份。
+- Decisions made (ADR links): [登出與資料保留](DECISIONS.md#m5-登出與資料保留)。
+- Uncommitted changes / file ownership warnings: 瀏覽器與 API 驗收用測試帳號及公開資料。
+- Next 1–3 concrete actions: 完成研究資料刪除及隱私驗收，擴大人工複核候選池與引用測試。
+- Exact reproduction steps: 使用含 TIPO 樣本的隔離 API 執行 `scripts/smoke_search_runs.py` 及 [M4 瀏覽器驗收](SETUP.md#m4-瀏覽器驗收)。
+
 ## M5 檢索種子基線
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

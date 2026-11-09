@@ -177,6 +177,26 @@ npx --yes --package @playwright/cli@0.1.23 playwright-cli -s=patent-private clos
 ```
 ## M5 私人 PDF 驗收
 
+### 私人內容的存放範圍
+
+Compose 開發環境預設只把 Web 與 API 映射到本機回環位址。模型傳輸限制為設定的本機 Ollama 位址，拒絕重新導向及環境代理，並核對模型摘要。模型仍會收到執行所需的構想、檢索詞或比對片段。Ollama 程序與主機端的記錄、存取及備份由部署者管理。
+
+瀏覽器只在頁面記憶體保留憑證。登出撤銷當前憑證。已保存的搜尋、AI Session、收藏與筆記留在 PostgreSQL 資料卷，尚無自動保留期限。收藏及其筆記可移除，完整帳號與研究資料刪除流程仍待實作。下載的 PDF 位於使用者裝置。
+
+### Windows 全新資料卷啟動
+
+若多服務同時建置在含非 ASCII 字元的路徑遇到 BuildKit gRPC header 錯誤，可分開建置後再啟動。以下使用獨立專案與連接埠驗證空資料卷，不會匯入專利語料。
+
+```powershell
+$env:API_PORT = '18019'
+$env:WEB_PORT = '18119'
+docker compose -p patentscope-m5-clean build migrate
+docker compose -p patentscope-m5-clean build api
+docker compose -p patentscope-m5-clean build web
+docker compose -p patentscope-m5-clean up -d --no-build --wait
+python scripts/smoke.py --api http://127.0.0.1:18019 --web http://127.0.0.1:18119
+```
+
 重建 API 映像以安裝 ReportLab 及 AR PL UMing 臺灣字型。從私人歷史開啟已保存搜尋，完成至少一份候選比對，點選「匯出 PDF 報告」。在 Windows 直接執行 API 時，將 `REPORT_FONT_PATH` 設為可嵌入的繁中字型 TTF 或 TTC 路徑。自訂 TTC 可用 `REPORT_FONT_INDEX` 選擇字型。
 
 以隔離語料執行 `python scripts/smoke_search_runs.py --api http://127.0.0.1:18017 --pdf-output <驗收路徑.pdf>`，核對擁有者可下載，訪客及其他帳號無法取得。腳本會建立兩個測試帳號及公開測試紀錄。

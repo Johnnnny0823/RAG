@@ -105,12 +105,27 @@ def login_account(payload: AccountInput) -> AccessToken:
     return AccessToken(access_token=token)
 
 
-def require_account(credentials: Credentials) -> Account:
+def credential_digest(credentials: HTTPAuthorizationCredentials | None) -> bytes:
     if credentials is None or not re.fullmatch(
         r"[A-Za-z0-9_-]{43}", credentials.credentials
     ):
         raise IdentityError
-    token_hash = hashlib.sha256(credentials.credentials.encode()).digest()
+    return hashlib.sha256(credentials.credentials.encode()).digest()
+
+
+def revoke_session(credentials: Credentials) -> None:
+    token_hash = credential_digest(credentials)
+    try:
+        with engine.begin() as conn:
+            conn.exec_driver_sql(
+                "DELETE FROM auth_sessions WHERE token_hash = %s", (token_hash,)
+            )
+    except SQLAlchemyError as error:
+        raise IdentityUnavailable from error
+
+
+def require_account(credentials: Credentials) -> Account:
+    token_hash = credential_digest(credentials)
     try:
         with engine.connect() as conn:
             row = (

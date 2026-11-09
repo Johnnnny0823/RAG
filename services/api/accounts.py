@@ -12,6 +12,7 @@ from services.api.identity import (
     login_account,
     register_account,
     require_account,
+    revoke_session,
 )
 from services.api.patents import (
     PatentErrorEnvelope,
@@ -58,3 +59,8 @@ def login(payload: AccountInput, response: Response):
 def me(account: Annotated[Account, Depends(require_account)], response: Response):
     response.headers["Cache-Control"] = "no-store"
     return account
+
+
+@router.post("/auth/logout", status_code=204)
+def logout(_: Annotated[None, Depends(revoke_session)]):
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})

@@ -485,7 +485,10 @@ export function Research() {
           </section>}
           <div className="flex flex-wrap gap-2">
             <button disabled={!!busy} onClick={() => void run("正在讀取歷史…", () => loadHistory(session.token))}>載入搜尋歷史</button>
-            <button disabled={!!busy} onClick={leaveAccount}>登出此頁</button>
+            <button disabled={!!busy} onClick={() => void run("正在登出…", async () => {
+              await request<void>("/auth/logout", {}, session.token);
+              leaveAccount();
+            })}>登出此頁</button>
           </div>
           {history?.length === 0 && <p className="mt-3">{projectFilter ? "此專案還沒有搜尋紀錄。" : "此帳號還沒有保存的搜尋。"}</p>}
           {!!history?.length && <>
