@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## M4 文件篩選與里程碑驗收
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `be133e0`。
+- Current milestone and status: M4 DONE，M5 待開始。
+- Goal of this session: 完成日期、文件階段及申請人篩選並驗收研究工作台。
+- Files changed (with purpose): `patents.py` 共用檢索篩選，`research.tsx` 串接表單及回顯，`smoke_hybrid.py`、`smoke_private_browser.js` 擴充回歸。
+- Database migrations added/applied: 本次無新增或重跑，沿用前次已驗證的 `0008_research_sessions`。
+- API/Schema changes: 三種排序檢索接受日期、文件階段及申請人，混合搜尋紀錄也保存條件。
+- Commands actually run and results: Ruff 格式及 lint、pytest 44 項（1 則既有警告）、Docker TypeScript／Vite 建置均通過。`smoke_hybrid.py` 通過三種檢索模式及 RRF 回歸，`smoke.py` 通過。Playwright 完整工作台回歸驗證公開篩選、申請人、日期錯誤及歷史還原，另以實際檢索驗證載入及空結果。使用資料庫內的無寫入 `VALUES` 測試核對日期含起迄日與未知值排除。
+- Tests NOT run and reason: 未驗證遠端 CI、大量語料下的篩選效能或跨瀏覽器。正式測試資料庫沒有已匯入的公開／公告日期，無法驗證帶日期的真實結果。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 TIPO 資料](DATA_SOURCES.md)，本次無新增下載或補寫日期。
+- Known bugs / risks / blockers: 日期篩選會排除未知日期，現有樣本使用日期條件會得到空結果。前端矩陣仍須逐份比對。
+- Decisions made (ADR links): 見 [DECISIONS.md](DECISIONS.md) 的 M4 文件篩選。
+- Uncommitted changes / file ownership warnings: 驗收 Web 在 `18115`，API 在 `18015`，測試僅使用公開語料。
+- Next 1–3 concrete actions: 實作 M5 的私人 PDF 匯出、可重現的相關性與延遲評估及隱私驗收。後續匯入可補入有來源證據的正式日期。
+- Exact reproduction steps: 見 [M4 瀏覽器驗收](SETUP.md#m4-瀏覽器驗收)。本次使用 Web `18115`、API `18015`。
+
 ## M4 跨文件比對矩陣
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

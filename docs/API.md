@@ -25,6 +25,8 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 ## 詞彙檢索
 
+詞彙、語意與混合檢索共用選填欄位 `published_from`、`published_to`、`document_stage`、`applicant` 及 `ipc`。日期以 ISO 日曆日期表示，含起迄日，指定任何日期界線時排除日期未知的版本。文件階段接受 `publication` 或 `grant`。申請人以已匯入中英文名稱做不分大小寫的文字子字串比對，萬用字元視為一般文字。混合檢索先套用條件再產生分支順位，保存搜尋會一起保存條件。
+
 `POST /api/v1/patents/search` 接受 JSON，例如 `{"query":"動態導通電阻","ipc":"G01R","limit":20,"offset":0}`。查詢為 1–160 字元。`ipc` 可省略，四碼子類採前綴比對，完整分類符號採精確比對，支援全半形正規化。回傳 `items`、`tokenizer_version`、`limit`、`offset`、`has_more`。
 
 每個結果包含文件版本欄位及詞彙排序分數 `score`。分數用於同一查詢的排序。搜尋以正文片段為單位，查詢詞須出現在同一標題、摘要、請求項或說明書段落中。重複匹配片段彙整至同一文件版本。查詢正文不寫入資料庫。語料匯入後需執行詞彙索引更新，見 [SETUP.md](SETUP.md)。

@@ -23,6 +23,21 @@ async (page) => {
   await page.getByLabel("繁中檢索詞（逗號分隔）").fill("動態導通電阻");
   await page.getByLabel("IPC 篩選（選填）").fill("G01R");
   const patent = page.getByRole("listitem").filter({ hasText: "公開 202640162 · 全文" });
+  await page.getByLabel("文件種類").selectOption("publication");
+  await page.getByLabel("申請人（中英文名稱）").fill("陽明交通");
+  await button("搜尋臺灣專利").click();
+  await patent.waitFor();
+  await visible("文件 公開 · 申請人 陽明交通");
+  if (await page.getByRole("listitem").filter({ hasText: "公告 I941082" }).count()) {
+    throw new Error("Stage filter kept the grant version");
+  }
+  await page.getByLabel("公開／公告起日").fill("2026-10-02");
+  await page.getByLabel("公開／公告迄日").fill("2026-10-01");
+  await button("搜尋臺灣專利").click();
+  await page.getByRole("alert").filter({ hasText: "起日不得晚於迄日" }).waitFor();
+  await page.getByLabel("公開／公告起日").fill("");
+  await page.getByLabel("公開／公告迄日").fill("");
+  await page.getByLabel("文件種類").selectOption("");
   await button("搜尋臺灣專利").click();
   await visible("本次查詢 · 動態導通電阻");
   await button("載入搜尋歷史").click();
@@ -35,6 +50,7 @@ async (page) => {
   if (response.status() !== 201) throw new Error("Expected a saved run");
   const { id } = await response.json();
   await visible("已保存的查詢 · 動態導通電阻");
+  await visible("申請人 陽明交通");
   await page.getByText("建立研究專案", { exact: true }).click();
   await page.getByLabel("專案名稱").fill(projectName);
   await page.getByLabel("專案說明").fill("瀏覽器驗收使用的公開技術案例");
@@ -152,6 +168,7 @@ async (page) => {
   await button("載入搜尋歷史").click();
   await page.getByRole("button", { name: new RegExp(id.slice(0, 8) + "$") }).click();
   await visible("已保存的查詢 · 動態導通電阻");
+  await visible("申請人 陽明交通");
   await visible("目前歸檔 · " + projectName);
   await matrix.getByRole("columnheader", { name: /公開 202640162/ }).waitFor();
   await matrix.getByRole("columnheader", { name: /公告 I941082/ }).waitFor();
@@ -197,5 +214,5 @@ async (page) => {
   await visible("空白專案已刪除。");
   if (await projectSelector.getByRole("option", { name: emptyTitle }).count()) throw new Error("Deleted project is still selectable");
   await button("登出此頁").click();
-  return "Private browser smoke passed: comparison matrix, project management, AI sessions, private notes and isolation";
+  return "Private browser smoke passed: metadata filters, comparison matrix, projects, AI sessions and isolation";
 }

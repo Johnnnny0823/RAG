@@ -3,6 +3,7 @@
 import argparse
 import json
 from math import isclose
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 
@@ -56,8 +57,32 @@ def smoke(base_url: str) -> None:
         and first["items"][0]["document_id"] != second["items"][0]["document_id"]
     )
     assert not search("/hybrid", query, "H01B9999/999999")["items"]
+    for path in ("", "/semantic", "/hybrid"):
+        filtered = search(
+            path,
+            query,
+            ipc,
+            document_stage="publication",
+            applicant="yang ming chiao tung",
+        )["items"]
+        assert any(item["publication_no"] == "202640162" for item in filtered)
+        assert all(item["document_stage"] == "publication" for item in filtered)
+        assert not search(path, query, ipc, applicant="%")["items"]
+        dated = search(path, query, ipc, published_from="2000-01-01")["items"]
+        assert all(item["publication_date"] >= "2000-01-01" for item in dated)
+        try:
+            search(
+                path, query, ipc, published_from="2026-10-02", published_to="2026-10-01"
+            )
+        except HTTPError as error:
+            assert (
+                error.code == 422
+                and json.load(error)["error"]["code"] == "INVALID_REQUEST"
+            )
+        else:
+            raise AssertionError("Reversed date range must be rejected")
     print(
-        "Hybrid smoke passed: real candidates, branch ranks, RRF, version deduplication, IPC and pagination"
+        "Hybrid smoke passed: real candidates, branch ranks, RRF, version deduplication, metadata filters and pagination"
     )
 
 

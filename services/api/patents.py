@@ -12,7 +12,7 @@ from fastapi import APIRouter, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -130,6 +130,15 @@ class LexicalSearchResults(BaseModel):
 class RankedSearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=160)
     ipc: str | None = Field(default=None, max_length=24)
+    published_from: date | None = None
+    published_to: date | None = None
+    document_stage: DocumentStage | None = None
+    applicant: (
+        Annotated[
+            str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)
+        ]
+        | None
+    ) = None
     limit: int = Field(default=20, ge=1, le=100)
     offset: int = Field(default=0, ge=0, le=10000)
 
@@ -264,13 +273,24 @@ NUMBER_FILTERS = {
     "grant": "d.publication_no = %s AND d.document_stage = 'grant'",
 }
 
-IPC_FILTER = """
+SEARCH_FILTERS = """
     AND (%s::text IS NULL OR EXISTS (
         SELECT 1 FROM patent_classifications c
         WHERE c.document_id = d.id AND c.scheme = 'IPC'
           AND CASE WHEN length(%s::text) = 4
                    THEN starts_with(replace(upper(c.code), ' ', ''), %s)
                    ELSE replace(upper(c.code), ' ', '') = %s END
+    ))
+    AND (%s::date IS NULL OR d.publication_date >= %s)
+    AND (%s::date IS NULL OR d.publication_date <= %s)
+    AND (%s::text IS NULL OR d.document_stage = %s)
+    AND (%s::text IS NULL OR EXISTS (
+        SELECT 1 FROM jsonb_array_elements(
+            CASE WHEN jsonb_typeof(d.metadata_jsonb->'applicants') = 'array'
+                 THEN d.metadata_jsonb->'applicants' ELSE '[]'::jsonb END
+        ) AS applicant(entry)
+        WHERE strpos(lower(applicant.entry->>'zh'), lower(%s)) > 0
+           OR strpos(lower(applicant.entry->>'en'), lower(%s)) > 0
     ))
 """
 
@@ -290,7 +310,7 @@ LEXICAL_SEARCH = f"""
     SELECT {SUMMARY_FIELDS}, m.score
     {DOCUMENTS_FROM} JOIN matches m ON m.document_id = d.id
     {PUBLIC_DOCUMENT_FILTER}
-    {IPC_FILTER}
+    {SEARCH_FILTERS}
     ORDER BY m.score DESC, d.id
     LIMIT %s OFFSET %s
 """
@@ -299,7 +319,7 @@ SEMANTIC_SEARCH = f"""
     WITH candidates AS (
         SELECT {SUMMARY_FIELDS}
         {PUBLIC_DOCUMENTS}
-        {IPC_FILTER}
+        {SEARCH_FILTERS}
     ), matches AS (
         SELECT t.document_id, 1 - min(t.embedding <=> %s::vector) AS score
         FROM patent_dense_chunks t JOIN candidates c ON c.document_id = t.document_id
@@ -322,6 +342,23 @@ def normalize_ipc(value: str | None) -> str | None:
     return ipc
 
 
+def search_filter_params(request: RankedSearchRequest) -> tuple:
+    ipc = normalize_ipc(request.ipc)
+    if (
+        request.published_from
+        and request.published_to
+        and request.published_from > request.published_to
+    ):
+        raise ValueError("公開／公告日期起日不得晚於迄日。")
+    return (
+        *((ipc,) * 4),
+        *((request.published_from,) * 2),
+        *((request.published_to,) * 2),
+        *((request.document_stage,) * 2),
+        *((request.applicant,) * 3),
+    )
+
+
 class SemanticIndexUnavailable(Exception):
     pass
 
@@ -340,12 +377,10 @@ def indexed_model_id(model: LocalEmbeddingModel) -> int:
     return identity
 
 
-def lexical_rows(
-    conn: Connection, terms: str, ipc: str | None, limit: int, offset: int
-):
+def lexical_rows(conn: Connection, terms: str, filters: tuple, limit: int, offset: int):
     return (
         conn.exec_driver_sql(
-            LEXICAL_SEARCH, (terms, TOKENIZER_VERSION, *((ipc,) * 4), limit, offset)
+            LEXICAL_SEARCH, (terms, TOKENIZER_VERSION, *filters, limit, offset)
         )
         .mappings()
         .all()
@@ -356,13 +391,13 @@ def semantic_rows(
     conn: Connection,
     embedding: str,
     identity: int,
-    ipc: str | None,
+    filters: tuple,
     limit: int,
     offset: int,
 ):
     return (
         conn.exec_driver_sql(
-            SEMANTIC_SEARCH, (*((ipc,) * 4), embedding, identity, limit, offset)
+            SEMANTIC_SEARCH, (*filters, embedding, identity, limit, offset)
         )
         .mappings()
         .all()
@@ -494,12 +529,12 @@ def lexical_search(request: RankedSearchRequest):
     if not terms:
         return api_error(422, "INVALID_REQUEST", "請提供可檢索的文字。")
     try:
-        ipc = normalize_ipc(request.ipc)
+        filters = search_filter_params(request)
     except ValueError as error:
         return api_error(422, "INVALID_REQUEST", str(error))
     try:
         with engine.connect() as conn:
-            rows = lexical_rows(conn, terms, ipc, request.limit + 1, request.offset)
+            rows = lexical_rows(conn, terms, filters, request.limit + 1, request.offset)
     except SQLAlchemyError:
         return unavailable()
     return LexicalSearchResults(
@@ -517,7 +552,7 @@ def semantic_search(request: RankedSearchRequest):
     if not query:
         return api_error(422, "INVALID_REQUEST", "請提供可檢索的文字。")
     try:
-        ipc = normalize_ipc(request.ipc)
+        filters = search_filter_params(request)
     except ValueError as error:
         return api_error(422, "INVALID_REQUEST", str(error))
     try:
@@ -526,7 +561,7 @@ def semantic_search(request: RankedSearchRequest):
         embedding = vector_literal(model.embed_query(query))
         with engine.connect() as conn:
             rows = semantic_rows(
-                conn, embedding, identity, ipc, request.limit + 1, request.offset
+                conn, embedding, identity, filters, request.limit + 1, request.offset
             )
     except SemanticIndexUnavailable:
         return missing_semantic_index()
@@ -555,7 +590,7 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
     if not query:
         return api_error(422, "INVALID_REQUEST", "請提供可檢索的文字。")
     try:
-        ipc = normalize_ipc(request.ipc)
+        filters = search_filter_params(request)
     except ValueError as error:
         return api_error(422, "INVALID_REQUEST", str(error))
     feature_ids = [feature.feature_id for feature in request.features]
@@ -572,9 +607,11 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
             isolation_level="REPEATABLE READ"
         ) as conn:
             lexical = (
-                lexical_rows(conn, terms, ipc, CANDIDATE_LIMIT, 0) if terms else []
+                lexical_rows(conn, terms, filters, CANDIDATE_LIMIT, 0) if terms else []
             )
-            semantic = semantic_rows(conn, embedding, identity, ipc, CANDIDATE_LIMIT, 0)
+            semantic = semantic_rows(
+                conn, embedding, identity, filters, CANDIDATE_LIMIT, 0
+            )
             ranked = fuse_rankings(lexical, semantic)
             abstracts = {}
             if request.rerank and len(ranked) > 1:

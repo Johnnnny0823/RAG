@@ -45,7 +45,15 @@ type Detail = {
   sources: { dataset_name: string; publisher: string; dataset_url: string | null; source_url: string | null; batch_key: string; ingested_at: string }[];
 };
 type Claim = { claim_number: number; text: string };
-type Search = { query: string; ipc: string | null; features: Feature[]; rerank: boolean; offset: number };
+type SearchFilters = {
+  published_from: string;
+  published_to: string;
+  document_stage: string;
+  applicant: string;
+};
+type Search = { query: string; ipc: string | null; features: Feature[]; rerank: boolean; offset: number } &
+  { [Key in keyof SearchFilters]?: string | null };
+const emptyFilters: SearchFilters = { published_from: "", published_to: "", document_stage: "", applicant: "" };
 type Results = { items: Hit[]; has_more: boolean; limit: number; offset: number };
 type RunSummary = { id: string; created_at: string; project_id: string | null };
 type Project = { id: string; name: string; description: string };
@@ -103,6 +111,7 @@ async function request<T>(path: string, payload?: object, token?: string, method
 export function Research() {
   const [query, setQuery] = useState("");
   const [ipc, setIpc] = useState("");
+  const [filters, setFilters] = useState(emptyFilters);
   const [rerank, setRerank] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [busy, setBusy] = useState("");
@@ -156,6 +165,7 @@ export function Research() {
     setPreviewComparisons([]);
     setQuery("");
     setIpc("");
+    setFilters(emptyFilters);
     setRerank(false);
     setDrafts([]);
     setError("");
@@ -314,7 +324,13 @@ export function Research() {
       [feature.keywords_zh, feature.keywords_en].some((terms) => terms.length > 4 || terms.some((term) => term.length > 48)))) {
       throw new Error("每項特徵須填寫描述。每種語言最多四個檢索詞，每詞最多 48 字。");
     }
-    const payload = { query: query.trim(), ipc: ipc.trim() || null, features, rerank, offset: 0 };
+    const payload = {
+      query: query.trim(), ipc: ipc.trim() || null, features, rerank, offset: 0,
+      published_from: filters.published_from || null,
+      published_to: filters.published_to || null,
+      document_stage: filters.document_stage || null,
+      applicant: filters.applicant.trim() || null,
+    };
     if (save && session) {
       const { id } = await request<RunSummary>("/search-runs", payload, session.token);
       setHistory(null);
@@ -527,6 +543,24 @@ export function Research() {
               <label className="research-field mt-5">IPC 篩選（選填）
                 <input value={ipc} maxLength={24} onChange={(event) => setIpc(event.target.value)} />
               </label>
+              <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-2">
+                <label className="research-field">公開／公告起日
+                  <input type="date" value={filters.published_from} onChange={(event) => setFilters({ ...filters, published_from: event.target.value })} />
+                </label>
+                <label className="research-field">公開／公告迄日
+                  <input type="date" value={filters.published_to} onChange={(event) => setFilters({ ...filters, published_to: event.target.value })} />
+                </label>
+              </div>
+              <label className="research-field">文件種類
+                <select value={filters.document_stage} onChange={(event) => setFilters({ ...filters, document_stage: event.target.value })}>
+                  <option value="">所有文件</option>
+                  <option value="publication">公開</option>
+                  <option value="grant">公告</option>
+                </select>
+              </label>
+              <label className="research-field">申請人（中英文名稱）
+                <input value={filters.applicant} maxLength={120} onChange={(event) => setFilters({ ...filters, applicant: event.target.value })} />
+              </label>
               <label className="my-3 block"><input type="checkbox" checked={rerank} onChange={(event) => setRerank(event.target.checked)} /> 使用本機模型重排序</label>
               <button className="research-primary" disabled={!query.trim()} type="submit">搜尋臺灣專利</button>
               {session && <button className="ml-2" type="button" disabled={!query.trim()} onClick={() => void run("正在檢索並保存…", () => submitSearch(true))}>搜尋並保存</button>}
@@ -538,6 +572,14 @@ export function Research() {
           {!results && <p className="mt-3 text-slate-700">完成搜尋後，這裡會顯示候選文件與排序資訊。</p>}
           {search && results && <>
             <p className="my-3 break-words text-slate-700">{saved ? "已保存的查詢" : "本次查詢"} · {search.query}{search.ipc && ` · IPC ${search.ipc}`}</p>
+            {(search.published_from || search.published_to || search.document_stage || search.applicant) && <p className="mb-3 break-words text-sm text-slate-700">
+              {[
+                search.published_from && `起日 ${search.published_from}`,
+                search.published_to && `迄日 ${search.published_to}`,
+                search.document_stage && `文件 ${stage[search.document_stage]}`,
+                search.applicant && `申請人 ${search.applicant}`,
+              ].filter(Boolean).join(" · ")}
+            </p>}
             {saved && session && <div className="mb-3">
               <p className="mb-2 break-words text-sm">目前歸檔 · {projects.find((project) => project.id === saved.project_id)?.name ?? saved.project_id ?? "未歸檔"}</p>
               <label className="research-field">歸檔至研究專案
