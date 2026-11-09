@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## M4 跨文件比對矩陣
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `77257de`。
+- Current milestone and status: M4 IN_PROGRESS。
+- Goal of this session: 並排比對同一次搜尋中不同文件版本的判定與引文。
+- Files changed (with purpose): `comparison-matrix.tsx` 呈現技術特徵、判定及原文定位，`research.tsx` 整合同一搜尋的比對，`smoke_private_browser.js` 增加真實文件並排及重讀驗收。
+- Database migrations added/applied: 無新增，沿用 `0008_research_sessions`。
+- API/Schema changes: 無，沿用單版本預覽與已保存搜尋的比對 API。
+- Commands actually run and results: Docker 內 TypeScript 與 Vite 建置、`smoke.py`、Playwright 私人工作台回歸均通過。Playwright 核對公開 `202640162` 與公告 `I941082` 分欄、技術特徵列、引文與來源雜湊，以及重新登入後從歷史還原兩欄。
+- Tests NOT run and reason: 無後端修改，沿用上一提交的 44 項 pytest。未單獨測試預覽跨頁或多瀏覽器。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 TIPO 資料](DATA_SOURCES.md)，無新增下載。
+- Known bugs / risks / blockers: 矩陣由使用者逐一比對候選後建立，沒有批次比對。日期、文件種類與申請人篩選仍缺。
+- Decisions made (ADR links): 見 [DECISIONS.md](DECISIONS.md) 的 M4 跨文件比對矩陣。
+- Uncommitted changes / file ownership warnings: 驗收 Web 在 `18114`，API 在 `18014`，使用公開測試構想。
+- Next 1–3 concrete actions: 將日期、文件種類與申請人篩選套用至檢索分支，再驗收空結果、錯誤及完整 M4 流程。
+- Exact reproduction steps: 見 [M4 瀏覽器驗收](SETUP.md#m4-瀏覽器驗收)。
+
 ## M4 研究專案管理
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

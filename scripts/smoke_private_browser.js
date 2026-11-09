@@ -76,6 +76,16 @@ async (page) => {
   const quote = page.locator("blockquote");
   await quote.waitFor({ state: "visible", timeout: 180_000 });
   const originalQuote = await quote.innerText();
+  const matrix = page.getByRole("table", { name: "跨文件比對矩陣" });
+  await matrix.getByRole("columnheader", { name: /公開 202640162/ }).waitFor();
+  const grant = page.getByRole("listitem").filter({ hasText: "公告 I941082 · 請求項" });
+  await grant.getByRole("button").click();
+  await button("比對並保存證據").click();
+  await matrix.getByRole("columnheader", { name: /公告 I941082/ }).waitFor();
+  await matrix.getByRole("rowheader", { name: "動態導通電阻量測電路" }).waitFor();
+  const evidenceCell = matrix.getByRole("cell").filter({ hasText: originalQuote }).first();
+  await evidenceCell.getByText("原文證據與定位", { exact: true }).click();
+  await evidenceCell.getByText(/原始檔 SHA-256/).waitFor();
   await button("登出此頁").click();
   if (await quote.count() || await patent.count()) throw new Error("Private results remained after logout");
   const otherToken = await signIn(email("other"), true);
@@ -143,6 +153,8 @@ async (page) => {
   await page.getByRole("button", { name: new RegExp(id.slice(0, 8) + "$") }).click();
   await visible("已保存的查詢 · 動態導通電阻");
   await visible("目前歸檔 · " + projectName);
+  await matrix.getByRole("columnheader", { name: /公開 202640162/ }).waitFor();
+  await matrix.getByRole("columnheader", { name: /公告 I941082/ }).waitFor();
   await page.getByText("已保存的檢索策略", { exact: true }).click();
   await page.getByText("動態導通電阻量測電路", { exact: true }).filter({ visible: true }).first().waitFor();
   await patent.getByRole("button").click();
@@ -185,5 +197,5 @@ async (page) => {
   await visible("空白專案已刪除。");
   if (await projectSelector.getByRole("option", { name: emptyTitle }).count()) throw new Error("Deleted project is still selectable");
   await button("登出此頁").click();
-  return "Private browser smoke passed: project management, AI sessions, private notes, isolation and evidence replay";
+  return "Private browser smoke passed: comparison matrix, project management, AI sessions, private notes and isolation";
 }

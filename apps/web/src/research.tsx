@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ComparisonMatrix, EvidenceLocator, verdicts } from "./comparison-matrix";
 import { ResearchSessions } from "./research-sessions";
 
 export type Feature = {
@@ -53,13 +54,7 @@ type SavedRun = RunSummary & {
   items: Hit[];
   comparisons: Comparison[];
 };
-const verdicts = {
-  supported: "有明確證據",
-  partially_supported: "部分符合",
-  uncertain: "不確定",
-  not_found_in_checked_content: "未找到證據",
-};
-type Comparison = {
+export type Comparison = {
   document_id: string;
   passages_checked: number;
   items: {
@@ -69,6 +64,7 @@ type Comparison = {
     evidence: { quote: string; xpath: string; artifact_sha256: string; char_start: number; char_end: number } | null;
   }[];
 };
+type ComparedDocument = { document: PatentVersion; comparison: Comparison };
 
 const stage: Record<string, string> = { publication: "公開", grant: "公告" };
 const scope: Record<string, string> = {
@@ -114,7 +110,7 @@ export function Research() {
   const [search, setSearch] = useState<Search | null>(null);
   const [results, setResults] = useState<Results | null>(null);
   const [selected, setSelected] = useState<{ hit: PatentVersion; detail: Detail; claims: Claim[]; fromResults: boolean } | null>(null);
-  const [comparison, setComparison] = useState<Comparison | null>(null);
+  const [previewComparisons, setPreviewComparisons] = useState<ComparedDocument[]>([]);
   const [session, setSession] = useState<{ token: string; email: string } | null>(null);
   const [registering, setRegistering] = useState(false);
   const [history, setHistory] = useState<RunSummary[] | null>(null);
@@ -131,6 +127,13 @@ export function Research() {
   const [bookmarkProject, setBookmarkProject] = useState("");
   const [bookmarkMessage, setBookmarkMessage] = useState("");
   const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
+  const compared = saved ? saved.items.flatMap((document) => {
+    const comparison = saved.comparisons.find((item) => item.document_id === document.document_id);
+    return comparison ? [{ document, comparison }] : [];
+  }) : previewComparisons;
+  const comparison = selected?.fromResults
+    ? compared.find((item) => item.document.document_id === selected.hit.document_id)?.comparison
+    : undefined;
 
   function leaveAccount() {
     setSession(null);
@@ -150,7 +153,7 @@ export function Research() {
     setSearch(null);
     setResults(null);
     setSelected(null);
-    setComparison(null);
+    setPreviewComparisons([]);
     setQuery("");
     setIpc("");
     setRerank(false);
@@ -183,7 +186,6 @@ export function Research() {
     setSearch(record.request);
     setResults({ items: record.items.slice(offset, offset + limit), offset, limit, has_more: offset + limit < record.items.length });
     setSelected(null);
-    setComparison(null);
   }
 
   async function openRun(id: string, token: string) {
@@ -295,13 +297,13 @@ export function Research() {
     })));
   }
 
-  async function loadResults(next: Search) {
+  async function loadResults(next: Search, newSearch = false) {
     const data = await request<Results>("/patents/search/hybrid", next);
     setSearch(next);
     setSaved(null);
     setResults(data);
     setSelected(null);
-    setComparison(null);
+    if (newSearch) setPreviewComparisons([]);
   }
 
   async function submitSearch(save: boolean) {
@@ -319,7 +321,7 @@ export function Research() {
       await openRun(id, session.token);
       return;
     }
-    await loadResults(payload);
+    await loadResults(payload, true);
   }
 
   async function openPatent(hit: PatentVersion, fromResults = true) {
@@ -328,17 +330,22 @@ export function Research() {
     setSelected({ hit, detail, claims: claims.claims, fromResults });
     setBookmarkProject(fromResults ? saved?.project_id ?? projectFilter : projectFilter);
     setBookmarkMessage("");
-    setComparison(fromResults ? saved?.comparisons.find((item) => item.document_id === hit.document_id) ?? null : null);
   }
 
-  async function comparePatent(documentId: string, features: Feature[]) {
+  async function comparePatent(document: PatentVersion, features: Feature[]) {
+    const documentId = document.document_id;
     if (saved && session) {
       const result = await request<Comparison>(`/search-runs/${saved.id}/comparisons/${documentId}`, {}, session.token);
       setSaved({ ...saved, comparisons: [...saved.comparisons.filter((item) => item.document_id !== documentId), result] });
-      setComparison(result);
       return;
     }
-    setComparison(await request<Comparison>(`/patents/${documentId}/compare`, { features }));
+    const result = await request<Comparison>(`/patents/${documentId}/compare`, { features });
+    setPreviewComparisons((current) => {
+      if (current.some((item) => item.document.document_id === documentId)) {
+        return current.map((item) => item.document.document_id === documentId ? { document, comparison: result } : item);
+      }
+      return [...current, { document, comparison: result }];
+    });
   }
 
   function navigateResults(offset: number) {
@@ -570,6 +577,11 @@ export function Research() {
           </>}
         </section>
       </div>
+      {search && !!compared.length && <ComparisonMatrix features={search.features} columns={compared.map(({ document, comparison }) => ({
+        label: `${stage[document.document_stage]} ${document.publication_no} ${document.kind_code ?? ""} · ${scope[document.content_scope]}`,
+        title: title(document),
+        comparison,
+      }))} />}
       {selected && (
         <section className="research-panel mt-6">
           <h2>專利詳情</h2>
@@ -610,7 +622,7 @@ export function Research() {
             {bookmarkMessage && <p role="status" className="mt-2 text-sm text-teal-900">{bookmarkMessage}</p>}
           </div>}
           {search && selected.fromResults && <>
-          <button disabled={!!busy || !search.features.length || (!!saved && !!comparison)} onClick={() => void run("正在核對技術特徵…", () => comparePatent(selected.hit.document_id, search.features))}>
+          <button disabled={!!busy || !search.features.length || (!!saved && !!comparison)} onClick={() => void run("正在核對技術特徵…", () => comparePatent(selected.hit, search.features))}>
             {saved ? comparison ? "已保存技術比對" : "比對並保存證據" : "比對本次搜尋特徵"}
           </button>
           {!search.features.length && <p className="mt-2 text-sm">新增技術特徵並重新搜尋後，即可比對。</p>}
@@ -623,9 +635,7 @@ export function Research() {
               {item.evidence ? <>
                 <blockquote className="my-2 border-l-2 border-teal-700 pl-3 whitespace-pre-wrap">{item.evidence.quote}</blockquote>
                 <details><summary>原文定位</summary>
-                  <p className="break-all">{item.evidence.xpath}</p>
-                  <p>字元區間 [{item.evidence.char_start}, {item.evidence.char_end})</p>
-                  <p className="break-all">原始檔 SHA-256 · {item.evidence.artifact_sha256}</p>
+                  <EvidenceLocator evidence={item.evidence} />
                 </details>
               </> : <p>此項判定沒有可引用的原文證據。</p>}
             </article>)}
