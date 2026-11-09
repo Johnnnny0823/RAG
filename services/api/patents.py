@@ -25,6 +25,7 @@ from services.retrieval.embeddings import (
     vector_literal,
 )
 from services.retrieval.lexical import TOKENIZER_VERSION, tokenize
+from services.retrieval.query_features import TechnicalFeature, expand_query
 from services.retrieval.fusion import CANDIDATE_LIMIT, RRF_K, fuse_rankings
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ ErrorCode = Literal[
     "DATA_SOURCE_UNAVAILABLE",
     "EMBEDDING_UNAVAILABLE",
     "SEMANTIC_INDEX_UNAVAILABLE",
+    "ANALYSIS_UNAVAILABLE",
 ]
 
 
@@ -116,6 +118,10 @@ class RankedSearchRequest(BaseModel):
     offset: int = Field(default=0, ge=0, le=10000)
 
 
+class HybridSearchRequest(RankedSearchRequest):
+    features: list[TechnicalFeature] = Field(default_factory=list, max_length=5)
+
+
 class SemanticSearchResults(PatentSearchResults):
     items: list[LexicalPatentHit]
     model_name: str
@@ -139,6 +145,7 @@ class HybridSearchResults(BaseModel):
     pipeline: str
     rrf_k: int
     candidate_limit: int
+    applied_feature_ids: list[str]
     limit: int
     offset: int
     has_more: bool
@@ -242,7 +249,7 @@ IPC_FILTER = """
 
 LEXICAL_SEARCH = f"""
     WITH query AS (
-        SELECT plainto_tsquery('simple', %s) AS terms
+        SELECT to_tsquery('simple', %s) AS terms
     ), matches AS (
         SELECT t.document_id, max(
             ts_rank(t.terms, q.terms) *
@@ -456,7 +463,7 @@ def search_patents(
 
 @router.post("/search", response_model=LexicalSearchResults)
 def lexical_search(request: RankedSearchRequest):
-    terms = " ".join(tokenize(request.query))
+    terms = " & ".join(tokenize(request.query))
     if not terms:
         return api_error(422, "INVALID_REQUEST", "請提供可檢索的文字。")
     try:
@@ -512,7 +519,7 @@ def semantic_search(request: RankedSearchRequest):
 
 
 @router.post("/search/hybrid", response_model=HybridSearchResults)
-def hybrid_search(request: RankedSearchRequest):
+def hybrid_search(request: HybridSearchRequest):
     query = request.query.strip()
     if not query:
         return api_error(422, "INVALID_REQUEST", "請提供可檢索的文字。")
@@ -520,11 +527,16 @@ def hybrid_search(request: RankedSearchRequest):
         ipc = normalize_ipc(request.ipc)
     except ValueError as error:
         return api_error(422, "INVALID_REQUEST", str(error))
+    feature_ids = [feature.feature_id for feature in request.features]
+    if len(set(feature_ids)) != len(feature_ids):
+        return api_error(422, "INVALID_REQUEST", "技術特徵 ID 必須唯一。")
+    terms, semantic_query = expand_query(query, request.features)
+    if len(semantic_query) > 1600:
+        return api_error(422, "INVALID_REQUEST", "技術特徵展開後超過 1,600 字元。")
     try:
         model = LocalEmbeddingModel.from_env()
         identity = indexed_model_id(model)
-        embedding = vector_literal(model.embed_query(query))
-        terms = " ".join(tokenize(query))
+        embedding = vector_literal(model.embed_query(semantic_query))
         with engine.connect().execution_options(
             isolation_level="REPEATABLE READ"
         ) as conn:
@@ -551,6 +563,7 @@ def hybrid_search(request: RankedSearchRequest):
         pipeline=PIPELINE,
         rrf_k=RRF_K,
         candidate_limit=CANDIDATE_LIMIT,
+        applied_feature_ids=feature_ids,
         limit=request.limit,
         offset=request.offset,
         has_more=len(ranked) > end,

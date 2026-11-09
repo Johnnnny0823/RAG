@@ -1,5 +1,28 @@
 # Agent Handoff
 
+## M3 技術特徵與查詢展開
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei，UTC+8）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `05647fb`。
+- Current milestone and status: M3 IN_PROGRESS。M2 DONE。
+- Goal of this session: 以本機模型拆解技術特徵，驗證經使用者編輯的中英文檢索詞實際改變混合檢索。
+- Files changed (with purpose): `services/api/queries.py` 提供拆解 API；`query_features.py` 驗證模型草稿與展開；`ollama.py` 共用本機模型傳輸；混合 API 接受已確認的特徵；Compose 範例加入可選分析模型設定。
+- Database migrations added/applied: 無新遷移。沿用 `0004_semantic` 與隔離語料。
+- API/Schema changes: 新增 `POST /api/v1/queries/analyze`，混合端點新增可選 `features` 及回傳 `applied_feature_ids`。見 [API.md](API.md)。
+- Commands actually run and results:
+  - `python scripts/smoke_query_features.py` 通過，Qwen2.5 1.5B 提取一項有效雙語特徵。編輯後，原本詞彙分支未命中的公開案 `202637274` 同時出現在詞彙與向量分支。
+  - Ruff 格式、lint、`pytest -q --basetemp=<new-directory>` 38 項通過，1 則既有 Starlette 棄用警告。混合、語意、精確、詞彙與 M0 冒煙測試已通過。
+- Tests NOT run and reason: 遠端 CI 及廣泛模型品質評估未執行。重排、持久化搜尋與引文比對仍待實作。
+- Data sources checked (exact URL/date) and license/access notes: 重用 [M1 官方語料](DATA_SOURCES.md)，未新增擷取。核對 [Ollama 結構化輸出](https://docs.ollama.com/capabilities/structured-outputs)。
+- Known bugs / risks / blockers: Ollama 0.13.5 的 schema-to-grammar 轉換在 7B 與 1.5B 測試中曾引發程序重啟。改用 JSON 模式、格式範例及 Pydantic 驗證。1.5B 模型可能省略次要特徵或加入多餘欄位，故結果保留草稿性質，多餘欄位不回傳。只用公開測試查詢驗收。
+- Decisions made (ADR links): [DECISIONS.md](DECISIONS.md) 記錄 JSON 模式、展開及 IPC 候選的處理。
+- Uncommitted changes / file ownership warnings: 驗收 API 綁定 `127.0.0.1:18007`。預設開發環境未配置分析模型。
+- Next 1–3 concrete actions:
+  1. 實作按文件版本的證據選取、逐字引用驗證與技術特徵判定。
+  2. 加入重排與搜尋執行紀錄，保存模型、候選排名及已驗證證據。
+- Exact reproduction steps: 見 [SETUP.md](SETUP.md) 的「M3 本機技術特徵驗收」。
+
 ## M3 混合檢索檢查點
 
 - Date/time (timezone): 2026-11-09 02:23（Asia/Taipei，UTC+8）。

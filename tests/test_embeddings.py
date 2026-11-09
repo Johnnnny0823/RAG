@@ -29,11 +29,13 @@ def test_embed_checks_model_digest_and_rejects_invalid_vectors(monkeypatch):
         assert payload["input"] == ["public corpus text"]
         return {"model": model.name, "embeddings": [[0.0] * DIMENSIONS]}
 
-    monkeypatch.setattr(LocalEmbeddingModel, "_request", request)
+    monkeypatch.setattr(LocalEmbeddingModel, "request_json", request)
     with pytest.raises(EmbeddingError, match="Invalid embedding"):
         model.embed(["public corpus text"])
     assert calls == ["/api/tags", "/api/embed", "/api/tags"]
-    monkeypatch.setattr(LocalEmbeddingModel, "_request", lambda *args: {"models": []})
+    monkeypatch.setattr(
+        LocalEmbeddingModel, "request_json", lambda *args: {"models": []}
+    )
     with pytest.raises(EmbeddingError, match="digest"):
         model.embed(["public corpus text"])
 

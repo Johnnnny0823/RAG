@@ -39,3 +39,8 @@ TIPO 資料格式與版本鍵、斷詞策略、嵌入模型與部署環境待後
 
 - 採 Reciprocal Rank Fusion，`k=60`。以版本 UUID 彙總各分支的 `1/(k+rank)`，同一版本的單一分支只計第一次。保留原分數供查核。 [RRF 原論文](https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf)
 - 先融合再去重，避免同一公開文件的書目版與全文版互借分數。以 RRF、內容涵蓋範圍、UUID 排序後，同一文件階段、文件號與 kind code 保留第一筆。分支各取最多 100 筆，採同一 PostgreSQL 讀取快照。
+
+## M3 技術特徵與查詢展開
+
+- 本機分析使用 Ollama JSON 模式，提示提供格式範例並以 Pydantic 驗證，伺服器配置特徵 ID。Ollama 0.13.5 實測在將此 schema 轉換為 grammar 時崩潰，因此改用 JSON 模式。沿用本機連線、停用代理及重新導向、請求前後 digest 核對。模型輸出為待確認草稿。 [Ollama 結構化輸出](https://docs.ollama.com/capabilities/structured-outputs)
+- 展開保留原始查詢，使用者編輯後的特徵描述與中英文詞才會加入檢索。詞彙分支以受控的分詞結果組成布林式，向量分支將詞及描述附到原始查詢。IPC 候選不會自動套用。

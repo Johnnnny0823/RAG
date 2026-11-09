@@ -124,3 +124,18 @@ docker compose -p $project build api
 docker compose -p $project run --rm --no-deps -p 127.0.0.1:18006:8000 api
 python scripts/smoke_hybrid.py
 ```
+
+## M3 本機技術特徵驗收
+
+保留嵌入模型設定，另外配置本機 Ollama 分析模型。以 `ollama pull qwen2.5:1.5b` 取得模型，並從本機 `/api/tags` 核對 digest。分析請求使用 CPU。共用模型服務僅用公開測試查詢驗收。
+
+```powershell
+$env:ANALYSIS_URL = 'http://host.docker.internal:11434'
+$env:ANALYSIS_MODEL = 'qwen2.5:1.5b'
+$env:ANALYSIS_DIGEST = '65ec06548149b04c096a120e4a6da9d4017ea809c91734ea5631e89f96ddc57b'
+docker compose -p $project build api
+docker compose -p $project run --rm --no-deps -p 127.0.0.1:18007:8000 api
+python scripts/smoke_query_features.py
+```
+
+API 啟動後在另一終端跑冒煙測試。測試以同一個原始查詢比較編輯前後的分支排名。
