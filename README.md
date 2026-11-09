@@ -54,6 +54,7 @@ npm run build --prefix apps/web
 ```powershell
 python scripts/evaluate_search.py --api http://127.0.0.1:18017 --repeats 2
 python scripts/smoke_comparison.py --api http://127.0.0.1:18017
+python scripts/evaluate_citations.py --api http://127.0.0.1:18017
 ```
 
 種子集與分數解讀見 [檢索評估紀錄](docs/EVALUATION.md)。

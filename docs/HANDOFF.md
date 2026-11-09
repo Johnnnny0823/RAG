@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## M5 跨領域引文核對
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `06167bc`。
+- Current milestone and status: M5 IN_PROGRESS。
+- Goal of this session: 對真實文件版本核對技術比對引文及無證據情境。
+- Files changed (with purpose): `scripts/evaluate_citations.py` 新增可重跑引文評估，README 及 [EVALUATION.md](EVALUATION.md) 記錄操作與解讀。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。
+- Commands actually run and results: 使用 `18022` 真實 TIPO API 驗證六個版本、12 個判定、5 段逐字請求項引文及 7 個無引文判定。Ruff 與 pytest 46 項通過，既有警告 1 則。
+- Tests NOT run and reason: 人工語義判定、引文召回及更大樣本待評估。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 TIPO 語料](DATA_SOURCES.md)。
+- Known bugs / risks / blockers: 精確率的分母是此批實際輸出的引文，無法由此推論整體技術比對品質。
+- Decisions made (ADR links): [引文核對方式](EVALUATION.md#2026-11-09-引文核對)。
+- Uncommitted changes / file ownership warnings: 無測試資料異動。
+- Next 1–3 concrete actions: 產生可供人工複核的合併候選池，核對 M5 剩餘驗收。
+- Exact reproduction steps: 見 [README 檢索評估](../README.md#檢索評估)。
+
 ## M5 帳號自助刪除
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。
