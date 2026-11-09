@@ -1,5 +1,25 @@
 # Agent Handoff
 
+## M4 研究專案與搜尋歸檔
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `a229b07`。
+- Current milestone and status: M4 IN_PROGRESS。
+- Goal of this session: 建立私人研究專案，整理並篩選已保存搜尋。
+- Files changed (with purpose): `0006_projects.py` 定義資料表與外鍵，`projects.py`、`search_runs.py` 提供 API，`main.py` 掛載路由，`patents.py` 補錯誤代碼，`research.tsx` 與 `style.css` 接上介面，`smoke_private_browser.js` 擴充驗收。
+- Database migrations added/applied: `0006_projects` 已套用到 `patentscope-m1-proof`，獨立空資料卷 `patentscope-m4-clean` 也成功遷移並查得 head。
+- API/Schema changes: 專案建立與列表、搜尋歸檔 PATCH、專案篩選，詳見 [API.md](API.md)。
+- Commands actually run and results: Ruff 格式與 lint 通過。pytest 44 通過，1 則既有 Starlette 警告。本機 `npm run build` 通過。以 Playwright CLI 在 `18111` 驗證真實 TIPO 搜尋、建立專案、歸檔、依專案重讀引文、解除歸檔，並核對跨帳號查詢及移動回傳 404。
+- 另跑 `python scripts/smoke_search_runs.py --api http://127.0.0.1:18011` 與 Docker 內 `npm run build`，兩者均通過。
+- Tests NOT run and reason: 未驗證大量專案或並發操作，亦未做遠端 CI。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 TIPO 資料](DATA_SOURCES.md)，無新增擷取。
+- Known bugs / risks / blockers: 目前介面載入最近 100 個專案，尚未提供專案改名、刪除、收藏、逐篇筆記或 AI Session。
+- Decisions made (ADR links): [DECISIONS.md](DECISIONS.md) 記錄同帳號複合外鍵與可空關聯。
+- Uncommitted changes / file ownership warnings: 驗收 Web 在 `18111`，API 在 `18011`，只用隔離資料庫中的公開語料。
+- Next 1–3 concrete actions: 加入專案內的專利收藏與筆記，接上 AI Session，再驗收完整工作台。
+- Exact reproduction steps: 見 [M4 瀏覽器驗收](SETUP.md#m4-瀏覽器驗收)。本次使用 API `18011`、Web `18111`。
+
 ## M4 瀏覽器登入與私人搜尋歷史
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

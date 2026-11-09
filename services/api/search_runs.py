@@ -13,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from services.api.db import engine
 from services.api.comparisons import CompareRequest, ComparisonResponse, compare
 from services.api.identity import Account, require_account
+from services.api.projects import project_missing
 from services.api.patents import (
     HybridPatentHit,
     HybridSearchRequest,
@@ -35,6 +36,11 @@ Owner = Annotated[Account, Depends(require_account)]
 class SavedRun(BaseModel):
     id: UUID
     created_at: datetime
+    project_id: UUID | None = None
+
+
+class ProjectAssignment(BaseModel):
+    project_id: UUID | None
 
 
 class RunDetails(SavedRun):
@@ -93,14 +99,25 @@ def list_searches(
     response: Response,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0, le=10000)] = 0,
+    project_id: UUID | None = None,
 ):
     try:
         with engine.connect() as conn:
+            if (
+                project_id is not None
+                and conn.exec_driver_sql(
+                    "SELECT id FROM projects WHERE owner_user_id=%s AND id=%s",
+                    (account.id, project_id),
+                ).scalar_one_or_none()
+                is None
+            ):
+                return project_missing()
             rows = (
                 conn.exec_driver_sql(
-                    """SELECT id, created_at FROM search_runs WHERE user_id=%s
+                    """SELECT id, created_at, project_id FROM search_runs WHERE user_id=%s
+                   AND (%s::uuid IS NULL OR project_id=%s)
                    ORDER BY created_at DESC, id LIMIT %s OFFSET %s""",
-                    (account.id, limit, offset),
+                    (account.id, project_id, project_id, limit, offset),
                 )
                 .mappings()
                 .all()
@@ -111,13 +128,46 @@ def list_searches(
     return [SavedRun.model_validate(row) for row in rows]
 
 
+@router.patch("/{run_id}/project", response_model=SavedRun)
+def assign_project(
+    run_id: UUID, payload: ProjectAssignment, account: Owner, response: Response
+):
+    try:
+        with engine.begin() as conn:
+            if (
+                payload.project_id is not None
+                and conn.exec_driver_sql(
+                    "SELECT id FROM projects WHERE owner_user_id=%s AND id=%s",
+                    (account.id, payload.project_id),
+                ).scalar_one_or_none()
+                is None
+            ):
+                return project_missing()
+            run = (
+                conn.exec_driver_sql(
+                    """UPDATE search_runs SET project_id=%s WHERE id=%s AND user_id=%s
+                   RETURNING id, created_at, project_id""",
+                    (payload.project_id, run_id, account.id),
+                )
+                .mappings()
+                .one_or_none()
+            )
+    except SQLAlchemyError:
+        return unavailable()
+    if run is None:
+        return api_error(404, "RUN_NOT_FOUND", "找不到此搜尋紀錄。")
+    response.headers["Cache-Control"] = "no-store"
+    return SavedRun.model_validate(run)
+
+
 @router.get("/{run_id}", response_model=RunDetails)
 def load_search(run_id: UUID, account: Owner, response: Response):
     try:
         with engine.connect() as conn:
             run = (
                 conn.exec_driver_sql(
-                    "SELECT id, created_at, request, settings FROM search_runs WHERE id=%s AND user_id=%s",
+                    """SELECT id, created_at, project_id, request, settings
+                       FROM search_runs WHERE id=%s AND user_id=%s""",
                     (run_id, account.id),
                 )
                 .mappings()

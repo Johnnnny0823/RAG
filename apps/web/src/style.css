@@ -13,5 +13,5 @@
   .research-panel a { @apply text-teal-800 underline; }
   .research-panel summary { @apply cursor-pointer font-medium; }
   .research-field { @apply mb-3 block text-sm font-medium; }
-  .research-field :is(input, textarea) { @apply mt-1 block w-full rounded-md border border-slate-400 bg-white px-3 py-2 text-base font-normal focus-visible:outline-2 focus-visible:outline-teal-800; }
+  .research-field :is(input, textarea, select) { @apply mt-1 block w-full rounded-md border border-slate-400 bg-white px-3 py-2 text-base font-normal focus-visible:outline-2 focus-visible:outline-teal-800; }
 }

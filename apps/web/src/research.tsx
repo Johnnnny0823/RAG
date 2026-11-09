@@ -42,7 +42,8 @@ type Detail = {
 type Claim = { claim_number: number; text: string };
 type Search = { query: string; ipc: string | null; features: Feature[]; rerank: boolean; offset: number };
 type Results = { items: Hit[]; has_more: boolean; limit: number; offset: number };
-type RunSummary = { id: string; created_at: string };
+type RunSummary = { id: string; created_at: string; project_id: string | null };
+type Project = { id: string; name: string; description: string };
 type SavedRun = RunSummary & {
   request: Search & { limit: number };
   items: Hit[];
@@ -77,7 +78,7 @@ const title = (hit: Hit) => hit.title_zh || hit.title_en || hit.publication_no;
 
 class SessionExpired extends Error {}
 
-async function request<T>(path: string, payload?: object, token?: string): Promise<T> {
+async function request<T>(path: string, payload?: object, token?: string, method = "POST"): Promise<T> {
   const headers = new Headers();
   if (payload) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", "Bearer " + token);
@@ -86,7 +87,7 @@ async function request<T>(path: string, payload?: object, token?: string): Promi
     headers,
     signal: AbortSignal.timeout(180_000),
     ...(payload && {
-      method: "POST",
+      method,
       body: JSON.stringify(payload),
     }),
   });
@@ -114,12 +115,18 @@ export function Research() {
   const [history, setHistory] = useState<RunSummary[] | null>(null);
   const [historyOffset, setHistoryOffset] = useState(0);
   const [saved, setSaved] = useState<SavedRun | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectFilter, setProjectFilter] = useState("");
+  const [assignment, setAssignment] = useState("");
 
   function leaveAccount() {
     setSession(null);
     setHistory(null);
     setHistoryOffset(0);
     setSaved(null);
+    setProjects([]);
+    setProjectFilter("");
+    setAssignment("");
     setSearch(null);
     setResults(null);
     setSelected(null);
@@ -138,12 +145,15 @@ export function Research() {
     }
     const { access_token } = await request<{ access_token: string }>("/auth/login", credentials);
     const account = await request<{ email: string }>("/me", undefined, access_token);
+    const accountProjects = await request<Project[]>("/projects?limit=100", undefined, access_token);
     leaveAccount();
     setSession({ token: access_token, email: account.email });
+    setProjects(accountProjects);
   }
 
   async function loadHistory(token: string, offset = 0) {
-    const rows = await request<RunSummary[]>(`/search-runs?limit=21&offset=${offset}`, undefined, token);
+    const filter = projectFilter ? "&project_id=" + encodeURIComponent(projectFilter) : "";
+    const rows = await request<RunSummary[]>(`/search-runs?limit=21&offset=${offset}${filter}`, undefined, token);
     setHistory(rows);
     setHistoryOffset(offset);
   }
@@ -159,7 +169,22 @@ export function Research() {
   async function openRun(id: string, token: string) {
     const record = await request<SavedRun>("/search-runs/" + id, undefined, token);
     setSaved(record);
+    setAssignment(record.project_id ?? "");
     showSavedPage(record);
+  }
+
+  async function createProject(payload: { name: string; description: string }, token: string) {
+    const project = await request<Project>("/projects", payload, token);
+    setProjects([project, ...projects].slice(0, 100));
+  }
+
+  async function assignProject(record: SavedRun, token: string) {
+    const updated = await request<RunSummary>(`/search-runs/${record.id}/project`, {
+      project_id: assignment || null,
+    }, token, "PATCH");
+    setSaved({ ...record, project_id: updated.project_id });
+    setHistory(null);
+    setHistoryOffset(0);
   }
 
   async function run(label: string, operation: () => Promise<void>) {
@@ -256,11 +281,40 @@ export function Research() {
         <h2>私人搜尋歷史</h2>
         {session ? <>
           <p className="my-2 break-all text-sm">目前帳號 · {session.email}</p>
+          <details className="my-3">
+            <summary>建立研究專案</summary>
+            <form className="my-3" onSubmit={(event) => {
+              event.preventDefault();
+              const form = event.currentTarget;
+              const data = new FormData(form);
+              void run("正在建立專案…", async () => {
+                await createProject({ name: String(data.get("name")), description: String(data.get("description")) }, session.token);
+                form.reset();
+              });
+            }}>
+              <fieldset disabled={!!busy}>
+                <label className="research-field">專案名稱<input name="name" required maxLength={120} /></label>
+                <label className="research-field">專案說明<textarea name="description" rows={2} maxLength={2000} /></label>
+                <button type="submit">新增研究專案</button>
+              </fieldset>
+            </form>
+          </details>
+          <label className="research-field">依研究專案篩選
+            <select value={projectFilter} disabled={!!busy} onChange={(event) => {
+              setProjectFilter(event.target.value);
+              setHistory(null);
+              setHistoryOffset(0);
+            }}>
+              <option value="">所有搜尋紀錄</option>
+              {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+            </select>
+          </label>
+          {projectFilter && <p className="my-2 whitespace-pre-wrap break-words text-sm">{projects.find((project) => project.id === projectFilter)?.description}</p>}
           <div className="flex flex-wrap gap-2">
             <button disabled={!!busy} onClick={() => void run("正在讀取歷史…", () => loadHistory(session.token))}>載入搜尋歷史</button>
             <button disabled={!!busy} onClick={leaveAccount}>登出此頁</button>
           </div>
-          {history?.length === 0 && <p className="mt-3">此帳號還沒有保存的搜尋。</p>}
+          {history?.length === 0 && <p className="mt-3">{projectFilter ? "此專案還沒有搜尋紀錄。" : "此帳號還沒有保存的搜尋。"}</p>}
           {!!history?.length && <>
             <ul className="my-3 space-y-2">
               {history.slice(0, 20).map((item) => <li key={item.id}>
@@ -346,6 +400,18 @@ export function Research() {
           {!results && <p className="mt-3 text-slate-700">完成搜尋後，這裡會顯示候選文件與排序資訊。</p>}
           {search && results && <>
             <p className="my-3 break-words text-slate-700">{saved ? "已保存的查詢" : "本次查詢"} · {search.query}{search.ipc && ` · IPC ${search.ipc}`}</p>
+            {saved && session && <div className="mb-3">
+              <p className="mb-2 break-words text-sm">目前歸檔 · {projects.find((project) => project.id === saved.project_id)?.name ?? saved.project_id ?? "未歸檔"}</p>
+              <label className="research-field">歸檔至研究專案
+                <select disabled={!!busy} value={assignment} onChange={(event) => setAssignment(event.target.value)}>
+                  <option value="">未歸檔</option>
+                  {saved.project_id && !projects.some((project) => project.id === saved.project_id) &&
+                    <option value={saved.project_id}>{saved.project_id}</option>}
+                  {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+                </select>
+              </label>
+              <button disabled={!!busy || assignment === (saved.project_id ?? "")} onClick={() => void run("正在更新歸檔…", () => assignProject(saved, session.token))}>更新歸檔</button>
+            </div>}
             {saved && <details className="mb-3">
               <summary>已保存的檢索策略</summary>
               <p className="my-2 text-sm">本機重排序 · {search.rerank ? "啟用" : "停用"}</p>

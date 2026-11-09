@@ -69,3 +69,11 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 | POST | `/api/v1/search-runs/{run_id}/comparisons/{document_id}` | 使用紀錄中的已確認特徵比對指定候選版本。重送回傳第一次保存的結果。 |
 
 `/me` 與紀錄端點使用 `Authorization: Bearer <token>`。無效憑證為 401，跨帳號或未知紀錄及候選為 404，未保存特徵的比對為 422。保存端點存下有上限的完整候選集合，詳情可讀取原始分支、融合與重排順位。範圍涵蓋該次返回的結果，尚無完整語料快照及重跑機制。比對與檢索預覽仍可獨立使用。
+## 研究專案與歸檔
+
+- `POST /api/v1/projects` 接受 `name`（1–120 字）及選填 `description`（最多 2,000 字），建立私人研究專案並回傳 201。
+- `GET /api/v1/projects` 分頁列出目前帳號的專案，接受 `limit`、`offset`。
+- `PATCH /api/v1/search-runs/{run_id}/project` 接受 `{"project_id":"<UUID>"}`，將已保存搜尋歸檔至自己的專案。傳入 `null` 解除歸檔，候選與比對仍留在歷史。
+- `GET /api/v1/search-runs?project_id=<UUID>` 篩選指定專案內的搜尋。搜尋紀錄列表與詳情新增可空的 `project_id`。舊紀錄預設未歸檔。
+
+各端點需要 Bearer token。跨帳號或未知的紀錄及專案回傳 404。

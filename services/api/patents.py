@@ -46,6 +46,7 @@ ErrorCode = Literal[
     "AUTH_REQUIRED",
     "ACCOUNT_EXISTS",
     "RUN_NOT_FOUND",
+    "PROJECT_NOT_FOUND",
 ]
 
 

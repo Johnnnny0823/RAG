@@ -12,6 +12,7 @@ from services.api.comparisons import router as comparisons_router
 from services.api.accounts import router as accounts_router
 from services.api.search_runs import router as search_runs_router
 from services.api.patents import router as patents_router
+from services.api.projects import router as projects_router
 from services.api.queries import router as queries_router
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ app.include_router(queries_router)
 app.include_router(comparisons_router)
 app.include_router(accounts_router)
 app.include_router(search_runs_router)
+app.include_router(projects_router)
 
 
 class HealthResponse(BaseModel):
