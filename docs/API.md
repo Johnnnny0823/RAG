@@ -109,6 +109,8 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 需要 Bearer token。未知或跨帳號的專案與 Session 回傳 404。AI 草稿含結構化特徵及模型識別。每次拆解使用當次輸入，搜尋結果與證據由原有搜尋紀錄端點保存。
 ## 私人研究報告
 
+`DELETE /api/v1/search-runs/{run_id}` 讓擁有者永久刪除已保存的搜尋、候選順位及比對。成功回傳 204。不存在或不屬於當前帳號的紀錄回傳 404。刪除完成後，新的紀錄讀取、比對及 PDF 匯出請求均回傳 404。
+
 `GET /api/v1/search-runs/{run_id}/report.pdf` 用 Bearer token 驗證搜尋紀錄所有權，成功回傳 `application/pdf` 及附件檔名。未登入為 401，其他帳號的紀錄或不存在的紀錄為 404。回應標示 `private, no-store`。
 
 報告同步產生，涵蓋當次保存的構想、篩選、檢索設定、候選順位及已保存比對。官方來源連結於匯出時讀取。伺服器不留存 PDF 檔案，瀏覽器會下載一份本機副本。

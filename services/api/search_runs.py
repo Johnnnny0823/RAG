@@ -163,7 +163,9 @@ def assign_project(
 @router.get("/{run_id}", response_model=RunDetails)
 def load_search(run_id: UUID, account: Owner, response: Response):
     try:
-        with engine.connect() as conn:
+        with engine.connect().execution_options(
+            isolation_level="REPEATABLE READ"
+        ) as conn:
             run = (
                 conn.exec_driver_sql(
                     """SELECT id, created_at, project_id, request, settings
@@ -184,11 +186,6 @@ def load_search(run_id: UUID, account: Owner, response: Response):
                 .scalars()
                 .all()
             )
-    except SQLAlchemyError:
-        return unavailable()
-    response.headers["Cache-Control"] = "no-store"
-    try:
-        with engine.connect() as conn:
             comparisons = (
                 conn.exec_driver_sql(
                     """SELECT c.result FROM search_run_comparisons c JOIN search_runs r ON r.id=c.run_id
@@ -200,9 +197,25 @@ def load_search(run_id: UUID, account: Owner, response: Response):
             )
     except SQLAlchemyError:
         return unavailable()
+    response.headers["Cache-Control"] = "no-store"
     return RunDetails.model_validate(
         {**run, "items": results, "comparisons": comparisons}
     )
+
+
+@router.delete("/{run_id}", status_code=204)
+def delete_search(run_id: UUID, account: Owner):
+    try:
+        with engine.begin() as conn:
+            deleted = conn.exec_driver_sql(
+                "DELETE FROM search_runs WHERE id=%s AND user_id=%s RETURNING id",
+                (run_id, account.id),
+            ).scalar_one_or_none()
+    except SQLAlchemyError:
+        return unavailable()
+    if deleted is None:
+        return api_error(404, "RUN_NOT_FOUND", "找不到此搜尋紀錄。")
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
 
 
 @router.post("/{run_id}/comparisons/{document_id}", response_model=ComparisonResponse)
@@ -232,6 +245,12 @@ def save_comparison(
         if isinstance(result, JSONResponse):
             return result
         with engine.begin() as conn:
+            current_run = conn.exec_driver_sql(
+                "SELECT id FROM search_runs WHERE id=%s AND user_id=%s FOR KEY SHARE",
+                (run_id, account.id),
+            ).scalar_one_or_none()
+            if current_run is None:
+                return api_error(404, "RUN_NOT_FOUND", "找不到此搜尋紀錄。")
             conn.exec_driver_sql(
                 """INSERT INTO search_run_comparisons (run_id, document_id, result)
                    SELECT id, %s, %s FROM search_runs WHERE id=%s AND user_id=%s

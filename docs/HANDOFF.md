@@ -1,5 +1,25 @@
 # Agent Handoff
 
+## M5 已保存搜尋自助刪除
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `7936e83`。
+- Current milestone and status: M5 IN_PROGRESS。
+- Goal of this session: 讓擁有者在瀏覽器確認刪除已保存的搜尋、候選與比對。
+- Files changed (with purpose): `search_runs.py` 新增所有權限定刪除及快照讀取，`research.tsx` 串接二次確認及狀態清除，API 與瀏覽器腳本擴充回歸。
+- Database migrations added/applied: 無新增，沿用既有搜尋候選及比對外鍵的級聯刪除。
+- API/Schema changes: 新增 `DELETE /api/v1/search-runs/{run_id}`。
+- Commands actually run and results: Ruff lint、pytest 46 項（1 則既有警告）、TypeScript 與 Vite 建置通過。
+- Playwright 與 API 回歸通過，核對取消刪除、擁有者刪除、跨帳號拒絕、歷史清空、舊報告及比對回傳 404，且 AI Session 仍可讀取。直接查 PostgreSQL 確認該筆搜尋、候選及比對皆為 0 筆。
+- Tests NOT run and reason: 未測外部備份清理或競爭壓力。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 TIPO 資料](DATA_SOURCES.md)，驗收只刪除自建測試搜尋。
+- Known bugs / risks / blockers: 已下載 PDF 和備份由各自位置管理。AI Session 與帳號刪除待完成。
+- Decisions made (ADR links): [M5 已保存搜尋刪除](DECISIONS.md#m5-已保存搜尋刪除)。
+- Uncommitted changes / file ownership warnings: 驗收 Web 在 `18120`，API 在 `18020`。
+- Next 1–3 concrete actions: 完成 AI Session 與帳號資料刪除，再擴大人工複核及引用驗收。
+- Exact reproduction steps: 使用隔離語料在新 API 跑 `scripts/smoke_search_runs.py` 與 [瀏覽器驗收](SETUP.md#m4-瀏覽器驗收)。
+
 ## M5 登出憑證撤銷
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

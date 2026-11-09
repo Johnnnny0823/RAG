@@ -125,6 +125,8 @@ export function Research() {
   const [history, setHistory] = useState<RunSummary[] | null>(null);
   const [historyOffset, setHistoryOffset] = useState(0);
   const [saved, setSaved] = useState<SavedRun | null>(null);
+  const [confirmSearchRemoval, setConfirmSearchRemoval] = useState(false);
+  const [searchRemoved, setSearchRemoved] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectFilter, setProjectFilter] = useState("");
   const [confirmProjectRemoval, setConfirmProjectRemoval] = useState(false);
@@ -149,6 +151,8 @@ export function Research() {
     setHistory(null);
     setHistoryOffset(0);
     setSaved(null);
+    setConfirmSearchRemoval(false);
+    setSearchRemoved(false);
     setProjects([]);
     setProjectFilter("");
     setConfirmProjectRemoval(false);
@@ -201,6 +205,8 @@ export function Research() {
   async function openRun(id: string, token: string) {
     const record = await request<SavedRun>("/search-runs/" + id, undefined, token);
     setSaved(record);
+    setConfirmSearchRemoval(false);
+    setSearchRemoved(false);
     setAssignment(record.project_id ?? "");
     showSavedPage(record);
   }
@@ -222,6 +228,20 @@ export function Research() {
     anchor.download = `patentscope-${runId}.pdf`;
     anchor.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function deleteSearch(runId: string, token: string) {
+    await request<void>(`/search-runs/${runId}`, undefined, token, "DELETE");
+    setSaved(null);
+    setSearch(null);
+    setResults(null);
+    setSelected(null);
+    setPreviewComparisons([]);
+    setAssignment("");
+    setHistory(null);
+    setHistoryOffset(0);
+    setConfirmSearchRemoval(false);
+    setSearchRemoved(true);
   }
 
   async function createProject(payload: { name: string; description: string }, token: string) {
@@ -330,6 +350,8 @@ export function Research() {
     const data = await request<Results>("/patents/search/hybrid", next);
     setSearch(next);
     setSaved(null);
+    setConfirmSearchRemoval(false);
+    setSearchRemoved(false);
     setResults(data);
     setSelected(null);
     if (newSearch) setPreviewComparisons([]);
@@ -591,6 +613,7 @@ export function Research() {
         </section>
         <section className="research-panel" aria-busy={busy === "正在檢索專利…"}>
           <h2>檢索結果</h2>
+          {searchRemoved && <p role="status" className="my-2 text-sm text-teal-900">已刪除保存的搜尋紀錄與比對。</p>}
           {!results && <p className="mt-3 text-slate-700">完成搜尋後，這裡會顯示候選文件與排序資訊。</p>}
           {search && results && <>
             <p className="my-3 break-words text-slate-700">{saved ? "已保存的查詢" : "本次查詢"} · {search.query}{search.ipc && ` · IPC ${search.ipc}`}</p>
@@ -614,6 +637,13 @@ export function Research() {
               </label>
               <button disabled={!!busy || assignment === (saved.project_id ?? "")} onClick={() => void run("正在更新歸檔…", () => assignProject(saved, session.token))}>更新歸檔</button>
               <button className="ml-2" disabled={!!busy} onClick={() => void run("正在匯出私人 PDF…", () => downloadReport(saved.id, session.token))}>匯出 PDF 報告</button>
+              {confirmSearchRemoval ? <div className="mt-3">
+                <p className="mb-2 text-sm">這會永久刪除保存的查詢、候選與比對。收藏、AI Session 及已下載的 PDF 由各自位置管理。</p>
+                <div className="flex flex-wrap gap-2">
+                  <button disabled={!!busy} onClick={() => void run("正在刪除搜尋紀錄…", () => deleteSearch(saved.id, session.token))}>確認刪除搜尋紀錄</button>
+                  <button disabled={!!busy} onClick={() => setConfirmSearchRemoval(false)}>取消刪除搜尋紀錄</button>
+                </div>
+              </div> : <button className="ml-2" disabled={!!busy} onClick={() => setConfirmSearchRemoval(true)}>刪除搜尋紀錄</button>}
             </div>}
             {saved && <details className="mb-3">
               <summary>已保存的檢索策略</summary>

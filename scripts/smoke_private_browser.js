@@ -222,9 +222,22 @@ async (page) => {
   await button("確認刪除空白專案").click();
   await visible("空白專案已刪除。");
   if (await projectSelector.getByRole("option", { name: emptyTitle }).count()) throw new Error("Deleted project is still selectable");
+  await button("刪除搜尋紀錄").click();
+  await button("取消刪除搜尋紀錄").click();
+  await visible("已保存的查詢 · 動態導通電阻");
+  await button("刪除搜尋紀錄").click();
+  await button("確認刪除搜尋紀錄").click();
+  await visible("已刪除保存的搜尋紀錄與比對。");
+  if (await matrix.count()) throw new Error("Deleted comparison was still visible");
+  await button("載入搜尋歷史").click();
+  await visible("此帳號還沒有保存的搜尋。");
+  const deletedReport = await page.request.get(new URL(`/api/v1/search-runs/${id}/report.pdf`, page.url()).href, { headers: auth });
+  if (deletedReport.status() !== 404 || !(await page.request.get(messageUrl, { headers: auth })).ok()) {
+    throw new Error("Search deletion did not preserve the intended data boundary");
+  }
   await button("登出此頁").click();
   await button("登入").waitFor();
   const revokedReport = await page.request.get(new URL(`/api/v1/search-runs/${id}/report.pdf`, page.url()).href, { headers: auth });
   if (revokedReport.status() !== 401) throw new Error("Logged-out token could still download the report");
-  return "Private browser smoke passed: PDF export, metadata filters, comparison matrix and isolation";
+  return "Private browser smoke passed: PDF export, search deletion and isolation";
 }

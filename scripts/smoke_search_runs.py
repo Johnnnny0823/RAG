@@ -10,7 +10,7 @@ from uuid import uuid4
 
 
 def smoke(base_url, pdf_output=None):
-    def call(path, *, payload=None, token=None, status=200):
+    def call(path, *, payload=None, token=None, status=200, method=None):
         headers = {"Content-Type": "application/json"}
         if token:
             headers["Authorization"] = "Bearer " + token
@@ -18,6 +18,7 @@ def smoke(base_url, pdf_output=None):
             base_url + "/api/v1" + path,
             headers=headers,
             data=json.dumps(payload).encode() if payload is not None else None,
+            method=method,
         )
         try:
             with urlopen(request, timeout=300) as response:
@@ -82,6 +83,7 @@ def smoke(base_url, pdf_output=None):
     after = call(path, token=first)
     assert after["items"] == details["items"]
     assert after["comparisons"] == [comparison]
+    call(path, token=second, status=404, method="DELETE")
     if pdf_output is not None:
         call(path + "/report.pdf", token=second, status=404)
     call("/auth/logout", payload={}, token=second, status=204)
@@ -105,8 +107,14 @@ def smoke(base_url, pdf_output=None):
         print(
             "Private report smoke passed: owner download and unauthenticated/cross-account rejection"
         )
+    call(path, token=first, status=204, method="DELETE")
+    assert not call("/search-runs", token=first)
+    call(path, token=first, status=404)
+    call(compare_path, payload={}, token=first, status=404)
+    call(path + "/report.pdf", token=first, status=404)
+    call(path, token=first, status=404, method="DELETE")
     print(
-        "Saved-search smoke passed: login, ownership, complete rankings and immutable evidence"
+        "Saved-search smoke passed: ownership, rankings, evidence replay and deletion"
     )
 
 
