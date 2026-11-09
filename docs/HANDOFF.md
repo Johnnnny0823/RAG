@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## M4 瀏覽器登入與私人搜尋歷史
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `c355bae`。
+- Current milestone and status: M4 IN_PROGRESS。
+- Goal of this session: 由瀏覽器主動保存搜尋及引文，並以原帳號回顧。
+- Files changed (with purpose): `apps/web/src/research.tsx` 串接登入、歷史、候選快照及比對保存。`scripts/smoke_private_browser.js` 驗證跨帳號及重讀流程。
+- Database migrations added/applied: 本次無新增或重跑，使用已遷移至 `0005_search_runs` 的隔離 API。
+- API/Schema changes: 無。沿用 M3 帳號與搜尋紀錄 API。
+- Commands actually run and results: `docker compose -p patentscope-m1-proof build web` 及 `docker compose -p patentscope-m1-proof run --rm --no-deps web npm run build` 通過。Playwright CLI `run-code --filename scripts/smoke_private_browser.js` 通過，核對預覽不保存、明確保存、登出清除、第二帳號歷史為空、原帳號再次登入取回相同原文引文。
+- Tests NOT run and reason: 本次無後端修改，沿用 M3 的 pytest 與跨帳號 API 驗收。未實測 token 自然到期及多頁歷史。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 已匯入 TIPO 資料](DATA_SOURCES.md)，比對公開文件 `202640162`，無新增下載。
+- Known bugs / risks / blockers: 登出只清除頁面，已發的伺服器 token 仍依 24 小時效期。搜尋保存會執行一次新的檢索。頁面仍有 favicon 404。研究專案、收藏、筆記、AI Session 與 PDF 尚待實作。
+- Decisions made (ADR links): 見 [DECISIONS.md](DECISIONS.md) 的 M4 私人搜尋歷史。
+- Uncommitted changes / file ownership warnings: 隔離資料庫有瀏覽器測試帳號及公開測試紀錄。
+- Next 1–3 concrete actions: 加入具帳號隔離的研究專案與搜尋關聯，接上收藏、筆記及 AI Session，驗收工作台。
+- Exact reproduction steps: 見 [M4 瀏覽器驗收](SETUP.md#m4-瀏覽器驗收)。
+
 ## M4 查詢、詳情與比對介面
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

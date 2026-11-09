@@ -42,6 +42,12 @@ type Detail = {
 type Claim = { claim_number: number; text: string };
 type Search = { query: string; ipc: string | null; features: Feature[]; rerank: boolean; offset: number };
 type Results = { items: Hit[]; has_more: boolean; limit: number; offset: number };
+type RunSummary = { id: string; created_at: string };
+type SavedRun = RunSummary & {
+  request: Search & { limit: number };
+  items: Hit[];
+  comparisons: Comparison[];
+};
 const verdicts = {
   supported: "有明確證據",
   partially_supported: "部分符合",
@@ -49,6 +55,7 @@ const verdicts = {
   not_found_in_checked_content: "未找到證據",
 };
 type Comparison = {
+  document_id: string;
   passages_checked: number;
   items: {
     feature_id: string;
@@ -68,17 +75,23 @@ const splitTerms = (value: string) => value.split(/[,，、\n]/).map((word) => w
 const names = (parties: Party[]) => parties.map((party) => party.zh || party.en).filter(Boolean).join("、") || "未提供";
 const title = (hit: Hit) => hit.title_zh || hit.title_en || hit.publication_no;
 
-async function request<T>(path: string, payload?: object): Promise<T> {
+class SessionExpired extends Error {}
+
+async function request<T>(path: string, payload?: object, token?: string): Promise<T> {
+  const headers = new Headers();
+  if (payload) headers.set("Content-Type", "application/json");
+  if (token) headers.set("Authorization", "Bearer " + token);
   const response = await fetch("/api/v1" + path, {
     cache: "no-store",
+    headers,
     signal: AbortSignal.timeout(180_000),
     ...(payload && {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
   });
   if (!response.ok) {
+    if (token && response.status === 401) throw new SessionExpired("登入已失效，請重新登入。");
     const body = await response.json().catch(() => null);
     throw new Error(body?.error?.message || `服務回應錯誤（HTTP ${response.status}）`);
   }
@@ -96,6 +109,58 @@ export function Research() {
   const [results, setResults] = useState<Results | null>(null);
   const [selected, setSelected] = useState<{ hit: Hit; detail: Detail; claims: Claim[] } | null>(null);
   const [comparison, setComparison] = useState<Comparison | null>(null);
+  const [session, setSession] = useState<{ token: string; email: string } | null>(null);
+  const [registering, setRegistering] = useState(false);
+  const [history, setHistory] = useState<RunSummary[] | null>(null);
+  const [historyOffset, setHistoryOffset] = useState(0);
+  const [saved, setSaved] = useState<SavedRun | null>(null);
+
+  function leaveAccount() {
+    setSession(null);
+    setHistory(null);
+    setHistoryOffset(0);
+    setSaved(null);
+    setSearch(null);
+    setResults(null);
+    setSelected(null);
+    setComparison(null);
+    setQuery("");
+    setIpc("");
+    setRerank(false);
+    setDrafts([]);
+    setError("");
+  }
+
+  async function signIn(credentials: { email: string; password: string }) {
+    if (registering) {
+      await request("/auth/register", credentials);
+      setRegistering(false);
+    }
+    const { access_token } = await request<{ access_token: string }>("/auth/login", credentials);
+    const account = await request<{ email: string }>("/me", undefined, access_token);
+    leaveAccount();
+    setSession({ token: access_token, email: account.email });
+  }
+
+  async function loadHistory(token: string, offset = 0) {
+    const rows = await request<RunSummary[]>(`/search-runs?limit=21&offset=${offset}`, undefined, token);
+    setHistory(rows);
+    setHistoryOffset(offset);
+  }
+
+  function showSavedPage(record: SavedRun, offset = 0) {
+    const limit = record.request.limit;
+    setSearch(record.request);
+    setResults({ items: record.items.slice(offset, offset + limit), offset, limit, has_more: offset + limit < record.items.length });
+    setSelected(null);
+    setComparison(null);
+  }
+
+  async function openRun(id: string, token: string) {
+    const record = await request<SavedRun>("/search-runs/" + id, undefined, token);
+    setSaved(record);
+    showSavedPage(record);
+  }
 
   async function run(label: string, operation: () => Promise<void>) {
     setBusy(label);
@@ -103,6 +168,7 @@ export function Research() {
     try {
       await operation();
     } catch (failure) {
+      if (failure instanceof SessionExpired) leaveAccount();
       setError(failure instanceof TypeError ? "無法連線至服務，請重試。"
         : failure instanceof DOMException && failure.name === "TimeoutError" ? "服務回應逾時，請重試。"
         : failure instanceof Error ? failure.message : "操作失敗，請重試。");
@@ -135,12 +201,13 @@ export function Research() {
   async function loadResults(next: Search) {
     const data = await request<Results>("/patents/search/hybrid", next);
     setSearch(next);
+    setSaved(null);
     setResults(data);
     setSelected(null);
     setComparison(null);
   }
 
-  async function submitSearch() {
+  async function submitSearch(save: boolean) {
     const features = drafts.map((draft) => ({
       ...draft, keywords_zh: splitTerms(draft.keywords_zh), keywords_en: splitTerms(draft.keywords_en),
     }));
@@ -148,14 +215,36 @@ export function Research() {
       [feature.keywords_zh, feature.keywords_en].some((terms) => terms.length > 4 || terms.some((term) => term.length > 48)))) {
       throw new Error("每項特徵須填寫描述。每種語言最多四個檢索詞，每詞最多 48 字。");
     }
-    await loadResults({ query: query.trim(), ipc: ipc.trim() || null, features, rerank, offset: 0 });
+    const payload = { query: query.trim(), ipc: ipc.trim() || null, features, rerank, offset: 0 };
+    if (save && session) {
+      const { id } = await request<RunSummary>("/search-runs", payload, session.token);
+      setHistory(null);
+      await openRun(id, session.token);
+      return;
+    }
+    await loadResults(payload);
   }
 
   async function openPatent(hit: Hit) {
     const path = "/patents/" + hit.document_id;
     const [detail, claims] = await Promise.all([request<Detail>(path), request<{ claims: Claim[] }>(path + "/claims")]);
     setSelected({ hit, detail, claims: claims.claims });
-    setComparison(null);
+    setComparison(saved?.comparisons.find((item) => item.document_id === hit.document_id) ?? null);
+  }
+
+  async function comparePatent(documentId: string, features: Feature[]) {
+    if (saved && session) {
+      const result = await request<Comparison>(`/search-runs/${saved.id}/comparisons/${documentId}`, {}, session.token);
+      setSaved({ ...saved, comparisons: [...saved.comparisons.filter((item) => item.document_id !== documentId), result] });
+      setComparison(result);
+      return;
+    }
+    setComparison(await request<Comparison>(`/patents/${documentId}/compare`, { features }));
+  }
+
+  function navigateResults(offset: number) {
+    if (saved) showSavedPage(saved, offset);
+    else if (search) void run("正在檢索專利…", () => loadResults({ ...search, offset }));
   }
 
   return (
@@ -163,10 +252,59 @@ export function Research() {
       <p className="mb-6 max-w-3xl text-slate-700">描述你的構想，從已索引的 TIPO 公開資料找出相關技術。涵蓋範圍以本機已匯入的批次為限。比對僅供研究參考。</p>
       <p className="mb-4 font-medium text-teal-900" role="status">{busy}</p>
       {error && <p className="mb-4 rounded-lg bg-red-50 p-3 text-red-900" role="alert">{error}</p>}
+      <section className="research-panel mb-6">
+        <h2>私人搜尋歷史</h2>
+        {session ? <>
+          <p className="my-2 break-all text-sm">目前帳號 · {session.email}</p>
+          <div className="flex flex-wrap gap-2">
+            <button disabled={!!busy} onClick={() => void run("正在讀取歷史…", () => loadHistory(session.token))}>載入搜尋歷史</button>
+            <button disabled={!!busy} onClick={leaveAccount}>登出此頁</button>
+          </div>
+          {history?.length === 0 && <p className="mt-3">此帳號還沒有保存的搜尋。</p>}
+          {!!history?.length && <>
+            <ul className="my-3 space-y-2">
+              {history.slice(0, 20).map((item) => <li key={item.id}>
+                <button disabled={!!busy} onClick={() => void run("正在開啟搜尋紀錄…", () => openRun(item.id, session.token))}>
+                  {new Date(item.created_at).toLocaleString("zh-TW")} · {item.id.slice(0, 8)}
+                </button>
+              </li>)}
+            </ul>
+            <div className="flex gap-2">
+              <button disabled={!!busy || historyOffset === 0} onClick={() => void run("正在讀取歷史…", () => loadHistory(session.token, historyOffset - 20))}>較新紀錄</button>
+              <button disabled={!!busy || history.length < 21} onClick={() => void run("正在讀取歷史…", () => loadHistory(session.token, historyOffset + 20))}>較舊紀錄</button>
+            </div>
+          </>}
+        </> : <>
+          <p className="my-2 text-sm">登入可主動保存查詢與比對。重新整理頁面後需重新登入。</p>
+          <form onSubmit={(event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const data = new FormData(form);
+            const credentials = { email: String(data.get("email")), password: String(data.get("password")) };
+            form.reset();
+            void run(registering ? "正在註冊…" : "正在登入…", () => signIn(credentials));
+          }}>
+            <fieldset disabled={!!busy}>
+              <div className="grid gap-x-4 sm:grid-cols-2">
+                <label className="research-field">電子郵件
+                  <input name="email" type="email" required maxLength={254} autoComplete="username" />
+                </label>
+                <label className="research-field">密碼（至少 12 字元）
+                  <input name="password" type="password" required minLength={12} maxLength={128} autoComplete={registering ? "new-password" : "current-password"} />
+                </label>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="submit">{registering ? "註冊並登入" : "登入"}</button>
+                <button type="button" onClick={() => { setRegistering(!registering); setError(""); }}>{registering ? "返回登入" : "建立帳號"}</button>
+              </div>
+            </fieldset>
+          </form>
+        </>}
+      </section>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <section className="research-panel">
           <h2>發明構想</h2>
-          <form onSubmit={(event) => { event.preventDefault(); if (!busy && query.trim()) void run("正在檢索專利…", submitSearch); }}>
+          <form onSubmit={(event) => { event.preventDefault(); if (!busy && query.trim()) void run("正在檢索專利…", () => submitSearch(false)); }}>
             <fieldset disabled={!!busy}>
               <label className="research-field">構想描述（最多 160 字）
                 <textarea rows={4} value={query} maxLength={160} required onChange={(event) => setQuery(event.target.value)} />
@@ -199,6 +337,7 @@ export function Research() {
               </label>
               <label className="my-3 block"><input type="checkbox" checked={rerank} onChange={(event) => setRerank(event.target.checked)} /> 使用本機模型重排序</label>
               <button className="research-primary" disabled={!query.trim()} type="submit">搜尋臺灣專利</button>
+              {session && <button className="ml-2" type="button" disabled={!query.trim()} onClick={() => void run("正在檢索並保存…", () => submitSearch(true))}>搜尋並保存</button>}
             </fieldset>
           </form>
         </section>
@@ -206,7 +345,17 @@ export function Research() {
           <h2>檢索結果</h2>
           {!results && <p className="mt-3 text-slate-700">完成搜尋後，這裡會顯示候選文件與排序資訊。</p>}
           {search && results && <>
-            <p className="my-3 break-words text-slate-700">本次查詢 · {search.query}{search.ipc && ` · IPC ${search.ipc}`}</p>
+            <p className="my-3 break-words text-slate-700">{saved ? "已保存的查詢" : "本次查詢"} · {search.query}{search.ipc && ` · IPC ${search.ipc}`}</p>
+            {saved && <details className="mb-3">
+              <summary>已保存的檢索策略</summary>
+              <p className="my-2 text-sm">本機重排序 · {search.rerank ? "啟用" : "停用"}</p>
+              {search.features.length ? <ul className="space-y-2 text-sm">
+                {search.features.map((feature) => <li key={feature.feature_id} className="break-words">
+                  <strong>{feature.description_zh}</strong> · {feature.must_have ? "必要" : "選用"}
+                  <p>{[...feature.keywords_zh, ...feature.keywords_en].join("、") || "未提供檢索詞"}</p>
+                </li>)}
+              </ul> : <p className="text-sm">此查詢未包含技術特徵。</p>}
+            </details>}
             {results.items.length === 0 && <p>已索引的資料中沒有符合這次條件的結果。</p>}
             <ol className="divide-y divide-slate-200" start={results.offset + 1}>
               {results.items.map((hit, index) => (
@@ -218,8 +367,8 @@ export function Research() {
               ))}
             </ol>
             <div className="mt-4 flex gap-2">
-              <button disabled={!!busy || results.offset === 0} onClick={() => void run("正在檢索專利…", () => loadResults({ ...search, offset: Math.max(0, results.offset - results.limit) }))}>上一頁</button>
-              <button disabled={!!busy || !results.has_more} onClick={() => void run("正在檢索專利…", () => loadResults({ ...search, offset: results.offset + results.limit }))}>下一頁</button>
+              <button disabled={!!busy || results.offset === 0} onClick={() => navigateResults(Math.max(0, results.offset - results.limit))}>上一頁</button>
+              <button disabled={!!busy || !results.has_more} onClick={() => navigateResults(results.offset + results.limit)}>下一頁</button>
             </div>
           </>}
         </section>
@@ -253,9 +402,9 @@ export function Research() {
                 : source.dataset_url ? <a className="ml-2" href={source.dataset_url} target="_blank" rel="noreferrer">官方資料集</a> : null}
             </li>)}
           </ul>
-          <button disabled={!!busy || !search.features.length} onClick={() => void run("正在核對技術特徵…", async () => {
-            setComparison(await request<Comparison>(`/patents/${selected.hit.document_id}/compare`, { features: search.features }));
-          })}>比對本次搜尋特徵</button>
+          <button disabled={!!busy || !search.features.length || (!!saved && !!comparison)} onClick={() => void run("正在核對技術特徵…", () => comparePatent(selected.hit.document_id, search.features))}>
+            {saved ? comparison ? "已保存技術比對" : "比對並保存證據" : "比對本次搜尋特徵"}
+          </button>
           {!search.features.length && <p className="mt-2 text-sm">新增技術特徵並重新搜尋後，即可比對。</p>}
           {comparison && <div className="mt-5">
             <h3>技術特徵比對</h3>
