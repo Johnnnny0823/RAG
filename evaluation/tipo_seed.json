@@ -16,6 +16,20 @@
       "judgments": [
         {"stage": "publication", "number": "202639611", "grade": 2, "basis": "官方公開文件標題明列光硬化性樹脂組成物。"}
       ]
+    },
+    {
+      "id": "wastewater-monitoring",
+      "query": "廢水自動監控及添加",
+      "judgments": [
+        {"stage": "publication", "number": "202639448", "grade": 2, "basis": "官方公開全文請求項 1 明示監控待處理液體的廢水自動監控及添加系統。"}
+      ]
+    },
+    {
+      "id": "anatomical-contour",
+      "query": "根據解剖影像辨識人體輪廓",
+      "judgments": [
+        {"stage": "publication", "number": "202640537", "grade": 2, "basis": "官方公開全文請求項 1 明示根據解剖影像辨識人體輪廓。"}
+      ]
     }
   ]
 }

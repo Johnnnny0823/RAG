@@ -1,6 +1,6 @@
-from pytest import approx
+from pytest import approx, raises
 
-from scripts.evaluate_search import score
+from scripts.evaluate_search import evaluate, score
 
 
 def test_duplicate_versions_consume_rank_and_only_first_earns_credit():
@@ -23,3 +23,14 @@ def test_unjudged_and_missing_documents_do_not_earn_credit():
     assert result["unjudged_returned"] == 1
     assert result["reciprocal_rank"] == 0
     assert result["recall_at_10_relative_to_pool"] == 0
+
+
+def test_human_review_requires_reviewer_and_written_basis():
+    dataset = {
+        "label_status": "human_reviewed",
+        "cases": [{"id": "example", "judgments": [{"grade": 2, "basis": ""}]}],
+    }
+    with raises(ValueError, match="require a reviewer"):
+        evaluate("", dataset, 1)
+    with raises(ValueError, match="require a basis"):
+        evaluate("", {**dataset, "reviewer": "example-reviewer"}, 1)

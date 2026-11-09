@@ -1,0 +1,471 @@
+{
+  "label_status": "pending_human_review",
+  "reviewer": "",
+  "cases": [
+    {
+      "id": "dynamic-resistance",
+      "query": "動態導通電阻",
+      "ipc": "G01R",
+      "judgments": [
+        {
+          "stage": "grant",
+          "number": "I941082",
+          "title": "動態導通電阻量測電路",
+          "document_id": "ac87c52c-1baa-4e31-9820-50acd56df012",
+          "content_scope": "claims_only",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15987"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202638006",
+          "title": "感測致動器",
+          "document_id": "fe528e9a-7ab7-4bcb-b1d5-29a4106ff598",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024018/index.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202640162",
+          "title": "動態導通電阻量測電路",
+          "document_id": "2b6f7f10-ec55-4f96-9287-0a597144df6b",
+          "content_scope": "fulltext",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202640162/114106690-A0304.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202640163",
+          "title": "偵測電路與偵測方法",
+          "document_id": "ac421ab6-4d65-45b0-a4cf-74f7ec944d44",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202640672",
+          "title": "開關接點狀態具電力顯示裝置",
+          "document_id": "7473f422-e6dc-4f6a-a050-f6e3da062c81",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        }
+      ]
+    },
+    {
+      "id": "light-curable-resin",
+      "query": "光硬化性樹脂組成物",
+      "ipc": null,
+      "judgments": [
+        {
+          "stage": "publication",
+          "number": "202637756",
+          "title": "無鹵樹脂組成物",
+          "document_id": "3906fb8f-d862-4e77-9219-d0e8c3423889",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024018/index.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202639234",
+          "title": "環氧環二氧化矽/環氧樹脂光固化塗層製備方法",
+          "document_id": "ae925c8d-e622-4531-b63a-cb831a256a54",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202639327",
+          "title": "具有多層結構的冷卻塗層",
+          "document_id": "c9ec1abd-4de0-4be0-af3d-85051bed050f",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202639467",
+          "title": "用於修護高爐出鐵口之澆注材",
+          "document_id": "2a09ac3d-8081-4ba7-bd93-87d78cce4563",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202639611",
+          "title": "光硬化性樹脂組成物、接著劑、密封材、塗覆劑、硬化物、半導體裝置、電子零件以及使用光硬化性樹脂組成物的硬化、接著、密封及塗覆方法",
+          "document_id": "70936204-a057-41ba-83f4-453bf8ba6900",
+          "content_scope": "fulltext",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639611/113133932-A0304.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202639766",
+          "title": "消光塗料組成物、消光物件及其製作方法",
+          "document_id": "e7e4f718-5b32-4784-be75-aab8471aa136",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202639767",
+          "title": "親水性塗液、親水性塗層及其製作方法",
+          "document_id": "00c38419-c42c-4602-af56-2d00757e40ca",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202639803",
+          "title": "量子點複合材料、其形成方法及發光裝置",
+          "document_id": "800acb8c-c74c-4c26-8e27-fefe7b4c9dcf",
+          "content_scope": "fulltext",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639803/114109778-A0304.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202639913",
+          "title": "製造六方/非結晶氮化硼複合薄膜之方法",
+          "document_id": "c26906d5-2a7f-4fbd-bc87-b4486d7fdeef",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202640295",
+          "title": "具有雙層顯影劑結構之改良的成像介質",
+          "document_id": "bddb771e-59e3-4700-b069-b02e2b4319d8",
+          "content_scope": "fulltext",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202640295/113150273-A0304.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        }
+      ]
+    },
+    {
+      "id": "wastewater-monitoring",
+      "query": "廢水自動監控及添加",
+      "ipc": null,
+      "judgments": [
+        {
+          "stage": "publication",
+          "number": "202637058",
+          "title": "飲水裝置",
+          "document_id": "440a1b69-1bd8-4fbd-8854-9f6c524a4d3c",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024018/index.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202638046",
+          "title": "採樣管自動開關蓋方法",
+          "document_id": "9963720e-5056-4637-89e5-1090ea580f69",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024018/index.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202639093",
+          "title": "管制針劑回收裝置",
+          "document_id": "5df75841-6f1f-4b18-8c58-ced815ee2a17",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202639208",
+          "title": "生飲機",
+          "document_id": "5965a7d9-7ed5-440d-9c79-698a9130f1a8",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202639427",
+          "title": "廢鋁渣與氫氧化鈉高效產氫結合裝置",
+          "document_id": "3c149991-25b8-4f78-a02e-a03f410838dc",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202639442",
+          "title": "排水負荷的估算方法和排水處理方法",
+          "document_id": "04c1ec40-bf81-414c-87c3-6282e2ba725b",
+          "content_scope": "fulltext",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639442/114100774-A0304.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202639448",
+          "title": "廢水自動監控及添加系統及其方法",
+          "document_id": "4edef8fb-9470-4d59-bcbc-7c69b532988f",
+          "content_scope": "fulltext",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639448/114109735-A0304.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202640128",
+          "title": "透明表層髒汙/瑕疵檢測裝置與方法",
+          "document_id": "3db6f94b-7747-478d-9930-4ae2461e3c00",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202640443",
+          "title": "量子計算系統之自適應調控裝置",
+          "document_id": "e525ffc9-3e0c-4ea5-83c5-5fb0115fa8c8",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202640481",
+          "title": "防水工程估價方法及其系統",
+          "document_id": "77107aca-1de0-4a09-8ca3-499497675519",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        }
+      ]
+    },
+    {
+      "id": "anatomical-contour",
+      "query": "根據解剖影像辨識人體輪廓",
+      "ipc": null,
+      "judgments": [
+        {
+          "stage": "publication",
+          "number": "202638043",
+          "title": "可視化表面電漿共振生物檢測設備",
+          "document_id": "b79c2517-20c6-4f01-a4a7-146287deb4b6",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024018/index.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202638154",
+          "title": "結構表面缺陷識別系統",
+          "document_id": "843d3a84-21bf-48fc-8e9a-dd07453aac9d",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024018/index.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202638431",
+          "title": "復健評估系統及復健評估方法",
+          "document_id": "9d47b272-8907-419c-adb9-ab632a73c911",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024018/index.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202639291",
+          "title": "動物外形之立體造型體結構",
+          "document_id": "1e5e5764-e14a-4343-a7c7-315c3f56b066",
+          "content_scope": "fulltext",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639291/114109775-A0304.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202640128",
+          "title": "透明表層髒汙/瑕疵檢測裝置與方法",
+          "document_id": "3db6f94b-7747-478d-9930-4ae2461e3c00",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202640163",
+          "title": "偵測電路與偵測方法",
+          "document_id": "ac421ab6-4d65-45b0-a4cf-74f7ec944d44",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202640295",
+          "title": "具有雙層顯影劑結構之改良的成像介質",
+          "document_id": "bddb771e-59e3-4700-b069-b02e2b4319d8",
+          "content_scope": "fulltext",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202640295/113150273-A0304.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202640537",
+          "title": "影像標定系統與方法",
+          "document_id": "0fe8ac5b-8786-4dc4-9c6c-d25dc6cd5e5a",
+          "content_scope": "fulltext",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202640537/114109785-A0304.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202640546",
+          "title": "物件偵測模型訓練方法",
+          "document_id": "4495237e-80bf-4ac7-9172-8882ef27c7a8",
+          "content_scope": "metadata_and_abstract",
+          "official_sources": [
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        },
+        {
+          "stage": "publication",
+          "number": "202640647",
+          "title": "醫療影像分析系統與方法",
+          "document_id": "aad76b92-6d05-4c5c-928f-8705dbc3748b",
+          "content_scope": "fulltext",
+          "official_sources": [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202640647/114109761-A0304.xml",
+            "https://data.gov.tw/dataset/15996"
+          ],
+          "grade": null,
+          "basis": ""
+        }
+      ]
+    }
+  ]
+}

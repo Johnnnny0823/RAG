@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## M5 人工複核候選池
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `d8497b8`。
+- Current milestone and status: M5 IN_PROGRESS。
+- Goal of this session: 產生可供人員獨立評分的官方專利候選池。
+- Files changed (with purpose): `evaluate_search.py` 新增候選匯出與複核欄位驗證，`tipo_seed.json` 增加兩個領域，`tipo_review_pool.json` 保留待複核結果。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。
+- Commands actually run and results: 對 `18022` 跑三種模式各四次。匯出 35 組候選並核對來源、無重複及評分留空。Ruff 和 pytest 47 項通過，1 則既有警告。
+- Tests NOT run and reason: 人工標註與分數複跑待完成。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [M1 TIPO 語料](DATA_SOURCES.md)，候選附查得的官方連結。
+- Known bugs / risks / blockers: 尚無人工複核的分數。池由現有模式聯集建立，未檢索到的文件不在評估分母中。
+- Decisions made (ADR links): [複核與去重規則](EVALUATION.md#人工複核候選池)。
+- Uncommitted changes / file ownership warnings: 無。
+- Next 1–3 concrete actions: 人工逐案複核並重跑評估，驗證說明書段落的引文路徑。
+- Exact reproduction steps: 見 [人工複核候選池](EVALUATION.md#人工複核候選池)。
+
 ## M5 跨領域引文核對
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

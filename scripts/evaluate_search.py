@@ -61,9 +61,16 @@ def score(items, labels):
 def evaluate(api, dataset, repeats):
     if not dataset["cases"]:
         raise ValueError("Evaluation dataset must contain at least one case")
+    human_reviewed = dataset["label_status"] == "human_reviewed"
+    if human_reviewed and not dataset.get("reviewer", "").strip():
+        raise ValueError("Human-reviewed datasets require a reviewer")
     modes = {mode: [] for mode in MODES}
     for case in dataset["cases"]:
         judgments = case["judgments"]
+        if human_reviewed and any(
+            not row.get("basis", "").strip() for row in judgments
+        ):
+            raise ValueError(f"Human-reviewed judgments require a basis: {case['id']}")
         labels = {(row["stage"], row["number"]): row["grade"] for row in judgments}
         if (
             len(labels) != len(judgments)
@@ -119,6 +126,62 @@ def evaluate(api, dataset, repeats):
     return {"label_status": dataset["label_status"], "summary": summary, "runs": modes}
 
 
+def build_review_pool(api, dataset, evaluation):
+    candidates = {case["id"]: {} for case in dataset["cases"]}
+    scopes = {"metadata_and_abstract": 0, "claims_only": 1, "fulltext": 2}
+    for runs in evaluation["runs"].values():
+        for run in runs:
+            pool = candidates[run["case"]]
+            for hit in run["results"]:
+                key = (hit["document_stage"], hit["publication_no"])
+                current = pool.get(key)
+                if (
+                    current is None
+                    or scopes[hit["content_scope"]] > scopes[current["content_scope"]]
+                ):
+                    pool[key] = hit
+
+    cases = []
+    for case in dataset["cases"]:
+        pool = candidates[case["id"]]
+        for label in case["judgments"]:
+            key = (label["stage"], label["number"])
+            if key not in pool:
+                params = urlencode({"number": key[1], "number_type": key[0]})
+                versions = request(api, "/patents?" + params)["items"]
+                pool[key] = max(versions, key=lambda hit: scopes[hit["content_scope"]])
+        rows = []
+        for (stage, number), hit in sorted(pool.items()):
+            detail = request(api, "/patents/" + hit["document_id"])
+            urls = {
+                url
+                for source in detail["sources"]
+                for url in (source["source_url"], source["dataset_url"])
+                if url
+            }
+            rows.append(
+                {
+                    "stage": stage,
+                    "number": number,
+                    "title": detail["title_zh"] or detail["title_en"],
+                    "document_id": hit["document_id"],
+                    "content_scope": hit["content_scope"],
+                    "official_sources": sorted(urls),
+                    "grade": None,
+                    "basis": "",
+                }
+            )
+        cases.append(
+            {
+                "id": case["id"],
+                "query": case["query"],
+                "ipc": case.get("ipc"),
+                "judgments": rows,
+            }
+        )
+    return {"label_status": "pending_human_review", "reviewer": "", "cases": cases}
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--api", default="http://127.0.0.1:18017")
@@ -126,12 +189,17 @@ if __name__ == "__main__":
         "--dataset", type=Path, default=Path("evaluation/tipo_seed.json")
     )
     parser.add_argument("--repeats", type=int, default=1)
+    parser.add_argument(
+        "--review-pool", type=Path, help="Write a new rank-blind human review dataset"
+    )
     args = parser.parse_args()
     if args.repeats < 1:
         parser.error("--repeats must be positive")
     dataset = json.loads(args.dataset.read_text(encoding="utf-8"))
-    print(
-        json.dumps(
-            evaluate(args.api, dataset, args.repeats), ensure_ascii=False, indent=2
-        )
-    )
+    result = evaluate(args.api, dataset, args.repeats)
+    if args.review_pool:
+        pool = build_review_pool(args.api, dataset, result)
+        with args.review_pool.open("x", encoding="utf-8") as file:
+            json.dump(pool, file, ensure_ascii=False, indent=2)
+            file.write("\n")
+    print(json.dumps(result, ensure_ascii=False, indent=2))
