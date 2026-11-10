@@ -21,4 +21,21 @@ npm run build --prefix apps/web
 
 功能驗收需具備可執行的實作、前後端及資料庫整合、相關單元與 API 測試、可重跑的關鍵瀏覽器流程，以及 PROGRESS 和 HANDOFF 的實測紀錄。無法驗證的項目應標明待驗證。
 
-現有 CI 已設定 Python 檢查、前端型別與建置、Compose 及 HTTP 冒煙。正式 Playwright TypeScript 測試套件、CI 瀏覽器除錯產物、前端 lint、Firefox 和 WebKit 尚待驗證或補齊。
+## Playwright TypeScript 冒煙測試
+
+在獨立 Compose 專案執行，使用專用連接埠及新 PostgreSQL 資料卷。案例自行註冊合成帳號及新增測試專案，正常完成時透過 UI 刪除。若中途失敗，合成資料可能留在測試卷中。
+
+```powershell
+npm ci --prefix apps/web
+npm exec --prefix apps/web -- playwright install chromium
+$env:WEB_PORT = "18124"
+$env:API_PORT = "18024"
+docker compose --env-file .env.example -p patentscope-e2e up -d --build --wait
+$env:PATENTSCOPE_E2E_URL = "http://127.0.0.1:18124"
+npm run test:e2e --prefix apps/web
+docker compose --env-file .env.example -p patentscope-e2e stop
+```
+
+2026-11-10 在獨立新卷通過兩項 Chromium 案例（桌面與 Pixel 7 模擬），涵蓋 readiness、未登入 API 拒絕、註冊、登入／登出、專案新增／修改／重新登入讀取／刪除及帳號刪除。首次桌面測試因登出按鈕名稱不符而逾時，修正定位後兩項通過。請勿同時從同一工作目錄啟動兩次測試，兩次執行會共用產物路徑。
+
+CI 已加入 Chromium 測試步驟，失敗時保存 HTML 報告、截圖、Trace 與瀏覽器錯誤附件七天。Trace 可能包含合成測試憑證，僅允許對獨立測試環境執行。GitHub Actions 遠端執行、Firefox、WebKit、平板與前端 lint 尚待驗證或補齊。真實專利檢索、證據和 PDF 仍由既有 Playwright CLI 腳本驗收，待移入 TypeScript CI 套件。

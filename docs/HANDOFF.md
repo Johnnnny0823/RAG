@@ -639,3 +639,22 @@
 
 
 - 本次 Codex 負責 M3 混合候選與驗收。
+
+## M6 Playwright 品質關卡
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `fd9b75e`。
+- Current milestone and status: M6 IN_PROGRESS（目標檔定義）。本次補齊 M0 瀏覽器冒煙測試。
+- Goal of this session: 對隔離的前端、FastAPI 與 PostgreSQL 建立可重跑的 TypeScript E2E，接入 GitHub Actions。
+- Files changed (with purpose): `apps/web` 套件設定、Playwright 設定與案例、Docker 建置排除產物、`.github/workflows/ci.yml` 及三份進度／測試／交接文件。
+- Database migrations added/applied: 無新增。Compose 專案 `patentscope-e2e-1124` 使用新卷執行既有 Alembic 遷移。
+- API/Schema changes: 無。
+- Commands actually run and results: Compose 啟動及 `scripts/smoke.py` 通過。Chromium `npm run test:e2e --prefix apps/web` 2 通過。Ruff 格式 66 檔與 lint 通過。Pytest 47 通過，1 項既有 Starlette 棄用警告。
+- Tests NOT run and reason: 未執行遠端 Actions。此次使用空白測試卷，未執行 TIPO 檢索／PDF 回歸及其他瀏覽器。
+- Data sources checked (exact URL/date) and license/access notes: 本次未存取 TIPO；只使用合成帳號和專案。
+- Known bugs / risks / blockers: 首次桌面案例定位錯誤已修正；平行重跑會共用產物目錄。Windows 預設 pytest 暫存目錄存取被拒，改用獨立 `--basetemp` 後全部通過。首次失敗留下合成帳號於獨立卷。
+- Decisions made (ADR links): 沿用既有架構，使用 Chromium 同時驗證桌面及手機 viewport。
+- Uncommitted changes / file ownership warnings: 測試產物已由 Git 忽略，獨立測試卷保留。
+- Next 1–3 concrete actions: 將既有真實專利瀏覽器腳本轉為有固定資料種子的 TypeScript 案例，補上 PDF 與來源證據斷言，再查核遠端 Actions 結果。
+- Exact reproduction steps: 依 [TESTING](TESTING.md#playwright-typescript-冒煙測試) 的隔離 Compose 和瀏覽器指令。
