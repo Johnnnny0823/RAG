@@ -1,0 +1,54 @@
+name: Official patent E2E
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  official-patent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      COMPOSE_PROJECT_NAME: patentscope-tipo-e2e
+      EMBEDDING_URL: http://ollama:11434
+      EMBEDDING_MODEL: qwen3-embedding:0.6b
+      EMBEDDING_DIGEST: ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d
+      ANALYSIS_URL: http://ollama:11434
+      ANALYSIS_MODEL: qwen2.5:1.5b
+      ANALYSIS_DIGEST: 65ec06548149b04c096a120e4a6da9d4017ea809c91734ea5631e89f96ddc57b
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: python -m pip install -r requirements-dev.txt
+      - run: npm ci --prefix apps/web
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - name: Start isolated database and CPU model server
+        run: |
+          docker compose --env-file .env.example up -d --wait db
+          docker run -d --name patentscope-tipo-ollama --network patentscope-tipo-e2e_default --network-alias ollama ollama/ollama@sha256:2c9595c555fd70a28363489ac03bd5bf9e7c5bdf2890373c3a830ffd7252ce6d
+          timeout 60 bash -c 'until docker exec patentscope-tipo-ollama ollama list; do sleep 2; done'
+          docker exec patentscope-tipo-ollama ollama pull "$EMBEDDING_MODEL"
+          docker exec patentscope-tipo-ollama ollama pull "$ANALYSIS_MODEL"
+      - run: docker compose --env-file .env.example up -d --build --wait --wait-timeout 180
+      - run: python -m scripts.seed_tipo_e2e "$RUNNER_TEMP/tipo-fixture"
+      - run: npm run test:e2e --prefix apps/web
+        env:
+          PATENTSCOPE_E2E_TIPO: "1"
+          PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: tipo-e2e-diagnostics
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 7
+      - if: failure()
+        run: docker compose --env-file .env.example logs --no-color

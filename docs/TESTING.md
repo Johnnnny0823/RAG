@@ -55,4 +55,18 @@ Remove-Item Env:PATENTSCOPE_E2E_TIPO
 
 2026-11-10 在已有官方樣本與本機 Qwen 的獨立部署驗證桌面及手機 Chromium，各通過一次。案例用公開的樹脂技術描述，確認混合檢索可保存、IPC／公開文件／申請人條件可用、詳情顯示官方資料集連結，且引文與同一文件版本的請求項、XPath、固定來源雜湊及 Unicode 字元區間吻合。PDF 驗證下載、檔名、媒體類型與私人快取標頭，並使用 pypdf 讀取下載檔，核對繁中標題、技術特徵、專利公開號、逐字引文、XPath、來源雜湊和官方連結註解。案例完成時刪除合成帳號及其資料。
 
-這個案例尚未納入遠端 Actions，該環境目前未準備官方樣本與本機模型。以 Poppler 渲染桌面案例的兩頁並目視核對，繁中可讀，長雜湊有換行，證據延續到第二頁。Windows 若無法寫入 HTML 報告目錄，可先將 `PLAYWRIGHT_HTML_OUTPUT_DIR` 設為本次專用的可寫目錄。既有 CLI 驗收保留跨版本、Session、收藏、歷史與跨帳號隔離流程。
+GitHub Actions 可手動啟動 `Official patent E2E`，在獨立 Compose 網路內啟動 CPU Ollama、下載模型及固定官方樣本，再執行案例。遠端工作尚待驗證。以 Poppler 渲染桌面案例的兩頁並目視核對，繁中可讀，長雜湊有換行，證據延續到第二頁。Windows 若無法寫入 HTML 報告目錄，可先將 `PLAYWRIGHT_HTML_OUTPUT_DIR` 設為本次專用的可寫目錄。既有 CLI 驗收保留跨版本、Session、收藏、歷史與跨帳號隔離流程。
+
+### 自動建立固定官方樣本
+
+依 SETUP 設定兩個本機模型與其摘要，使用專用 Compose 專案和連接埠。種子腳本固定使用 `patentscope-tipo-e2e`，從官方 FTPS 取得索引和全文，驗證兩份雜湊後才匯入。接著從封存 XML 驗證請求項和說明書，最後建立詞彙和向量索引。
+
+```powershell
+$env:API_PORT = "18025"
+$env:WEB_PORT = "18125"
+docker compose --env-file .env.example -p patentscope-tipo-e2e up -d --build --wait
+.venv/Scripts/python -m scripts.seed_tipo_e2e .patent-data/tipo-e2e
+$env:PATENTSCOPE_E2E_URL = "http://127.0.0.1:18125"
+```
+
+已有已驗證快取時可加 `--offline` 重跑，不會重新連到 TIPO。檔案雜湊錯誤會在匯入前失敗，保留原檔供排查。

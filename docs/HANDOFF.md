@@ -696,3 +696,22 @@
 - Uncommitted changes / file ownership warnings: PDF 與 PNG 都位於忽略的測試產物目錄。
 - Next 1–3 concrete actions: 將固定官方樣本與模型供應加入隔離 CI，補足研究歷史及跨版本回歸。
 - Exact reproduction steps: 見 [TESTING](TESTING.md#真實-tipo-資料的-typescript-回歸)。
+
+## M6 固定官方樣本與遠端驗收工作
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `297f5d2`。
+- Current milestone and status: M6 IN_PROGRESS。
+- Goal of this session: 讓真實資料的 Playwright 案例能從新資料卷重建，準備 GitHub Actions 手動驗收。
+- Files changed (with purpose): `scripts/seed_tipo_e2e.py` 固定來源、雜湊與匯入順序，`tests/test_tipo_e2e_seed.py` 驗證快取雜湊不符時拒絕且保留原檔，`.github/workflows/tipo-e2e.yml` 設定隔離的 CPU 模型與瀏覽器工作，更新驗收及來源文件。
+- Database migrations added/applied: 無新增。新建 Compose 專案 `patentscope-tipo-e2e` 已套用既有 migrations。
+- API/Schema changes: 無。
+- Commands actually run and results: `python -m scripts.seed_tipo_e2e <cache>` 重新下載兩份官方 XML，匯入 1 份全文、0 筆隔離，核對 19 項請求項與 122 段說明書，索引 145 詞彙片段與 157 向量。加 `--offline` 重跑重用批次，新增 0 片段、0 向量。Playwright 對新卷通過桌面與手機 2 項，Ruff 格式／lint 通過，Pytest 48 通過、1 項既有警告。
+- Tests NOT run and reason: 本機 Git 沒有設定 remote，無法執行 GitHub Actions。遠端 FTPS 及該工作容器的 CPU 推論待驗。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-10 重抓 FTPS 固定期別與全文，兩份雜湊符合。目錄與授權見 [DATA_SOURCES](DATA_SOURCES.md)。
+- Known bugs / risks / blockers: 固定來源若無法取得，或 Ollama 標籤日後改指不同摘要，工作會失敗；應保留錯誤並重新查核。
+- Decisions made (ADR links): 遠端真實資料驗收用手動觸發；既有 push／PR 冒煙流程沿用。
+- Uncommitted changes / file ownership warnings: 新的隔離專案已停止，測試資料卷與官方快取保留供重現。
+- Next 1–3 concrete actions: 有遠端時執行 `Official patent E2E`；補充歷史、跨版本及瀏覽器相容性驗證。
+- Exact reproduction steps: 見 [TESTING](TESTING.md#自動建立固定官方樣本)。
