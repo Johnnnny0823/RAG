@@ -734,3 +734,22 @@
 - Uncommitted changes / file ownership warnings: 無。瀏覽器測試產物由 Git 忽略。
 - Next 1–3 concrete actions: 補跨版本回歸、Firefox／WebKit 驗收，並於遠端可用時執行官方 E2E 工作。
 - Exact reproduction steps: 見 [TESTING](TESTING.md#研究歷史與平板)。
+
+## M6 Firefox 與 WebKit 相容性
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `e0f20c8`。
+- Current milestone and status: M6 IN_PROGRESS。
+- Goal of this session: 對現有的帳號與真實研究流程補 Firefox 與 WebKit 驗收。
+- Files changed (with purpose): Playwright 配置、手動官方 E2E 工作、測試及交接文件。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。
+- Commands actually run and results: 安裝 Firefox 與 WebKit 後，分別執行兩種引擎的帳號／專案冒煙與官方專利回歸，共 4 項通過。前端建置和型別檢查通過。
+- Tests NOT run and reason: 未變更 Python。未設定 Git 遠端，GitHub runner 的三引擎工作尚未執行。未測 Safari 和實體裝置。
+- Data sources checked (exact URL/date) and license/access notes: 沿用公開案 `202639611`，無新增下載。見 [資料來源](DATA_SOURCES.md)。
+- Known bugs / risks / blockers: Windows Playwright WebKit 的結果只適用已測引擎環境。
+- Decisions made (ADR links): 平日 CI 使用 Chromium，手動官方工作啟用三種引擎。
+- Uncommitted changes / file ownership warnings: 測試產物由 Git 忽略。
+- Next 1–3 concrete actions: 擴充真實跨版本回歸、補剩餘 CI 關卡與在遠端可用時執行官方工作。
+- Exact reproduction steps: 見 [TESTING](TESTING.md#firefox-與-webkit-相容性)。

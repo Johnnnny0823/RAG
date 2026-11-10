@@ -35,7 +35,7 @@
 
 - [x] 補齊 M0 的 TypeScript 瀏覽器冒煙測試。桌面及手機 Chromium 對獨立新 PostgreSQL 資料卷均通過，共 2 項。
 - [x] CI 設定加入 Chromium 與失敗產物上傳。GitHub Actions 遠端結果待驗證。
-- [ ] 真實專利的檢索、證據與 PDF 流程納入 TypeScript CI，補上平板、Firefox、WebKit 相容性驗證。見 [測試文件](TESTING.md)。
+- [ ] 驗證 GitHub runner 的真實專利檢索、證據與 PDF TypeScript 流程。見 [測試文件](TESTING.md)。
 
 ## 2026-11-10 真實資料瀏覽器回歸
 
@@ -53,3 +53,5 @@
 
 - [x] 真實專利案例登出並重新載入頁面後，再登入從歷史開啟原搜尋。測試核對重新取得的 API 證據、比對矩陣及 PDF 內容。
 - [x] 加入 Chromium 平板模擬，與原桌面和手機設定共同執行兩套 E2E。
+
+- [x] Firefox 與 WebKit 在 Windows 各通過帳號／專案冒煙和真實專利回歸。手動遠端 CI 已設定三種引擎。

@@ -16,5 +16,11 @@ export default defineConfig({
     { name: "desktop-chromium", use: { ...devices["Desktop Chrome"] } },
     { name: "tablet-chromium", use: { ...devices["iPad (gen 7)"], browserName: "chromium" } },
     { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
+    ...(process.env.PATENTSCOPE_E2E_CROSS_BROWSER === "1"
+      ? [
+        { name: "desktop-firefox", use: { ...devices["Desktop Firefox"] } },
+        { name: "desktop-webkit", use: { ...devices["Desktop Safari"] } },
+      ]
+      : []),
   ],
 });

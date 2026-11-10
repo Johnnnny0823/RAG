@@ -38,7 +38,7 @@ docker compose --env-file .env.example -p patentscope-e2e stop
 
 2026-11-10 在獨立新卷通過兩項 Chromium 案例（桌面與 Pixel 7 模擬），涵蓋 readiness、未登入 API 拒絕、註冊、登入／登出、專案新增／修改／重新登入讀取／刪除及帳號刪除。首次桌面測試因登出按鈕名稱不符而逾時，修正定位後兩項通過。請勿同時從同一工作目錄啟動兩次測試，兩次執行會共用產物路徑。
 
-CI 已加入 Chromium 測試步驟，失敗時保存 HTML 報告、截圖、Trace 與瀏覽器錯誤附件七天。Trace 可能包含合成測試憑證，僅允許對獨立測試環境執行。GitHub Actions 遠端執行、Firefox、WebKit 與前端 lint 尚待驗證或補齊。真實專利檢索、證據和 PDF 可另行執行下節的 TypeScript 測試。
+CI 已加入 Chromium 測試步驟，失敗時保存 HTML 報告、截圖、Trace 與瀏覽器錯誤附件七天。Trace 可能包含合成測試憑證，僅允許對獨立測試環境執行。GitHub Actions 遠端執行與前端 lint 尚待驗證或補齊。真實專利檢索、證據和 PDF 可另行執行下節的 TypeScript 測試。
 
 ## 真實 TIPO 資料的 TypeScript 回歸
 
@@ -73,4 +73,19 @@ $env:PATENTSCOPE_E2E_URL = "http://127.0.0.1:18125"
 
 ### 研究歷史與平板
 
-真實資料案例保存比對後會登出、重新載入頁面並登入，從歷史開啟相同搜尋。測試比對 API 重新讀取的文件 ID、判定和引文，展開原文定位，並驗證從重開的研究紀錄匯出的 PDF。兩套 E2E 均使用桌面、Pixel 7 與 iPad 第七代的 Chromium 模擬。Safari、Firefox 與實體裝置仍待驗證。
+真實資料案例保存比對後會登出、重新載入頁面並登入，從歷史開啟相同搜尋。測試比對 API 重新讀取的文件 ID、判定和引文，展開原文定位，並驗證從重開的研究紀錄匯出的 PDF。兩套 E2E 均使用桌面、Pixel 7 與 iPad 第七代的 Chromium 模擬。Firefox 與 WebKit 見下節。
+
+### Firefox 與 WebKit 相容性
+
+先完成前述隔離環境設定，再安裝相應的 Playwright 瀏覽器。開啟下列旗標後，可用 `--project` 選擇瀏覽器。設定 `PATENTSCOPE_E2E_TIPO=1` 時執行官方資料流程，否則執行帳號與專案冒煙測試。
+
+```powershell
+npm exec --prefix apps/web -- playwright install firefox webkit
+$env:PATENTSCOPE_E2E_CROSS_BROWSER = "1"
+npm run test:e2e --prefix apps/web -- --project=desktop-firefox --project=desktop-webkit
+Remove-Item Env:PATENTSCOPE_E2E_CROSS_BROWSER
+```
+
+一般 push／PR CI 保持 Chromium。手動 `Official patent E2E` 工作包含 Chromium、Firefox 與 WebKit。Windows 的 Playwright WebKit 結果只代表該引擎組態，macOS／iOS Safari 與實體裝置仍需另驗。
+
+2026-11-10 在 Windows 隔離部署上，Firefox 與 WebKit 的帳號／專案冒煙測試及官方全文、引文、歷史與 PDF 驗收各通過一項，共 4 項。
