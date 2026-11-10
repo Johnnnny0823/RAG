@@ -8,6 +8,8 @@ if (!baseURL || !/^http:\/\/127\.0\.0\.1:\d+$/.test(baseURL)) {
 export default defineConfig({
   testDir: "./e2e",
   workers: 1,
+  grep: process.env.PATENTSCOPE_E2E_TIPO === "1" ? /@tipo/ : undefined,
+  grepInvert: process.env.PATENTSCOPE_E2E_TIPO === "1" ? undefined : /@tipo/,
   reporter: [["list"], ["html", { open: "never" }]],
   use: { baseURL, trace: "retain-on-failure", screenshot: "only-on-failure" },
   projects: [

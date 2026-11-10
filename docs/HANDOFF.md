@@ -658,3 +658,22 @@
 - Uncommitted changes / file ownership warnings: 測試產物已由 Git 忽略，獨立測試卷保留。
 - Next 1–3 concrete actions: 將既有真實專利瀏覽器腳本轉為有固定資料種子的 TypeScript 案例，補上 PDF 與來源證據斷言，再查核遠端 Actions 結果。
 - Exact reproduction steps: 依 [TESTING](TESTING.md#playwright-typescript-冒煙測試) 的隔離 Compose 和瀏覽器指令。
+
+## M6 真實 TIPO Playwright 回歸
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `d181eb0`。
+- Current milestone and status: M6 IN_PROGRESS（目標檔定義）。
+- Goal of this session: 將已核對的真實 TIPO 全文、混合檢索、請求項引文及 PDF 下載納入 TypeScript E2E。
+- Files changed (with purpose): `apps/web/e2e/tipo-research.spec.ts`、Playwright 設定及測試交接文件。
+- Database migrations added/applied: 無。沿用隔離的靜態部署 `patentscope-static-proof` 及已建立的語料索引。
+- API/Schema changes: 無。
+- Commands actually run and results: `Get-FileHash` 確認既有卷期索引和原始全文 XML 的 SHA-256。設定 `PATENTSCOPE_E2E_TIPO=1` 後執行 `npm run test:e2e --prefix apps/web`，桌面及手機共 2 通過。未設定旗標時原有冒煙測試 2 通過，前端型別檢查及建置通過。
+- Tests NOT run and reason: 遠端 Actions 未準備官方樣本與本機模型。PDF 繁中內容及版面尚未由此案例驗證。未變更 Python。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-10 重新核對既有快取雜湊及 API 文件版本，來源為 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639611/113133932-A0304.xml`。授權與取得紀錄見 [DATA_SOURCES](DATA_SOURCES.md)。
+- Known bugs / risks / blockers: 首輪誤以為該部署含 `202640162` 全文，API 證實只有書目及摘要。切換至已核對的 `202639611`，並將重複 XPath 定位限定在專利詳情後通過。真實資料案例使用本機模型，執行時間可能隨硬體而變。
+- Decisions made (ADR links): 本機真實資料案例以 `@tipo` 獨立執行，沿用預設無模型的 CI 冒煙案例。
+- Uncommitted changes / file ownership warnings: 瀏覽器除錯產物已由 Git 忽略。案例以合成帳號執行並清理。
+- Next 1–3 concrete actions: 為 CI 準備隔離且可重建的固定來源與模型，擴充 PDF 內容和研究歷史斷言，驗證遠端品質關卡。
+- Exact reproduction steps: 見 [TESTING](TESTING.md#真實-tipo-資料的-typescript-回歸)。

@@ -36,3 +36,8 @@
 - [x] 補齊 M0 的 TypeScript 瀏覽器冒煙測試。桌面及手機 Chromium 對獨立新 PostgreSQL 資料卷均通過，共 2 項。
 - [x] CI 設定加入 Chromium 與失敗產物上傳。GitHub Actions 遠端結果待驗證。
 - [ ] 真實專利的檢索、證據與 PDF 流程納入 TypeScript CI，補上平板、Firefox、WebKit 相容性驗證。見 [測試文件](TESTING.md)。
+
+## 2026-11-10 真實資料瀏覽器回歸
+
+- [x] TypeScript Playwright 增加官方全文 `202639611` 的混合檢索、保存、請求項引用與 PDF 下載驗證。桌面與手機 Chromium 共 2 項通過。
+- [ ] 將官方樣本及本機模型供應整合至隔離的 CI，驗證 PDF 繁中內容，並擴充歷史、跨版本比對與相容性測試。見 [測試文件](TESTING.md)。

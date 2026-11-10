@@ -38,4 +38,19 @@ docker compose --env-file .env.example -p patentscope-e2e stop
 
 2026-11-10 在獨立新卷通過兩項 Chromium 案例（桌面與 Pixel 7 模擬），涵蓋 readiness、未登入 API 拒絕、註冊、登入／登出、專案新增／修改／重新登入讀取／刪除及帳號刪除。首次桌面測試因登出按鈕名稱不符而逾時，修正定位後兩項通過。請勿同時從同一工作目錄啟動兩次測試，兩次執行會共用產物路徑。
 
-CI 已加入 Chromium 測試步驟，失敗時保存 HTML 報告、截圖、Trace 與瀏覽器錯誤附件七天。Trace 可能包含合成測試憑證，僅允許對獨立測試環境執行。GitHub Actions 遠端執行、Firefox、WebKit、平板與前端 lint 尚待驗證或補齊。真實專利檢索、證據和 PDF 仍由既有 Playwright CLI 腳本驗收，待移入 TypeScript CI 套件。
+CI 已加入 Chromium 測試步驟，失敗時保存 HTML 報告、截圖、Trace 與瀏覽器錯誤附件七天。Trace 可能包含合成測試憑證，僅允許對獨立測試環境執行。GitHub Actions 遠端執行、Firefox、WebKit、平板與前端 lint 尚待驗證或補齊。真實專利檢索、證據和 PDF 可另行執行下節的 TypeScript 測試。
+
+## 真實 TIPO 資料的 TypeScript 回歸
+
+依 [SETUP](SETUP.md#靜態前端部署) 啟動專用 Compose 專案，匯入 24 卷 19 期索引與 `202639611` 全文，再建立詞彙與向量索引。確認模型設定含 embedding 和比對模型。官方下載指令與固定 SHA-256 見 [DATA_SOURCES](DATA_SOURCES.md) 及 [M1 樣本重現](SETUP.md#m1-官方樣本重現)。用 `verify_document 202639611` 核對原始物件和資料庫後，再執行：
+
+```powershell
+$env:PATENTSCOPE_E2E_URL = "http://127.0.0.1:18123"
+$env:PATENTSCOPE_E2E_TIPO = "1"
+npm run test:e2e --prefix apps/web
+Remove-Item Env:PATENTSCOPE_E2E_TIPO
+```
+
+2026-11-10 在已有官方樣本與本機 Qwen 的獨立部署驗證桌面及手機 Chromium，各通過一次。案例用公開的樹脂技術描述，確認混合檢索可保存、IPC／公開文件／申請人條件可用、詳情顯示官方資料集連結，且引文與同一文件版本的請求項、XPath、固定來源雜湊及 Unicode 字元區間吻合。PDF 檢查下載、檔名、媒體類型、私人快取標頭及基本檔案結構。案例完成時刪除合成帳號及其資料。
+
+這個案例尚未納入遠端 Actions，該環境目前未準備官方樣本與本機模型。PDF 繁中內容與版面仍需另外核對。既有 CLI 驗收保留跨版本、Session、收藏、歷史與跨帳號隔離流程。
