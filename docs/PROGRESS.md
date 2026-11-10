@@ -60,3 +60,8 @@
 
 - [x] 同案的公開 `202640162` 和公告 `I941082` 已加入獨立 TypeScript Playwright 案例，以各自的封存 XML 雜湊及請求項範圍驗證證據，並核對跨版本矩陣。
 - [ ] 遠端跨版本案例仍需固定公告期別快取。
+
+## 2026-11-10 前端 lint 關卡
+
+- [x] 前端與 Playwright TypeScript 已加入 Oxlint。一般 push／PR 工作會先 lint 再建置。Node 22.12 的乾淨安裝、lint、型別檢查和建置均已在本機驗證。
+- [ ] GitHub runner 實際執行仍待驗證。

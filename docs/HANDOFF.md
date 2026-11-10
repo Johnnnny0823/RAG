@@ -772,3 +772,22 @@
 - Uncommitted changes / file ownership warnings: 瀏覽器產物由 Git 忽略。
 - Next 1–3 concrete actions: 準備可安全重取的公告期別快取，再把版本案例接進遠端；接續補前端 lint 及其 CI 關卡。
 - Exact reproduction steps: 見 [TESTING](TESTING.md#同案公開與公告版本)。
+
+## M6 前端 lint 關卡
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `a72ca60`。
+- Current milestone and status: M6 IN_PROGRESS。
+- Goal of this session: 補前端 lint 指令及 push／PR CI 關卡。
+- Files changed (with purpose): `apps/web/package.json` 與 lockfile 固定 Oxlint，`.github/workflows/ci.yml` 加入 lint，並更新測試與交接文件。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。
+- Commands actually run and results: 在全新暫存副本以 Node 22.12 執行 `npm ci`、`npm run lint`、`npm run build` 均通過。刻意讓 useEffect 條件式呼叫時，lint 如預期以代碼 1 失敗。Windows 與 Linux Node 22 容器的乾淨安裝、lint 及建置均通過，npm 安裝摘要均為零漏洞。
+- Tests NOT run and reason: 只變更靜態檢查工具及 CI，未重跑 Python 或瀏覽器。尚無遠端，GitHub runner 結果待驗證。
+- Data sources checked (exact URL/date) and license/access notes: 無專利資料變更。
+- Known bugs / risks / blockers: 工作區的 `npm ci` 遇到 Windows 原生模組檔案鎖定，改在全新暫存副本驗證，原工作區亦已用 npm install 恢復並通過 lint。
+- Decisions made (ADR links): ESLint 試裝出現 Node 引擎相容性及 audit 告警，最終選用支援 Node 22.12 並包含 React Hooks 規則的 Oxlint。
+- Uncommitted changes / file ownership warnings: 暫存副本與負向測試檔在工作區外。
+- Next 1–3 concrete actions: 補專用 PostgreSQL 整合關卡與錯誤流程 E2E，待有遠端再驗證工作。
+- Exact reproduction steps: 見 [TESTING](TESTING.md#前端靜態檢查)。

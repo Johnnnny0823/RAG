@@ -6,7 +6,8 @@
     "dev": "vite",
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && vite build",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "lint": "oxlint --react-plugin --deny react/rules-of-hooks --deny react/exhaustive-deps --deny-warnings src e2e vite.config.ts playwright.config.ts"
   },
   "dependencies": {
     "react": "19.2.4",
@@ -19,6 +20,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "5.1.4",
+    "oxlint": "1.93.0",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vite": "7.3.7"

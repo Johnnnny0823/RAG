@@ -6,6 +6,7 @@
 .venv/Scripts/python -m ruff format --check .
 .venv/Scripts/python -m ruff check .
 .venv/Scripts/python -m pytest -q
+npm run lint --prefix apps/web
 npm run build --prefix apps/web
 ```
 
@@ -38,7 +39,7 @@ docker compose --env-file .env.example -p patentscope-e2e stop
 
 2026-11-10 在獨立新卷通過兩項 Chromium 案例（桌面與 Pixel 7 模擬），涵蓋 readiness、未登入 API 拒絕、註冊、登入／登出、專案新增／修改／重新登入讀取／刪除及帳號刪除。首次桌面測試因登出按鈕名稱不符而逾時，修正定位後兩項通過。請勿同時從同一工作目錄啟動兩次測試，兩次執行會共用產物路徑。
 
-CI 已加入 Chromium 測試步驟，失敗時保存 HTML 報告、截圖、Trace 與瀏覽器錯誤附件七天。Trace 可能包含合成測試憑證，僅允許對獨立測試環境執行。GitHub Actions 遠端執行與前端 lint 尚待驗證或補齊。真實專利檢索、證據和 PDF 可另行執行下節的 TypeScript 測試。
+CI 已加入 Chromium 測試步驟，失敗時保存 HTML 報告、截圖、Trace 與瀏覽器錯誤附件七天。Trace 可能包含合成測試憑證，僅允許對獨立測試環境執行。GitHub Actions 遠端執行尚待驗證。真實專利檢索、證據和 PDF 可另行執行下節的 TypeScript 測試。
 
 ## 真實 TIPO 資料的 TypeScript 回歸
 
@@ -103,3 +104,7 @@ Remove-Item Env:PATENTSCOPE_E2E_TIPO
 測試在同一搜尋比對兩個版本，驗證申請號相同、文件 ID 相異、各版本請求項的引文範圍及來源雜湊正確，並檢查矩陣分欄呈現。
 
 2026-11-10 桌面、平板及手機 Chromium 重跑共 3 項通過。首次手機案例等待比對回應逾時，已記錄於交接。
+
+### 前端靜態檢查
+
+`npm run lint --prefix apps/web` 檢查前端、Vite 設定及 Playwright TypeScript。使用 Oxlint 的正確性規則，並驗證 React Hooks 的呼叫位置及依賴清單。警告也會造成失敗。一般 push／PR CI 先執行 lint，再執行包含 TypeScript 型別檢查的正式建置。
