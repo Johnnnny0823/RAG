@@ -867,3 +867,22 @@
 - Uncommitted changes / file ownership warnings: 測試產物寫在專用暫存目錄，合成帳號由 API 清理。
 - Next 1–3 concrete actions: 補模型重排驗收及可重建的遠端多文件樣本。
 - Exact reproduction steps: 見 [TESTING](TESTING.md#檢索排序與分頁)。
+
+## M6 模型重排序驗收
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `fe7bb60`。
+- Current milestone and status: M6 IN_PROGRESS。
+- Goal of this session: 修正真實候選的重排失敗並驗證 API 與畫面排序。
+- Files changed (with purpose): `services/retrieval/rerank.py` 改為候選限定的結構化輸出，更新單元與瀏覽器測試及 API、驗收與交接文件。
+- Database migrations added/applied: 無。沿用隔離的官方樣本。
+- API/Schema changes: 重排模型流程版本升為 `ollama-listwise-v2`，API 欄位與錯誤格式維持。
+- Commands actually run and results: 舊版隔離 API 對已驗證的公開與公告候選回傳 503。新 API 容器以相同查詢回傳完整兩筆；未篩選的 API 查詢成功重排八筆。兩候選的 Playwright 桌面、平板與手機共 3 通過，Pytest 單元 48 通過，Ruff、前端 lint 與型別檢查通過。
+- Tests NOT run and reason: 未重跑 PostgreSQL 整合測試。尚未執行遠端多文件工作或人工排序品質複核。
+- Data sources checked (exact URL/date) and license/access notes: 沿用真實 `202640162` 與 `I941082` 等已匯入的 [TIPO 樣本](DATA_SOURCES.md)，未重新下載。
+- Known bugs / risks / blockers: 模型仍可能輸出無效排列，後端會拒絕。首輪瀏覽器斷言誤用僅保存檢索可見的說明，改核對預覽的勾選狀態及逐列 API 名次後通過。
+- Decisions made (ADR links): 使用 Ollama JSON Schema 約束編號與長度，候選唯一性由後端驗證。
+- Uncommitted changes / file ownership warnings: 測試產物在專用暫存目錄。臨時 API 與 Vite 已停止。
+- Next 1–3 concrete actions: 準備可重建的遠端多文件樣本，補人工相關性標註及重排品質評估。
+- Exact reproduction steps: 見 [TESTING](TESTING.md#本機模型重排序)。
