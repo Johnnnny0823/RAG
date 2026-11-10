@@ -886,3 +886,12 @@
 - Uncommitted changes / file ownership warnings: 測試產物在專用暫存目錄。臨時 API 與 Vite 已停止。
 - Next 1–3 concrete actions: 準備可重建的遠端多文件樣本，補人工相關性標註及重排品質評估。
 - Exact reproduction steps: 見 [TESTING](TESTING.md#本機模型重排序)。
+
+## 2026-11-10 交由 Claude Code 接續
+
+- 接手起點為 `main` 的 `9d7a82e`，當時工作區乾淨。Codex 目標由使用者暫停，M6 仍在進行。接手交接只更新本文件。
+- 原始目標檔為 `C:\Users\xnikz\.codex\attachments\38124b2a-5177-4f61-835c-8117b7ec1c76\goal-objective.md`。先完整閱讀該檔、`CLAUDE.md`、`AGENTS.md`，再核對 Git、[進度](PROGRESS.md)、[測試](TESTING.md)與本文件最近一節。原始目標的 M6 是整合、安全與部署，與 AGENTS 的 M6 選配延伸命名不同，驗收範圍以原始目標為準。
+- 最近一次實測是重排修正後的 48 項單元測試、Ruff、前端 lint／型別檢查及三種 Chromium 裝置的重排回歸。未篩選的真實語料也成功重排前八筆。先前的 PostgreSQL 整合測試、瀏覽器相容性及繁中 PDF 有各自的實測紀錄，接手後依變更範圍重新驗證。
+- **下一步**：檢查 `scripts/seed_tipo_e2e.py` 與 `.github/workflows/tipo-e2e.yml`。現有種子只有一份全文；先用已核對雜湊的官方封存期別建立足夠分頁的隔離語料，驗證空白卷遷移、重跑不重複及保存後分頁，再接 CI。跨版本測試另需公開 `202640162` 全文及公告 `I941082` 的固定期別；移動中的最新期 S01 不能當作歷史封存檔替代。來源見 [DATA_SOURCES](DATA_SOURCES.md)。
+- **外部依賴**：Git 未設定遠端，GitHub Actions 未實跑。由使用者指定遠端後再驗證。重排的品質評估仍缺人工相關性標註，見 [EVALUATION](EVALUATION.md)；已通過的流程測試只證明候選及排名資料完整。
+- 不要重做已驗收工作，也不要將既有文件的成功紀錄擴大解讀為整體完成。每輪執行適用測試並更新 PROGRESS 和 HANDOFF，保留未驗證及外部阻礙。正式資料、設定及憑證依專案規範處理。
