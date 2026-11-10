@@ -64,12 +64,12 @@
 ## 2026-11-10 前端 lint 關卡
 
 - [x] 前端與 Playwright TypeScript 已加入 Oxlint。一般 push／PR 工作會先 lint 再建置。Node 22.12 的乾淨安裝、lint、型別檢查和建置均已在本機驗證。
-- [ ] GitHub runner 實際執行仍待驗證。
+- [x] 2026-11-10 GitHub runner 的 lint 與建置通過，見 [執行 42833320981](https://github.com/Johnnnny0823/RAG/actions/runs/42833320981)。
 
 ## 2026-11-10 PostgreSQL 與 API 整合
 
 - [x] 新資料卷套用完整遷移後，整合測試驗證 pgvector、API 就緒、專案資料隔離與跨帳號外鍵。已加入一般 push／PR 工作。
-- [ ] GitHub runner 實際執行待驗證。
+- [x] 2026-11-10 GitHub runner 的整合測試通過，見 [執行 42833320981](https://github.com/Johnnnny0823/RAG/actions/runs/42833320981)。
 
 ## 2026-11-10 搜尋錯誤流程
 
@@ -94,3 +94,8 @@
 - [x] 以重建語料跑 Chromium 桌面、平板及手機：跨版本引文、預覽與已保存分頁、模型重排共 12 項，單案全文、歷史與 PDF 共 3 項，全部通過。
 - [x] 修正同分文件版本以隨機 UUID 決定順序的缺陷，重建語料首輪跨版本案例因此失敗 3 項，修正後通過。見 [決策](DECISIONS.md#m6-同分文件版本排序)。
 - [ ] 手動 `Official patent E2E` 工作已改用多文件種子並加入 `versions` 套件，GitHub runner 的 FTPS、CPU 推論時間與 Firefox／WebKit 尚未驗證。
+## 2026-11-10 首次遠端 CI
+
+- [x] `main` 推送到 [Johnnnny0823/RAG](https://github.com/Johnnnny0823/RAG) 的 `12340ce`，一般 CI 的 [執行 42833320981](https://github.com/Johnnnny0823/RAG/actions/runs/42833320981) 通過。步驟含 Ruff 格式檢查、前端 lint 與建置、空白卷遷移後的 PostgreSQL 整合測試、HTTP 冒煙及 Chromium Playwright。
+- [ ] 手動 `Official patent E2E` 尚未在 GitHub runner 執行。官方 FTPS、CPU 推論時間、Firefox 與 WebKit 仍待驗證。
+- [ ] CI 有兩則警告待處理：`actions/checkout@v4`、`setup-node@v4`、`setup-python@v5` 使用已棄用的 Node.js 20；`ubuntu-latest` 將遷移至 Ubuntu 26。

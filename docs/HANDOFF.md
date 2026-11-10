@@ -922,3 +922,21 @@
 - Uncommitted changes / file ownership warnings: Compose 專案 `patentscope-tipo-multi` 已停止，資料卷保留。官方快取在 `%TEMP%\patentscope-tipo-multi`，約 97 MB。
 - Next 1–3 concrete actions: 使用者指定 Git 遠端後手動執行 `Official patent E2E` 並依實測調整逾時。對新語料補跑 Firefox 與 WebKit。人工複核 35 組候選後重跑檢索與重排評估。
 - Exact reproduction steps: 見 [TESTING](TESTING.md#自動建立固定官方樣本)。
+## M6 首次遠端 CI
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Claude Code。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `12340ce`。
+- Current milestone and status: M6 IN_PROGRESS。
+- Goal of this session: 依使用者指定設定 Git 遠端並驗證一般 CI。
+- Files changed (with purpose): PROGRESS 與本文件記錄遠端結果。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。
+- Commands actually run and results: `git remote add origin https://github.com/Johnnnny0823/RAG.git` 後 `git push -u origin main`，遠端原為空。推送觸發的 [執行 42833320981](https://github.com/Johnnnny0823/RAG/actions/runs/42833320981) 全部步驟通過，以 `gh run watch --exit-status` 確認。
+- Tests NOT run and reason: 手動 `Official patent E2E` 未觸發，等待使用者決定。本次只改文件，未重跑本機測試。
+- Data sources checked (exact URL/date) and license/access notes: 無新增。
+- Known bugs / risks / blockers: CI 回報 Node.js 20 動作棄用與 `ubuntu-latest` 遷移兩則警告。本機 git 的背景 repack 在 D: 槽遇到權限錯誤，`git fsck` 通過。
+- Decisions made (ADR links): 無。
+- Uncommitted changes / file ownership warnings: 無。
+- Next 1–3 concrete actions: 手動執行 `Official patent E2E` 並依實測調整逾時。處理 CI 的兩則警告。人工複核 35 組候選後重跑評估。
+- Exact reproduction steps: `gh run list --repo Johnnnny0823/RAG`。
