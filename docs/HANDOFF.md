@@ -753,3 +753,22 @@
 - Uncommitted changes / file ownership warnings: 測試產物由 Git 忽略。
 - Next 1–3 concrete actions: 擴充真實跨版本回歸、補剩餘 CI 關卡與在遠端可用時執行官方工作。
 - Exact reproduction steps: 見 [TESTING](TESTING.md#firefox-與-webkit-相容性)。
+
+## M6 跨版本證據回歸
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `8a68d5c`。
+- Current milestone and status: M6 IN_PROGRESS。
+- Goal of this session: 在同一檢索確認公開、公告兩版的請求項與來源分開。
+- Files changed (with purpose): `apps/web/e2e/patent-versions.spec.ts`、Playwright 選擇設定及三份驗收／交接文件。
+- Database migrations added/applied: 無。沿用隔離的既有真實語料庫，案例只讀。
+- API/Schema changes: 無。
+- Commands actually run and results: 前端型別檢查通過，兩份封存 XML 的 `Get-FileHash` 符合固定雜湊。由 Vite `18126` 同源代理至驗收 API `18022`，桌面、平板及手機 Chromium 重跑共 3 通過。另以 `--list --reporter=list` 驗證既有兩套測試選擇各自維持三個案例。
+- Tests NOT run and reason: 本次未重跑 Python；新案例尚未移入遠端 CI。遠端仍未設定，公告歷史期別須使用封存副本。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-10 核對既有公開 `202640162` 全文、S01 第 53 卷第 28 期的 `I941082`。未重新下載。精確來源見 [資料來源](DATA_SOURCES.md)及 [評估來源清單](../evaluation/tipo_review_pool.json)。
+- Known bugs / risks / blockers: 以 HTML reporter 預設路徑執行列舉時曾遇 Windows EPERM，正式回歸使用專用輸出目錄。初次手機案例等待比對回應超過 60 秒，改為有上限的 110 秒並循序重跑後三項通過，單次逾時根因未確認。
+- Decisions made (ADR links): `PATENTSCOPE_E2E_TIPO=versions` 將雙版本語料案例獨立選出。
+- Uncommitted changes / file ownership warnings: 瀏覽器產物由 Git 忽略。
+- Next 1–3 concrete actions: 準備可安全重取的公告期別快取，再把版本案例接進遠端；接續補前端 lint 及其 CI 關卡。
+- Exact reproduction steps: 見 [TESTING](TESTING.md#同案公開與公告版本)。

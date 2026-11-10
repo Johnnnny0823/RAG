@@ -89,3 +89,17 @@ Remove-Item Env:PATENTSCOPE_E2E_CROSS_BROWSER
 一般 push／PR CI 保持 Chromium。手動 `Official patent E2E` 工作包含 Chromium、Firefox 與 WebKit。Windows 的 Playwright WebKit 結果只代表該引擎組態，macOS／iOS Safari 與實體裝置仍需另驗。
 
 2026-11-10 在 Windows 隔離部署上，Firefox 與 WebKit 的帳號／專案冒煙測試及官方全文、引文、歷史與 PDF 驗收各通過一項，共 4 項。
+
+### 同案公開與公告版本
+
+在獨立環境依 [官方清單補入全文](SETUP.md#以官方清單補入全文) 及 [公告版本比對](SETUP.md#公告版本比對) 準備公開 `202640162` 全文和公告 `I941082` 請求項。公告索引需使用原先封存的第 53 卷第 28 期，並核對 [資料來源](DATA_SOURCES.md) 的固定雜湊。對同一測試資料庫建立詞彙與向量索引並啟用本機模型。此案例須使用含兩個版本的資料庫，單案的 `seed_tipo_e2e` 種子不含此組資料。
+
+```powershell
+$env:PATENTSCOPE_E2E_TIPO = "versions"
+npm run test:e2e --prefix apps/web
+Remove-Item Env:PATENTSCOPE_E2E_TIPO
+```
+
+測試在同一搜尋比對兩個版本，驗證申請號相同、文件 ID 相異、各版本請求項的引文範圍及來源雜湊正確，並檢查矩陣分欄呈現。
+
+2026-11-10 桌面、平板及手機 Chromium 重跑共 3 項通過。首次手機案例等待比對回應逾時，已記錄於交接。
