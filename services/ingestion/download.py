@@ -17,6 +17,20 @@ SPEC_PATH = re.compile(
 )
 
 
+# The server sends its leaf and "TWCA SSL Certification Authority" but omits this
+# cross-certificate, which links them to the "TWCA CYBER Root CA" root. Windows fetches
+# it on demand; OpenSSL does not, and fails to verify the server without it.
+CROSS_CERTIFICATE = Path(__file__).with_name("twca_cyber_root_ca_g3.pem")
+
+
+def tls_context() -> ssl.SSLContext:
+    context = ssl.create_default_context()
+    # The bundled certificate may only bridge to a root the system already trusts.
+    context.verify_flags &= ~ssl.VERIFY_X509_PARTIAL_CHAIN
+    context.load_verify_locations(cafile=CROSS_CERTIFICATE)
+    return context
+
+
 class TIPOTransfer(FTP_TLS):
     def connect_implicit(self):
         self.host, self.port = "ftp.tipo.gov.tw", 990
@@ -58,7 +72,7 @@ def download_ftps_xml(url: str) -> bytes:
             raise ValueError("TIPO specification exceeds the XML size limit")
         payload.extend(chunk)
 
-    with TIPOTransfer(timeout=30, context=ssl.create_default_context()) as ftp:
+    with TIPOTransfer(timeout=30, context=tls_context()) as ftp:
         ftp.connect_implicit()
         ftp.login()
         ftp.prot_p()
