@@ -46,6 +46,7 @@ npm run build --prefix apps/web
 - [架構決策](docs/DECISIONS.md)
 - [里程碑進度](docs/PROGRESS.md)
 - [交接紀錄](docs/HANDOFF.md)
+- [測試與驗收](docs/TESTING.md)
 
 ## 檢索評估
 
@@ -58,3 +59,7 @@ python scripts/evaluate_citations.py --api http://127.0.0.1:18017
 ```
 
 種子集與分數解讀見 [檢索評估紀錄](docs/EVALUATION.md)。
+
+## 靜態前端部署
+
+用 Compose 部署設定啟動 Nginx 與已建置的前端，API 和資料庫留在內部網路。連接埠、資料匯入、模型設定及驗收指令見 [部署步驟](docs/SETUP.md#靜態前端部署)。

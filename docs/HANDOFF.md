@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## M5 靜態前端部署驗收
+
+- Date/time (timezone): 2026-11-09（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `316f43f`。
+- Current milestone and status: M5 IN_PROGRESS。
+- Goal of this session: 驗證不依賴 Vite 開發伺服器的 Compose 部署。
+- Files changed (with purpose): `apps/web/Dockerfile`、`nginx.conf` 建置及提供靜態前端，`docker-compose.deploy.yml` 啟用部署映像與內部 API，README、SETUP 及 DECISIONS 記錄。
+- Database migrations added/applied: 無新增，獨立新資料卷從空狀態遷移至 `0009_session_message_cascade`。
+- API/Schema changes: 無。
+- Commands actually run and results: Compose 合併、逐服務建置、`up --no-build --wait` 及 `smoke.py` 通過。匯入 25 個真實 TIPO 文件版本（1 筆全文），建立 228 個詞彙片段與 244 個向量。Playwright 驗證靜態檔、本機模型拆解、檢索、引文、保存及私有 PDF 下載。Docker 確認只有 Web 發布到 `127.0.0.1:18123`。
+- Tests NOT run and reason: 未部署外部 TLS、反向代理或壓測。人工評估尚未完成。
+- Data sources checked (exact URL/date) and license/access notes: 以 [M1 存檔 TIPO 24 卷 19 期索引及公開全文](DATA_SOURCES.md) 匯入新資料卷，無新增下載。
+- Known bugs / risks / blockers: 部署只驗證本機回環入口。35 組候選待人工複核。
+- Decisions made (ADR links): [靜態前端部署](DECISIONS.md#m5-靜態前端部署)。
+- Uncommitted changes / file ownership warnings: 隔離驗收專案 `patentscope-static-proof` 保留；原始物件存在該次驗收的本機暫存資料夾。
+- Next 1–3 concrete actions: 按新版目標補 Playwright TypeScript 與 CI 品質關卡，再續做人工複核及公開部署安全控制。新版目標將 M6 定義為整合、安全與部署，與既有 AGENTS.md 的選配延伸不同，里程碑映射待同步。
+- Exact reproduction steps: 見 [靜態前端部署](SETUP.md#靜態前端部署)。
+
 ## M5 說明書段落引用
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。

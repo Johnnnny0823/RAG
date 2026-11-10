@@ -19,6 +19,27 @@ Linux/macOS 可用 `cp .env.example .env`，虛擬環境的 Python 路徑為 `.v
 
 M0 的 Compose 設定用於本機開發，包含 Vite 開發伺服器、開發用帳密和本機連接埠。正式部署的環境及帳密管理方式待後續里程碑決定。
 
+## 靜態前端部署
+
+使用支援 `!reset` 的 Docker Compose。先將 `.env.example` 複製到 `.env`，為新資料卷設定專用的 PostgreSQL 密碼，並設定需要的本機 Ollama 模型與摘要。相同資料卷的資料庫帳密須和初始化時一致。
+
+```powershell
+$env:WEB_PORT = '18123'
+$deployArgs = @('-f', 'docker-compose.yml', '-f', 'docker-compose.deploy.yml', '-p', 'patentscope-deploy')
+foreach ($service in 'migrate', 'api', 'web') {
+    docker compose @deployArgs build $service
+    if ($LASTEXITCODE) { throw "Build failed: $service" }
+}
+docker compose @deployArgs up -d --no-build --wait --wait-timeout 120
+python scripts/smoke.py --api http://127.0.0.1:18123 --web http://127.0.0.1:18123
+```
+
+瀏覽器使用 `http://127.0.0.1:18123`。前端為已編譯的靜態檔，API 透過同源 `/api/v1/` 代理。API 與 PostgreSQL 沒有主機連接埠。全新資料卷會先遷移。依下節使用同一 Compose 專案匯入官方資料，再建立詞彙與向量索引。部署覆蓋檔只改動 API 與 Web 的連接方式，匯入可沿用同一組 `$deployArgs` 呼叫 `run`。
+
+匯入公開文件 `202639611` 的全文並索引後，建立測試帳號，輸入「光硬化性樹脂組成物」。執行 AI 拆解後保留該技術特徵，選擇「搜尋並保存」，再開啟該文件的全文版本執行「比對並保存證據」及「匯出 PDF 報告」。在瀏覽器網路面板可核對回應的 `application/pdf` 與 `Cache-Control: private, no-store`。
+
+此設定綁定回環位址。若開放給其他裝置，需由部署端設定 TLS、存取與速率限制，並管理 PostgreSQL 與原始物件備份。這些外部服務設定尚未實測。
+
 ## M1 官方樣本重現
 
 下列 PowerShell 指令使用獨立的 Compose 專案與資料卷。先依 README 建立 `.env`。第 24 卷第 19 期索引和個案說明書的授權、雜湊及格式見 [資料來源](DATA_SOURCES.md)。從空的資料目錄下載，下載器會拒絕覆寫既有檔案。

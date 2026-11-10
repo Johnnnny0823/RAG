@@ -1,0 +1,12 @@
+services:
+  api:
+    ports: !reset []
+  web:
+    build:
+      target: deploy
+    environment: !reset {}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5173/api/v1/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 12

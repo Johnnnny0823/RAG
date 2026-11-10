@@ -1,5 +1,10 @@
 # 架構決策
 
+## M5 靜態前端部署
+
+- Compose 覆蓋檔選擇 Nginx 靜態映像，並移除 API 的主機連接埠。開發模式沿用 Vite。部署入口保留本機回環綁定。 [Docker Compose 合併規則](https://docs.docker.com/reference/compose-file/merge/)
+- 同源代理保留 API 路徑及 Bearer 驗證。私有 PDF 回應停用代理緩衝，下載時仍沿用 API 的 `private, no-store`。 [Nginx 代理指令](https://nginx.org/en/docs/http/ngx_http_proxy_module.html)
+
 ## M5 帳號自助刪除
 
 - 以當前 Bearer token 決定帳號，並重新驗證其密碼。交易鎖定帳號與專案，依外鍵順序刪除私人資料及所有登入憑證。個別專案刪除仍受原本的非空限制。
