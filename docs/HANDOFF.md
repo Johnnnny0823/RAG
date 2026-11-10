@@ -895,3 +895,30 @@
 - **下一步**：檢查 `scripts/seed_tipo_e2e.py` 與 `.github/workflows/tipo-e2e.yml`。現有種子只有一份全文；先用已核對雜湊的官方封存期別建立足夠分頁的隔離語料，驗證空白卷遷移、重跑不重複及保存後分頁，再接 CI。跨版本測試另需公開 `202640162` 全文及公告 `I941082` 的固定期別；移動中的最新期 S01 不能當作歷史封存檔替代。來源見 [DATA_SOURCES](DATA_SOURCES.md)。
 - **外部依賴**：Git 未設定遠端，GitHub Actions 未實跑。由使用者指定遠端後再驗證。重排的品質評估仍缺人工相關性標註，見 [EVALUATION](EVALUATION.md)；已通過的流程測試只證明候選及排名資料完整。
 - 不要重做已驗收工作，也不要將既有文件的成功紀錄擴大解讀為整體完成。每輪執行適用測試並更新 PROGRESS 和 HANDOFF，保留未驗證及外部阻礙。正式資料、設定及憑證依專案規範處理。
+
+## M6 可重建的官方多文件語料
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Claude Code。
+- Branch / commit SHA: `main`，本文件所在提交及其前一個排序修正提交，起點 `5d13594`。
+- Current milestone and status: M6 IN_PROGRESS（原始目標檔定義）。
+- Goal of this session: 讓分頁、跨版本與重排案例使用可由官方來源重建的隔離語料，並接入手動 CI 工作。
+- Files changed (with purpose): `scripts/seed_tipo_e2e.py` 改為多文件種子，固定 24 個檔案雜湊並核對匯入筆數。`services/ingestion/download.py`、`import_issue.py` 接受公告期別封存目錄 `PatentIsuRegSpecXMLA`。`services/api/patents.py` 修正同分版本排序。`apps/web/e2e/patent-versions.spec.ts` 的公告來源雜湊改為封存檔。`.github/workflows/tipo-e2e.yml` 加入 `versions` 套件，逾時改為 90 分鐘。`tests/test_index_source.py`、`tests/test_tipo_e2e_seed.py` 補測試。更新 DATA_SOURCES、DECISIONS、TESTING、PROGRESS。
+- Database migrations added/applied: 無新增。新卷 `patentscope-tipo-multi` 從空白遷移到 `0009_session_message_cascade`，匯入前文件數為 0。
+- API/Schema changes: 無欄位變更。詞彙、向量與混合檢索在同分時先排內容較完整的版本。
+- Commands actually run and results:
+  - `python -m scripts.seed_tipo_e2e <cache>` 從 FTPS 下載 24 個檔案，雜湊全部相符。匯入結果為 99 書目加 1 全文、17 全文加 3 隔離、1 筆公告。`verify_document` 核對 `202639611`（19 項請求項、122 段）、`202640162`（13 項、41 段）及 `I941082`（13 項）。索引 117 個版本、1,677 個詞彙片段、1,624 個向量。
+  - 加 `--offline` 重跑，三個批次皆 `reused: true`，新增 0 片段 0 向量，文件、請求項、段落、批次、原始物件與索引筆數前後相同。
+  - `PATENTSCOPE_E2E_TIPO=versions` 首輪 9 通過 3 失敗，三項都是跨版本案例找不到 `202640162` 全文版。修正排序並重建 API 後 12 項通過。`PATENTSCOPE_E2E_TIPO=1` 兩輪各 3 項通過。皆為 Chromium 桌面、平板、手機。
+  - Ruff 格式與 lint 通過。Pytest 含 PostgreSQL 整合共 51 通過，1 則既有 Starlette 警告。前端 Oxlint 與 `tsc --noEmit` 通過。
+- Tests NOT run and reason: 未設定 Git 遠端，GitHub Actions 未執行。Firefox、WebKit 未對新語料重跑。未重跑無模型的冒煙與錯誤流程套件，前端程式無變更。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-10 匿名 FTPS 列出 `/PatentIsuRegSpecXMLA/115/`，下載第 53 卷第 28 期 `index.xml`（15,597,462 bytes，SHA-256 `60936a7a…`）。它與 S01 端點副本不同檔，`I941082` 的 13 項請求項文字逐字相同。詳見 [DATA_SOURCES](DATA_SOURCES.md#公告期別的固定封存檔)。
+- Known bugs / risks / blockers:
+  - 跨版本案例的公告雜湊已改為封存檔，舊驗收庫 `patentscope-m1-proof`（API `18022`）保存的是 S01 副本，該案例對舊庫會失敗。分頁與重排案例不受影響。
+  - 這台機器的 Docker Desktop 無法掛載 D: 槽路徑，錯誤為 `mkdir /run/desktop/mnt/host/d: file exists`。快取改放 C: 槽後成功，根因未查。
+  - 本機 GPU Ollama 建立向量約 100 秒。GitHub runner 的 CPU 推論時間未量測，90 分鐘上限是估計。
+  - 官方若替換任一封存檔，種子會在匯入前以雜湊不符失敗，需要重新查核來源。
+- Decisions made (ADR links): [同分文件版本排序](DECISIONS.md#m6-同分文件版本排序)。
+- Uncommitted changes / file ownership warnings: Compose 專案 `patentscope-tipo-multi` 已停止，資料卷保留。官方快取在 `%TEMP%\patentscope-tipo-multi`，約 97 MB。
+- Next 1–3 concrete actions: 使用者指定 Git 遠端後手動執行 `Official patent E2E` 並依實測調整逾時。對新語料補跑 Firefox 與 WebKit。人工複核 35 組候選後重跑檢索與重排評估。
+- Exact reproduction steps: 見 [TESTING](TESTING.md#自動建立固定官方樣本)。

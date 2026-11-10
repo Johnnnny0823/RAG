@@ -29,11 +29,12 @@ PUBLICATION_INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10"
 def validate_index_source(url: str, batch: str, *, grant: bool) -> None:
     if url == (GRANT_INDEX_URL if grant else PUBLICATION_INDEX_URL):
         return
+    dataset = "PatentIsuRegSpecXMLA" if grant else "InventionPubXML"
     archived = re.fullmatch(
-        r"ftps://ftp\.tipo\.gov\.tw/InventionPubXML/[0-9]{3}/InventionPubXML_([0-9]{6})/index\.xml",
+        rf"ftps://ftp\.tipo\.gov\.tw/{dataset}/[0-9]{{3}}/{dataset}_([0-9]{{6}})/index\.xml",
         url,
     )
-    if grant or archived is None or archived[1] != batch:
+    if archived is None or archived[1] != batch:
         raise ValueError("Index source URL must match the official dataset and issue")
 
 

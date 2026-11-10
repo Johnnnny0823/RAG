@@ -12,7 +12,9 @@ from urllib.request import urlopen
 from services.ingestion.artifacts import MAX_XML_BYTES
 
 INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10"
-SPEC_PATH = re.compile(r"/InventionPubXML/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_-]+\.xml")
+SPEC_PATH = re.compile(
+    r"/(?:InventionPubXML|PatentIsuRegSpecXMLA)/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_-]+\.xml"
+)
 
 
 class TIPOTransfer(FTP_TLS):
@@ -48,7 +50,7 @@ def download_ftps_xml(url: str) -> bytes:
         or not SPEC_PATH.fullmatch(parsed.path)
         or any(part in {".", ".."} for part in parsed.path.split("/"))
     ):
-        raise ValueError("Expected a TIPO InventionPubXML FTPS URL")
+        raise ValueError("Expected a TIPO patent XML FTPS URL")
     payload = bytearray()
 
     def append(chunk: bytes) -> None:

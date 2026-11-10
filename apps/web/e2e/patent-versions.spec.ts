@@ -11,7 +11,8 @@ const versions = [
     label: "公告 I941082",
     scope: "請求項",
     stage: "grant",
-    hash: "f8268c23fa3032d81841819135f3f3089c7b10d447ec00f83330a73459a0c84e",
+    // Archived FTPS index of grant issue 053028; the moving S01 copy has another hash.
+    hash: "60936a7ab763fbb8bd79b8a3071aa89d43da3ffe4ef65928734a9ddc70827a4a",
   },
 ];
 

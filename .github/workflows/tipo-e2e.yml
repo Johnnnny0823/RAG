@@ -8,7 +8,7 @@ permissions:
 jobs:
   official-patent:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     env:
       COMPOSE_PROJECT_NAME: patentscope-tipo-e2e
       EMBEDDING_URL: http://ollama:11434
@@ -38,10 +38,16 @@ jobs:
           docker exec patentscope-tipo-ollama ollama pull "$ANALYSIS_MODEL"
       - run: docker compose --env-file .env.example up -d --build --wait --wait-timeout 180
       - run: python -m scripts.seed_tipo_e2e "$RUNNER_TEMP/tipo-fixture"
-      - run: npm run test:e2e --prefix apps/web
+      - name: Official full text, evidence, history and PDF
+        run: npm run test:e2e --prefix apps/web
         env:
           PATENTSCOPE_E2E_TIPO: "1"
           PATENTSCOPE_E2E_CROSS_BROWSER: "1"
+          PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
+      - name: Publication and grant versions, pagination and reranking
+        run: npm run test:e2e --prefix apps/web
+        env:
+          PATENTSCOPE_E2E_TIPO: versions
           PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
       - uses: actions/upload-artifact@v5
         if: failure()
