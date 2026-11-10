@@ -39,6 +39,8 @@ docker compose --env-file .env.example -p patentscope-e2e stop
 
 2026-11-10 在獨立新卷通過兩項 Chromium 案例（桌面與 Pixel 7 模擬），涵蓋 readiness、未登入 API 拒絕、註冊、登入／登出、專案新增／修改／重新登入讀取／刪除及帳號刪除。首次桌面測試因登出按鈕名稱不符而逾時，修正定位後兩項通過。請勿同時從同一工作目錄啟動兩次測試，兩次執行會共用產物路徑。
 
+同一套件另以未註冊的隨機地址連續登入失敗 5 次，確認第 6 次回傳 429、帶 `Retry-After`，且畫面顯示節流訊息。這個案例不建立帳號，失敗紀錄 15 分鐘後失效。PostgreSQL 整合測試另驗證節流期間正確密碼被拒、其他帳號不受影響，以及紀錄逾期後可登入並清除。2026-11-10 在全新資料卷（遷移至 `0010_login_failures`）跑 Chromium 三種裝置共 12 項通過。
+
 CI 已加入 Chromium 測試步驟，失敗時保存 HTML 報告、截圖、Trace 與瀏覽器錯誤附件七天。Trace 可能包含合成測試憑證，僅允許對獨立測試環境執行。GitHub Actions 遠端執行尚待驗證。真實專利檢索、證據和 PDF 可另行執行下節的 TypeScript 測試。
 
 ## 真實 TIPO 資料的 TypeScript 回歸

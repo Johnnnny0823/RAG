@@ -1,6 +1,31 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
+test("repeated failed logins are throttled with a visible message", async ({ page }) => {
+  // An unregistered address throttles like a real one and leaves no account behind.
+  const button = page.getByRole("button", { name: "登入", exact: true });
+  const email = `throttle-${randomUUID()}@example.invalid`;
+  await page.goto("/");
+
+  async function attempt(status: number) {
+    // The form clears itself after a failed login.
+    await page.getByLabel("電子郵件").fill(email);
+    await page.getByLabel("密碼（至少 12 字元）").fill(randomUUID());
+    const pending = page.waitForResponse((response) =>
+      new URL(response.url()).pathname === "/api/v1/auth/login");
+    await button.click();
+    const response = await pending;
+    expect(response.status()).toBe(status);
+    return response;
+  }
+
+  for (let failure = 0; failure < 5; failure += 1) await attempt(401);
+  await expect(page.getByText("請登入或確認登入資訊。")).toBeVisible();
+  const limited = await attempt(429);
+  expect(Number(limited.headers()["retry-after"])).toBeGreaterThan(0);
+  await expect(page.getByText("登入失敗次數過多，請稍後再試。")).toBeVisible();
+});
+
 test("workspace uses the live API and persists project changes", async ({ page, request }, testInfo) => {
   const browserErrors: string[] = [];
   page.on("pageerror", (error) => browserErrors.push(error.message));

@@ -9,6 +9,7 @@ from services.api.identity import (
     AccessToken,
     Account,
     AccountInput,
+    LoginThrottled,
     PasswordConfirmation,
     delete_account,
     login_account,
@@ -47,10 +48,19 @@ def register(payload: AccountInput):
     return account
 
 
-@router.post("/auth/login", response_model=AccessToken)
+@router.post(
+    "/auth/login",
+    response_model=AccessToken,
+    responses={429: {"model": PatentErrorEnvelope}},
+)
 def login(payload: AccountInput, response: Response):
     try:
         token = login_account(payload)
+    except LoginThrottled as throttled:
+        limited = api_error(429, "LOGIN_THROTTLED", "登入失敗次數過多，請稍後再試。")
+        limited.headers["Retry-After"] = str(throttled.retry_after)
+        limited.headers["Cache-Control"] = "no-store"
+        return limited
     except SQLAlchemyError:
         return unavailable()
     response.headers["Cache-Control"] = "no-store"

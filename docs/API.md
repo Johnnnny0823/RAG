@@ -63,7 +63,7 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 | 方法 | 路徑 | 行為 |
 | --- | --- | --- |
 | POST | `/api/v1/auth/register` | 以 `email` 及 12–128 字元的 `password` 建立帳號，回傳 201。重複帳號回傳 409。 |
-| POST | `/api/v1/auth/login` | 以相同欄位取得有效期 24 小時的 Bearer token。 |
+| POST | `/api/v1/auth/login` | 以相同欄位取得有效期 24 小時的 Bearer token。帳密不符回傳 401。同一電子郵件在 15 分鐘內失敗 5 次後回傳 429 `LOGIN_THROTTLED` 與 `Retry-After` 秒數，期間正確密碼也會被拒；登入成功會清除該地址的失敗紀錄。 |
 | POST | `/api/v1/auth/logout` | 撤銷請求提供的 Bearer token，回傳 204。重送同一憑證也回傳 204。 |
 | GET | `/api/v1/me` | 回傳目前帳號。 |
 | DELETE | `/api/v1/me` | 提供 Bearer token 與 JSON `{"password":"…"}`，重新核對密碼後刪除帳號及伺服器端私人研究資料，回傳 204。密碼不符回傳 403。 |

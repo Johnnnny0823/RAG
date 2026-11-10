@@ -1,5 +1,6 @@
 """Exercise the migrated PostgreSQL schema and API with an isolated database."""
 
+import hashlib
 import os
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -77,6 +78,41 @@ def accounts():
                     json={"password": credentials["password"]},
                 )
                 assert response.status_code == 204
+
+
+def test_repeated_login_failures_are_throttled_per_address(accounts):
+    client, ((_, _, target), (_, _, bystander)) = accounts
+    guess = {"email": target["email"], "password": "wrong-password-guess"}
+    for _ in range(5):
+        assert client.post("/api/v1/auth/login", json=guess).status_code == 401
+
+    for credentials in (guess, target):
+        limited = client.post("/api/v1/auth/login", json=credentials)
+        assert limited.status_code == 429
+        assert limited.json()["error"]["code"] == "LOGIN_THROTTLED"
+        assert 0 < int(limited.headers["Retry-After"]) <= 900
+    assert client.post("/api/v1/auth/login", json=bystander).status_code == 200
+
+    key = hashlib.sha256(target["email"].encode()).digest()
+    with engine.begin() as conn:
+        stored = conn.exec_driver_sql(
+            "SELECT count(*) FROM login_failures WHERE email_hash = %s", (key,)
+        ).scalar_one()
+        assert stored == 5
+        # Age the failures instead of waiting for the window to pass.
+        conn.exec_driver_sql(
+            """UPDATE login_failures SET failed_at = failed_at - interval '16 minutes'
+               WHERE email_hash = %s""",
+            (key,),
+        )
+    assert client.post("/api/v1/auth/login", json=target).status_code == 200
+    with engine.connect() as conn:
+        assert (
+            conn.exec_driver_sql(
+                "SELECT count(*) FROM login_failures WHERE email_hash = %s", (key,)
+            ).scalar_one()
+            == 0
+        )
 
 
 def test_projects_isolated_in_api_and_foreign_key(accounts):
