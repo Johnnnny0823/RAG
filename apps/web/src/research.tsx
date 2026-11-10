@@ -86,15 +86,24 @@ const title = (hit: PatentVersion) => hit.title_zh || hit.title_en || hit.public
 
 class SessionExpired extends Error {}
 
+async function fetchWithDeadline(url: string, options: RequestInit): Promise<Response> {
+  const signal = AbortSignal.timeout(180_000);
+  try {
+    return await fetch(url, { ...options, signal });
+  } catch (error) {
+    if (signal.aborted) throw signal.reason;
+    throw error;
+  }
+}
+
 async function request<T>(path: string, payload?: object, token?: string, method = payload ? "POST" : "GET"): Promise<T> {
   const headers = new Headers();
   if (payload) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", "Bearer " + token);
-  const response = await fetch("/api/v1" + path, {
+  const response = await fetchWithDeadline("/api/v1" + path, {
     cache: "no-store",
     headers,
     method,
-    signal: AbortSignal.timeout(180_000),
     ...(payload && {
       body: JSON.stringify(payload),
     }),
@@ -214,10 +223,9 @@ export function Research() {
   }
 
   async function downloadReport(runId: string, token: string) {
-    const response = await fetch(`/api/v1/search-runs/${runId}/report.pdf`, {
+    const response = await fetchWithDeadline(`/api/v1/search-runs/${runId}/report.pdf`, {
       headers: { Authorization: "Bearer " + token },
       cache: "no-store",
-      signal: AbortSignal.timeout(180_000),
     });
     if (response.status === 401) throw new SessionExpired("登入已失效，請重新登入。");
     if (!response.ok) {

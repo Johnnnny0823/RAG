@@ -34,7 +34,18 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     await button("新增特徵").click();
     await page.getByLabel("特徵描述", { exact: true }).fill("光硬化性樹脂組成物");
     await page.getByLabel("繁中檢索詞（逗號分隔）").fill("光硬化性樹脂組成物");
-    await page.getByLabel("IPC 篩選（選填）").fill("C08F");
+    const ipc = page.getByLabel("IPC 篩選（選填）");
+    await ipc.fill("A01B");
+    const emptyResponse = page.waitForResponse((response) =>
+      response.url().endsWith("/api/v1/patents/search/hybrid"), { timeout: 90_000 },
+    );
+    await button("搜尋臺灣專利").click();
+    const empty = await emptyResponse;
+    expect(empty.ok()).toBe(true);
+    expect((await empty.json()).items).toEqual([]);
+    await expect(page.getByText("已索引的資料中沒有符合這次條件的結果。")).toBeVisible();
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    await ipc.fill("C08F");
     await page.getByLabel("文件種類").selectOption("publication");
     await page.getByLabel("申請人（中英文名稱）").fill("九州大學");
 

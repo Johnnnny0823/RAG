@@ -810,3 +810,22 @@
 - Uncommitted changes / file ownership warnings: 專用測試資料卷保留，合成測試帳號透過 API 清理。
 - Next 1–3 concrete actions: 補搜尋錯誤和服務不可用的瀏覽器回歸，並於遠端可用時驗證 CI。
 - Exact reproduction steps: 見 [TESTING](TESTING.md#postgresql-與-api-整合)。
+
+## M6 搜尋錯誤及空結果回歸
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `2c96353`。
+- Current milestone and status: M6 IN_PROGRESS。
+- Goal of this session: 分開驗證錯誤輸入、服務失敗、空結果、用戶端逾時與重試。
+- Files changed (with purpose): 新增 `apps/web/e2e/search-errors.spec.ts`，擴充官方 E2E 案例，修正 `research.tsx` 的逾時分類，更新驗收文件。
+- Database migrations added/applied: 無。沿用無模型與單筆官方語料的獨立資料庫。
+- API/Schema changes: 無。
+- Commands actually run and results: 前端 lint、型別檢查與建置通過。修正後在 Chromium 三個裝置配置、Firefox 和 WebKit 重跑工作台與錯誤流程共 15 項通過，官方空結果、引文、歷史與 PDF 共 5 項通過。
+- Tests NOT run and reason: 未修改後端，未重跑 Python。尚無 Git 遠端，未執行遠端工作。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 [固定官方資料](DATA_SOURCES.md) 的公開案 `202639611`，無新增下載。
+- Known bugs / risks / blockers: WebKit 原先把計時中止回報為 Fetch is aborted。前端改依逾時訊號的原因分類，保留 180 秒設定。逾時案例在測試瀏覽器內縮短單次計時並暫停傳輸，驗證用戶端行為；未量測完整 180 秒等待或正式環境的服務恢復時間。
+- Decisions made (ADR links): 無效日期及模型不可用使用真實 HTTP 422／503；空結果使用真實 200 和空清單；逾時不偽造 API 回應。
+- Uncommitted changes / file ownership warnings: 測試產物由 Git 忽略。
+- Next 1–3 concrete actions: 補檢索排序及分頁回歸，並在有遠端後執行 CI。
+- Exact reproduction steps: 見 [TESTING](TESTING.md#搜尋失敗空結果與逾時)。
