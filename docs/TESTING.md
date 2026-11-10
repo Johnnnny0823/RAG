@@ -38,7 +38,7 @@ docker compose --env-file .env.example -p patentscope-e2e stop
 
 2026-11-10 在獨立新卷通過兩項 Chromium 案例（桌面與 Pixel 7 模擬），涵蓋 readiness、未登入 API 拒絕、註冊、登入／登出、專案新增／修改／重新登入讀取／刪除及帳號刪除。首次桌面測試因登出按鈕名稱不符而逾時，修正定位後兩項通過。請勿同時從同一工作目錄啟動兩次測試，兩次執行會共用產物路徑。
 
-CI 已加入 Chromium 測試步驟，失敗時保存 HTML 報告、截圖、Trace 與瀏覽器錯誤附件七天。Trace 可能包含合成測試憑證，僅允許對獨立測試環境執行。GitHub Actions 遠端執行、Firefox、WebKit、平板與前端 lint 尚待驗證或補齊。真實專利檢索、證據和 PDF 可另行執行下節的 TypeScript 測試。
+CI 已加入 Chromium 測試步驟，失敗時保存 HTML 報告、截圖、Trace 與瀏覽器錯誤附件七天。Trace 可能包含合成測試憑證，僅允許對獨立測試環境執行。GitHub Actions 遠端執行、Firefox、WebKit 與前端 lint 尚待驗證或補齊。真實專利檢索、證據和 PDF 可另行執行下節的 TypeScript 測試。
 
 ## 真實 TIPO 資料的 TypeScript 回歸
 
@@ -70,3 +70,7 @@ $env:PATENTSCOPE_E2E_URL = "http://127.0.0.1:18125"
 ```
 
 已有已驗證快取時可加 `--offline` 重跑，不會重新連到 TIPO。檔案雜湊錯誤會在匯入前失敗，保留原檔供排查。
+
+### 研究歷史與平板
+
+真實資料案例保存比對後會登出、重新載入頁面並登入，從歷史開啟相同搜尋。測試比對 API 重新讀取的文件 ID、判定和引文，展開原文定位，並驗證從重開的研究紀錄匯出的 PDF。兩套 E2E 均使用桌面、Pixel 7 與 iPad 第七代的 Chromium 模擬。Safari、Firefox 與實體裝置仍待驗證。

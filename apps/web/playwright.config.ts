@@ -14,6 +14,7 @@ export default defineConfig({
   use: { baseURL, trace: "retain-on-failure", screenshot: "only-on-failure" },
   projects: [
     { name: "desktop-chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "tablet-chromium", use: { ...devices["iPad (gen 7)"], browserName: "chromium" } },
     { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
   ],
 });

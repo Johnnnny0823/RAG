@@ -715,3 +715,22 @@
 - Uncommitted changes / file ownership warnings: 新的隔離專案已停止，測試資料卷與官方快取保留供重現。
 - Next 1–3 concrete actions: 有遠端時執行 `Official patent E2E`；補充歷史、跨版本及瀏覽器相容性驗證。
 - Exact reproduction steps: 見 [TESTING](TESTING.md#自動建立固定官方樣本)。
+
+## M6 研究歷史與平板回歸
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `a29412b`。
+- Current milestone and status: M6 IN_PROGRESS。
+- Goal of this session: 驗證研究歷史經登出及重載後仍能讀取保存的引文和 PDF，加入平板瀏覽器覆蓋。
+- Files changed (with purpose): `apps/web/e2e/tipo-research.spec.ts` 驗證重開搜尋，`apps/web/playwright.config.ts` 加入平板，以及測試、進度與交接文件。
+- Database migrations added/applied: 無。沿用隔離的資料庫。
+- API/Schema changes: 無。
+- Commands actually run and results: `npm run typecheck --prefix apps/web` 通過。官方樣本及本機模型 E2E 在 `18123` 跑桌面、平板及手機三項均通過。冒煙套件在 `18124` 重跑，桌面、平板及手機三項均通過。
+- Tests NOT run and reason: 僅變更前端測試及文件，未重跑 Python。尚無 Git 遠端，未執行遠端 CI。其他瀏覽器引擎與實體裝置尚未驗證。
+- Data sources checked (exact URL/date) and license/access notes: 沿用已核對的公開案 `202639611` 與 [來源紀錄](DATA_SOURCES.md)，本次未重新下載。
+- Known bugs / risks / blockers: iPad 使用 Chromium 模擬，Safari 相容性需單獨驗證。
+- Decisions made (ADR links): 在現有 Chromium 套件加入平板配置。
+- Uncommitted changes / file ownership warnings: 無。瀏覽器測試產物由 Git 忽略。
+- Next 1–3 concrete actions: 補跨版本回歸、Firefox／WebKit 驗收，並於遠端可用時執行官方 E2E 工作。
+- Exact reproduction steps: 見 [TESTING](TESTING.md#研究歷史與平板)。

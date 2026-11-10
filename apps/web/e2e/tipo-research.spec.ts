@@ -82,6 +82,32 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     await expect(evidence.getByText(citation.xpath, { exact: true })).toBeVisible();
     await expect(evidence.getByText(`原始檔 SHA-256 · ${citation.artifact_sha256}`)).toBeVisible();
 
+    await button("登出此頁").click();
+    await expect(publication).toHaveCount(0);
+    await page.reload();
+    await page.getByLabel("電子郵件").fill(email);
+    await page.getByLabel("密碼（至少 12 字元）").fill(password);
+    await button("登入").click();
+    await expect(page.getByText(`目前帳號 · ${email}`)).toBeVisible();
+
+    await button("載入搜尋歷史").click();
+    const historyResponse = page.waitForResponse((response) =>
+      new URL(response.url()).pathname === `/api/v1/search-runs/${id}` && response.request().method() === "GET",
+    );
+    await page.getByRole("button", { name: new RegExp(`${id.slice(0, 8)}$`) }).click();
+    const reopened = await historyResponse;
+    expect(reopened.ok()).toBe(true);
+    const reopenedRun = await reopened.json();
+    expect(reopenedRun.comparisons).toEqual([
+      expect.objectContaining({ document_id: documentId, items }),
+    ]);
+    await expect(page.getByText(/已保存的查詢 · 光硬化性樹脂組成物 · IPC C08F/)).toBeVisible();
+    const matrix = page.getByRole("table", { name: "跨文件比對矩陣" });
+    await expect(matrix.getByRole("columnheader", { name: /公開 202639611/ })).toBeVisible();
+    const savedEvidence = matrix.getByRole("cell").filter({ hasText: citation.quote });
+    await savedEvidence.getByText("原文證據與定位", { exact: true }).click();
+    await expect(savedEvidence.getByText(citation.xpath, { exact: true })).toBeVisible();
+
     const reportResponse = page.waitForResponse((response) => response.url().endsWith(`/api/v1/search-runs/${id}/report.pdf`));
     const downloaded = page.waitForEvent("download");
     await button("匯出 PDF 報告").click();
