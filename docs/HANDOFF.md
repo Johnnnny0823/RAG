@@ -848,3 +848,22 @@
 - Uncommitted changes / file ownership warnings: 測試產物位於暫存目錄，Vite 驗收服務已停止。
 - Next 1–3 concrete actions: 補已保存搜尋分頁及排序選項的回歸；繼續準備遠端多文件語料。
 - Exact reproduction steps: 見 [TESTING](TESTING.md#檢索排序與分頁)。
+
+## M6 已保存搜尋分頁
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `3d44d64`。
+- Current milestone and status: M6 IN_PROGRESS。
+- Goal of this session: 驗證保存搜尋從歷史重開後保留原候選快照及分頁。
+- Files changed (with purpose): `apps/web/e2e/search-pagination.spec.ts` 與驗收文件。
+- Database migrations added/applied: 無，使用既有隔離語料。
+- API/Schema changes: 無。
+- Commands actually run and results: `npm run lint` 與 `npm run typecheck` 通過。於 Vite `18126` 代理至官方樣本 API `18022`，執行 `PATENTSCOPE_E2E_TIPO=versions` 的分頁測試。桌面、平板與手機的預覽及已保存分頁共 6 通過。
+- Tests NOT run and reason: 未修改後端，未重跑 Pytest。未執行遠端、多文件模型重排與其他瀏覽器引擎。
+- Data sources checked (exact URL/date) and license/access notes: 沿用既有 TIPO 語料，無新增下載。見 [DATA_SOURCES](DATA_SOURCES.md)。
+- Known bugs / risks / blockers: 單筆官方種子不具備分頁條件。遠端仍未設定。
+- Decisions made (ADR links): 案例驗證快照分頁，不觸發新一輪模型檢索。
+- Uncommitted changes / file ownership warnings: 測試產物寫在專用暫存目錄，合成帳號由 API 清理。
+- Next 1–3 concrete actions: 補模型重排驗收及可重建的遠端多文件樣本。
+- Exact reproduction steps: 見 [TESTING](TESTING.md#檢索排序與分頁)。
