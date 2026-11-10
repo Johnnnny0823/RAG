@@ -296,6 +296,11 @@ SEARCH_FILTERS = """
     ))
 """
 
+# Versions of one publication share title and abstract, so their scores can tie.
+# The richest version must then rank first; document IDs are random.
+SCOPE_ORDER = """CASE {}
+        WHEN 'fulltext' THEN 0 WHEN 'claims_only' THEN 1 ELSE 2 END"""
+
 LEXICAL_SEARCH = f"""
     WITH query AS (
         SELECT to_tsquery('simple', %s) AS terms
@@ -313,7 +318,7 @@ LEXICAL_SEARCH = f"""
     {DOCUMENTS_FROM} JOIN matches m ON m.document_id = d.id
     {PUBLIC_DOCUMENT_FILTER}
     {SEARCH_FILTERS}
-    ORDER BY m.score DESC, d.id
+    ORDER BY m.score DESC, {SCOPE_ORDER.format("d.metadata_jsonb->>'content_scope'")}, d.id
     LIMIT %s OFFSET %s
 """
 
@@ -330,7 +335,7 @@ SEMANTIC_SEARCH = f"""
     )
     SELECT c.*, m.score
     FROM candidates c JOIN matches m ON m.document_id = c.document_id
-    ORDER BY m.score DESC, c.document_id
+    ORDER BY m.score DESC, {SCOPE_ORDER.format("c.content_scope")}, c.document_id
     LIMIT %s OFFSET %s
 """
 
