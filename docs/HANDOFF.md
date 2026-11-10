@@ -829,3 +829,22 @@
 - Uncommitted changes / file ownership warnings: 測試產物由 Git 忽略。
 - Next 1–3 concrete actions: 補檢索排序及分頁回歸，並在有遠端後執行 CI。
 - Exact reproduction steps: 見 [TESTING](TESTING.md#搜尋失敗空結果與逾時)。
+
+## M6 真實語料排序與分頁
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `c1c157d`。
+- Current milestone and status: M6 IN_PROGRESS。
+- Goal of this session: 用多筆官方語料確認預覽搜尋的融合排序與分頁。
+- Files changed (with purpose): `apps/web/e2e/search-pagination.spec.ts` 及驗收文件。
+- Database migrations added/applied: 無。使用既有隔離語料庫，案例只讀。
+- API/Schema changes: 無。
+- Commands actually run and results: `npm run lint` 和 `npm run typecheck` 通過。以 `PATENTSCOPE_E2E_TIPO=versions` 執行版本及分頁案例，桌面、平板、手機共 6 項通過。使用 Vite `18126` 同源代理至 `18022`。
+- Tests NOT run and reason: 只改瀏覽器測試及文件，未重跑 Python。未驗證保存後分頁、模型重排或遠端工作。
+- Data sources checked (exact URL/date) and license/access notes: 沿用隔離的 TIPO 官方樣本及索引，未重新下載。見 [DATA_SOURCES](DATA_SOURCES.md)。
+- Known bugs / risks / blockers: 單筆官方種子無法測試分頁。遠端仍需要足夠的固定官方樣本。
+- Decisions made (ADR links): 在現有多文件驗收配置執行，驗證關閉重排時的融合排名。
+- Uncommitted changes / file ownership warnings: 測試產物位於暫存目錄，Vite 驗收服務已停止。
+- Next 1–3 concrete actions: 補已保存搜尋分頁及排序選項的回歸；繼續準備遠端多文件語料。
+- Exact reproduction steps: 見 [TESTING](TESTING.md#檢索排序與分頁)。
