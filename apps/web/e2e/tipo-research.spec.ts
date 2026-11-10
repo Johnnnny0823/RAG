@@ -1,5 +1,7 @@
+import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { expect, test } from "@playwright/test";
 
 type Citation = {
@@ -12,7 +14,7 @@ type Citation = {
   artifact_sha256: string;
 };
 
-test("official publication supports saved evidence and PDF export @tipo", async ({ page }) => {
+test("official publication supports saved evidence and PDF export @tipo", async ({ page }, testInfo) => {
   test.setTimeout(180_000);
   const email = `tipo-e2e-${randomUUID()}@example.invalid`;
   const password = randomUUID();
@@ -90,10 +92,30 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     const download = await downloaded;
     expect(download.suggestedFilename()).toBe(`patentscope-${id}.pdf`);
     expect(await download.failure()).toBeNull();
-    const pdf = (await readFile(await download.path())).toString("latin1");
-    expect(pdf).toMatch(/^%PDF-\d\.\d/);
-    expect(pdf).toMatch(/\/Type\s*\/Page\b/);
-    expect(pdf).toMatch(/%%EOF\s*$/);
+    const reportPath = testInfo.outputPath("official-patent-report.pdf");
+    await download.saveAs(reportPath);
+    const inspect = fileURLToPath(new URL("../../../scripts/inspect_test_report.py", import.meta.url));
+    const { stdout } = await promisify(execFile)(
+      process.env.PATENTSCOPE_TEST_PYTHON || "python",
+      [inspect, reportPath],
+      { timeout: 15_000 },
+    );
+    const { text, links } = JSON.parse(stdout) as { text: string; links: string[] };
+    const normalizedText = text.replace(/\s+/gu, "");
+    for (const expected of [
+      "先前技術研究報告",
+      "研究限制",
+      "構想與檢索策略",
+      "光硬化性樹脂組成物",
+      "公開 202639611",
+      "經濟部智慧財產局",
+      citation.quote,
+      citation.xpath,
+      citation.artifact_sha256,
+    ]) {
+      expect(normalizedText, `PDF text contains ${expected}`).toContain(expected.replace(/\s+/gu, ""));
+    }
+    expect(links).toContain("https://data.gov.tw/dataset/15996");
   } finally {
     await page.getByText("刪除帳號與私人資料", { exact: true }).click();
     await page.getByLabel("確認帳號密碼").fill(password);

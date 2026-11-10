@@ -47,10 +47,12 @@ CI 已加入 Chromium 測試步驟，失敗時保存 HTML 報告、截圖、Trac
 ```powershell
 $env:PATENTSCOPE_E2E_URL = "http://127.0.0.1:18123"
 $env:PATENTSCOPE_E2E_TIPO = "1"
+.venv/Scripts/python -m pip install -r requirements-dev.txt
+$env:PATENTSCOPE_TEST_PYTHON = (Resolve-Path .venv/Scripts/python.exe).Path
 npm run test:e2e --prefix apps/web
 Remove-Item Env:PATENTSCOPE_E2E_TIPO
 ```
 
-2026-11-10 在已有官方樣本與本機 Qwen 的獨立部署驗證桌面及手機 Chromium，各通過一次。案例用公開的樹脂技術描述，確認混合檢索可保存、IPC／公開文件／申請人條件可用、詳情顯示官方資料集連結，且引文與同一文件版本的請求項、XPath、固定來源雜湊及 Unicode 字元區間吻合。PDF 檢查下載、檔名、媒體類型、私人快取標頭及基本檔案結構。案例完成時刪除合成帳號及其資料。
+2026-11-10 在已有官方樣本與本機 Qwen 的獨立部署驗證桌面及手機 Chromium，各通過一次。案例用公開的樹脂技術描述，確認混合檢索可保存、IPC／公開文件／申請人條件可用、詳情顯示官方資料集連結，且引文與同一文件版本的請求項、XPath、固定來源雜湊及 Unicode 字元區間吻合。PDF 驗證下載、檔名、媒體類型與私人快取標頭，並使用 pypdf 讀取下載檔，核對繁中標題、技術特徵、專利公開號、逐字引文、XPath、來源雜湊和官方連結註解。案例完成時刪除合成帳號及其資料。
 
-這個案例尚未納入遠端 Actions，該環境目前未準備官方樣本與本機模型。PDF 繁中內容與版面仍需另外核對。既有 CLI 驗收保留跨版本、Session、收藏、歷史與跨帳號隔離流程。
+這個案例尚未納入遠端 Actions，該環境目前未準備官方樣本與本機模型。以 Poppler 渲染桌面案例的兩頁並目視核對，繁中可讀，長雜湊有換行，證據延續到第二頁。Windows 若無法寫入 HTML 報告目錄，可先將 `PLAYWRIGHT_HTML_OUTPUT_DIR` 設為本次專用的可寫目錄。既有 CLI 驗收保留跨版本、Session、收藏、歷史與跨帳號隔離流程。

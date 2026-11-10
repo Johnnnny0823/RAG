@@ -677,3 +677,22 @@
 - Uncommitted changes / file ownership warnings: 瀏覽器除錯產物已由 Git 忽略。案例以合成帳號執行並清理。
 - Next 1–3 concrete actions: 為 CI 準備隔離且可重建的固定來源與模型，擴充 PDF 內容和研究歷史斷言，驗證遠端品質關卡。
 - Exact reproduction steps: 見 [TESTING](TESTING.md#真實-tipo-資料的-typescript-回歸)。
+
+## M6 繁中 PDF 驗收
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `cf963f7`。
+- Current milestone and status: M6 IN_PROGRESS。
+- Goal of this session: 驗證瀏覽器實際下載的繁中 PDF 內容、來源與版面。
+- Files changed (with purpose): Playwright TIPO 案例加入報告語意斷言，`scripts/inspect_test_report.py` 解析 PDF 文字與連結，`requirements-dev.txt` 固定 pypdf，更新測試及交接文件。
+- Database migrations added/applied: 無。沿用隔離部署及原有官方索引。
+- API/Schema changes: 無。
+- Commands actually run and results: 本機模型與官方案 `202639611` 驗證桌面及手機 Chromium 各 1 項。用 Poppler `pdftoppm` 渲染桌面 PDF 共兩頁並目視核對。前端建置與型別檢查通過，Ruff 格式與 lint 通過，Pytest 47 通過、1 項既有警告。
+- Tests NOT run and reason: 真實資料仍未接遠端 Actions。僅目視檢查一份實際下載檔，未建立視覺快照基準。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 2026-11-10 核對的 [官方案來源](DATA_SOURCES.md)，無新增下載。
+- Known bugs / risks / blockers: 初次斷言通過後 Windows HTML reporter 遇到 EPERM，改用獨立可寫目錄。樣本長雜湊換行，原文引用跨到第二頁，渲染可讀。
+- Decisions made (ADR links): pypdf 僅作開發測試依賴，報告生成程式無變更。
+- Uncommitted changes / file ownership warnings: PDF 與 PNG 都位於忽略的測試產物目錄。
+- Next 1–3 concrete actions: 將固定官方樣本與模型供應加入隔離 CI，補足研究歷史及跨版本回歸。
+- Exact reproduction steps: 見 [TESTING](TESTING.md#真實-tipo-資料的-typescript-回歸)。
