@@ -791,3 +791,22 @@
 - Uncommitted changes / file ownership warnings: 暫存副本與負向測試檔在工作區外。
 - Next 1–3 concrete actions: 補專用 PostgreSQL 整合關卡與錯誤流程 E2E，待有遠端再驗證工作。
 - Exact reproduction steps: 見 [TESTING](TESTING.md#前端靜態檢查)。
+
+## M6 PostgreSQL 與 API 整合關卡
+
+- Date/time (timezone): 2026-11-10（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `main`，本文件所在提交，起點 `7de576e`。
+- Current milestone and status: M6 IN_PROGRESS。
+- Goal of this session: 建立可在獨立資料卷重跑的 PostgreSQL 與 API 整合測試。
+- Files changed (with purpose): `tests/integration/test_postgresql.py`、`docker-compose.test.yml`、一般 CI 工作及進度、測試和交接文件。
+- Database migrations added/applied: 無新增。從空白的 `patentscope-pg-integration` 卷執行 Alembic upgrade head。
+- API/Schema changes: 無。
+- Commands actually run and results: PostgreSQL 整合測試 2 通過，合併執行共 50 通過，Ruff 格式及 lint 通過。測試直接連 PostgreSQL 驗證 Alembic head、pgvector 與搜尋紀錄跨帳號外鍵，並以 FastAPI TestClient 驗證真實 DB readiness 及 API 專案權限。
+- Tests NOT run and reason: 未修改前端或 API 實作，未重跑瀏覽器。未設定 Git 遠端，GitHub runner 尚未執行。
+- Data sources checked (exact URL/date) and license/access notes: 無專利資料變更。
+- Known bugs / risks / blockers: Pytest 仍有既有 Starlette TestClient 棄用警告。
+- Decisions made (ADR links): CI 使用獨立 `patentscope_test` 資料庫，僅在回環位址開放測試連接埠。
+- Uncommitted changes / file ownership warnings: 專用測試資料卷保留，合成測試帳號透過 API 清理。
+- Next 1–3 concrete actions: 補搜尋錯誤和服務不可用的瀏覽器回歸，並於遠端可用時驗證 CI。
+- Exact reproduction steps: 見 [TESTING](TESTING.md#postgresql-與-api-整合)。

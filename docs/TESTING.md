@@ -108,3 +108,24 @@ Remove-Item Env:PATENTSCOPE_E2E_TIPO
 ### 前端靜態檢查
 
 `npm run lint --prefix apps/web` 檢查前端、Vite 設定及 Playwright TypeScript。使用 Oxlint 的正確性規則，並驗證 React Hooks 的呼叫位置及依賴清單。警告也會造成失敗。一般 push／PR CI 先執行 lint，再執行包含 TypeScript 型別檢查的正式建置。
+
+### PostgreSQL 與 API 整合
+
+下列指令從測試專案啟動 PostgreSQL 並套用 Alembic。測試要求回環位址和資料庫名稱 `patentscope_test`，使用合成帳號並透過帳號 API 清理。
+
+```powershell
+$env:POSTGRES_DB = "patentscope_test"
+$env:PGPORT = "15433"
+$compose = @("--env-file", ".env.example", "-f", "docker-compose.yml", "-f", "docker-compose.test.yml", "-p", "patentscope-pg-integration")
+docker compose @compose up -d --wait db
+docker compose @compose run --rm --build migrate
+$env:PATENTSCOPE_PG_INTEGRATION = "1"
+$env:PGHOST = "127.0.0.1"
+$env:PGDATABASE = "patentscope_test"
+$env:PGUSER = "patentscope"
+$env:PGPASSWORD = "dev_only_change_me"
+.venv/Scripts/python -m pytest -q tests/integration
+docker compose @compose stop
+```
+
+CI 在空白測試資料卷套用遷移後執行此套件。測試驗證 Alembic head、pgvector 距離運算、真實 DB readiness、研究專案讀寫、另一帳號讀取遭拒，以及 PostgreSQL 拒絕跨帳號的搜尋紀錄外鍵。單獨執行整合套件時須設定上方旗標。

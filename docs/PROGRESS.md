@@ -65,3 +65,8 @@
 
 - [x] 前端與 Playwright TypeScript 已加入 Oxlint。一般 push／PR 工作會先 lint 再建置。Node 22.12 的乾淨安裝、lint、型別檢查和建置均已在本機驗證。
 - [ ] GitHub runner 實際執行仍待驗證。
+
+## 2026-11-10 PostgreSQL 與 API 整合
+
+- [x] 新資料卷套用完整遷移後，整合測試驗證 pgvector、API 就緒、專案資料隔離與跨帳號外鍵。已加入一般 push／PR 工作。
+- [ ] GitHub runner 實際執行待驗證。

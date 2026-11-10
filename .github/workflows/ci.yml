@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COMPOSE_PROJECT_NAME: patentscope-ci
+      POSTGRES_DB: patentscope_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -30,7 +31,15 @@ jobs:
       - run: npx playwright install --with-deps chromium
         working-directory: apps/web
       - run: cp .env.example .env
-      - run: docker compose up -d --build --wait --wait-timeout 180
+      - run: docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build --wait --wait-timeout 180
+      - run: python -m pytest -q tests/integration
+        env:
+          PATENTSCOPE_PG_INTEGRATION: "1"
+          PGHOST: 127.0.0.1
+          PGPORT: "15432"
+          PGDATABASE: patentscope_test
+          PGUSER: patentscope
+          PGPASSWORD: dev_only_change_me
       - run: python scripts/smoke.py
       - run: npm run test:e2e --prefix apps/web
         env:
@@ -44,4 +53,4 @@ jobs:
             apps/web/test-results/
           retention-days: 7
       - if: failure()
-        run: docker compose logs --no-color
+        run: docker compose -f docker-compose.yml -f docker-compose.test.yml logs --no-color
