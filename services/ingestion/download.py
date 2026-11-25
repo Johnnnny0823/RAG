@@ -1,16 +1,19 @@
 """Retrieve a TIPO issue index and optionally one explicitly selected specification."""
 
 import argparse
+import logging
 import re
 import socket
 import ssl
-from ftplib import FTP, FTP_TLS
+from ftplib import FTP, FTP_TLS, error_temp
 from pathlib import Path
+from time import sleep
 from urllib.parse import urlsplit
 from urllib.request import urlopen
 
 from services.ingestion.artifacts import MAX_XML_BYTES
 
+logger = logging.getLogger(__name__)
 INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10"
 SPEC_PATH = re.compile(
     r"/(?:InventionPubXML|PatentIsuRegSpecXMLA)/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_-]+\.xml"
@@ -65,6 +68,22 @@ def download_ftps_xml(url: str) -> bytes:
         or any(part in {".", ".."} for part in parsed.path.split("/"))
     ):
         raise ValueError("Expected a TIPO patent XML FTPS URL")
+    context = tls_context()
+    # A busy passive listener can temporarily refuse otherwise valid transfers.
+    for delay in (15, 45):
+        try:
+            return _transfer_xml(parsed.path, context)
+        except error_temp as error:
+            if str(error)[:3] != "425":
+                raise
+            logger.warning(
+                "TIPO FTPS data channel unavailable (425); retry in %ds", delay
+            )
+            sleep(delay)
+    return _transfer_xml(parsed.path, context)
+
+
+def _transfer_xml(path: str, context: ssl.SSLContext) -> bytes:
     payload = bytearray()
 
     def append(chunk: bytes) -> None:
@@ -72,15 +91,15 @@ def download_ftps_xml(url: str) -> bytes:
             raise ValueError("TIPO specification exceeds the XML size limit")
         payload.extend(chunk)
 
-    with TIPOTransfer(timeout=30, context=tls_context()) as ftp:
+    with TIPOTransfer(timeout=30, context=context) as ftp:
         ftp.connect_implicit()
         ftp.login()
         ftp.prot_p()
         ftp.voidcmd("TYPE I")
-        size = ftp.size(parsed.path)
+        size = ftp.size(path)
         if size is None or not 0 < size <= MAX_XML_BYTES:
             raise ValueError("Unexpected TIPO specification size")
-        response = ftp.retrbinary(f"RETR {parsed.path}", append)
+        response = ftp.retrbinary(f"RETR {path}", append)
         if not response.startswith("226 ") or len(payload) != size:
             raise ValueError("TIPO did not confirm a complete specification transfer")
     return bytes(payload)
