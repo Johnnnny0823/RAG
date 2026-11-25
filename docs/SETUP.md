@@ -221,3 +221,31 @@ python scripts/smoke.py --api http://127.0.0.1:18019 --web http://127.0.0.1:1811
 重建 API 映像以安裝 ReportLab 及 AR PL UMing 臺灣字型。從私人歷史開啟已保存搜尋，完成至少一份候選比對，點選「匯出 PDF 報告」。在 Windows 直接執行 API 時，將 `REPORT_FONT_PATH` 設為可嵌入的繁中字型 TTF 或 TTC 路徑。自訂 TTC 可用 `REPORT_FONT_INDEX` 選擇字型。
 
 以隔離語料執行 `python scripts/smoke_search_runs.py --api http://127.0.0.1:18017 --pdf-output <驗收路徑.pdf>`，核對擁有者可下載，訪客及其他帳號無法取得。腳本會建立兩個測試帳號及公開測試紀錄。
+## 原始 XML 持久保存、備份及還原
+
+Compose 的 `migrate` 容器將原始物件儲存在專案自己的 `patent-objects` 資料卷。依前述步驟準備官方輸入檔，再把檔案目錄掛載至 `/inputs:ro`。匯入和驗證可以省略 `--objects`，容器會使用資料卷。既有流程若明確指定 `--objects`，仍使用指定目錄，適合獨立測試。請保留資料卷，避免使用 `docker compose down -v`。
+
+以下 PowerShell 範例使用已套用遷移的 Compose 專案。將 `$backup` 設成備份裝置上已建立的絕對路徑。備份期間暫停匯入，先將 PostgreSQL 一併備份，再複製原始物件，讓兩份備份可配對。
+
+```powershell
+docker compose run --rm --no-deps migrate python -m services.ingestion.sync_objects
+docker compose exec -T db pg_dump -U patentscope -Fc -f /tmp/patentscope-backup.dump patentscope
+docker compose cp db:/tmp/patentscope-backup.dump (Join-Path $backup 'db.dump')
+docker compose run --rm --no-deps -v "${backup}:/backup" migrate python -m services.ingestion.sync_objects --copy-to /backup
+```
+
+還原時，先把同一批 PostgreSQL 備份還原到獨立專案的新資料庫，然後將原始物件複製到該專案的資料卷。下列命令應在該獨立專案執行。
+
+```powershell
+docker compose up -d --wait db
+docker compose build migrate
+docker compose cp (Join-Path $backup 'db.dump') db:/tmp/patentscope-backup.dump
+docker compose exec -T db pg_restore -U patentscope --exit-on-error -d patentscope /tmp/patentscope-backup.dump
+docker compose run --rm --no-deps -v "${backup}:/backup:ro" migrate python -m services.ingestion.sync_objects --objects /backup --copy-to /var/lib/patentscope/objects
+docker compose run --rm --no-deps migrate python -m services.ingestion.sync_objects
+docker compose run --rm --no-deps migrate python -m services.ingestion.verify_document 202639611
+```
+
+最後一個指令適用於已匯入 `202639611` 全文的語料。校驗指令會依資料庫逐筆核對物件大小及 SHA-256，也包含已隔離、但留有原始檔記錄的物件。遇到遺失或損毀會以非零狀態退出，已成功複製的檔案可保留供重跑。舊物件目錄可按同樣方式掛在 `/backup:ro` 搬入；若缺少原始位元組，需從原來源找回與資料庫雜湊相符的檔案。未列入資料庫的下載快取不在備份範圍。
+
+範例使用預設資料庫名稱和帳號 `patentscope`。若已自訂，請調整 `-U` 與資料庫名稱。每次備份使用新目錄，並將備份視同私有資料庫管理，因為其中也包含研究紀錄。

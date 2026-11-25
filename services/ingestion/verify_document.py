@@ -4,7 +4,11 @@ import argparse
 from pathlib import Path
 
 from services.api.db import engine
-from services.ingestion.artifacts import LocalObjectStore, RawArtifact
+from services.ingestion.artifacts import (
+    LocalObjectStore,
+    RawArtifact,
+    add_objects_argument,
+)
 from services.ingestion.grant_index import parse_grant
 from services.ingestion.specification import parse_specification
 
@@ -77,7 +81,7 @@ def verify(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("publication_no")
-    parser.add_argument("--objects", type=Path, required=True)
+    add_objects_argument(parser)
     parser.add_argument("--grant-issue")
     args = parser.parse_args()
     claims, sections = verify(args.publication_no, args.objects, args.grant_issue)

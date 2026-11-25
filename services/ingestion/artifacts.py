@@ -1,5 +1,6 @@
 """Store and verify immutable source bytes by SHA-256."""
 
+import argparse
 import hashlib
 import os
 import re
@@ -9,6 +10,17 @@ from tempfile import NamedTemporaryFile
 
 MAX_XML_BYTES = 16 * 1024 * 1024
 SHA256 = re.compile(r"[0-9a-f]{64}")
+
+
+def add_objects_argument(parser: argparse.ArgumentParser) -> None:
+    default = os.environ.get("PATENT_OBJECTS_DIR")
+    parser.add_argument(
+        "--objects",
+        type=Path,
+        default=default,
+        required=not default,
+        help="Raw object directory (defaults to PATENT_OBJECTS_DIR when configured)",
+    )
 
 
 @dataclass(frozen=True)

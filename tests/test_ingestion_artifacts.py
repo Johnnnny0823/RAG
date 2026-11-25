@@ -3,6 +3,7 @@ import hashlib
 import pytest
 
 from services.ingestion.artifacts import LocalObjectStore, RawArtifact
+from services.ingestion.sync_objects import verify_objects
 
 
 def test_object_store_deduplicates_and_detects_corruption(tmp_path):
@@ -22,3 +23,16 @@ def test_object_store_rejects_untrusted_locator(tmp_path):
     store = LocalObjectStore(tmp_path)
     with pytest.raises(ValueError, match="Invalid artifact locator"):
         store.read(RawArtifact("a" * 64, "../outside", 0))
+
+
+def test_copy_checks_source_and_preserves_existing_destination(tmp_path):
+    original = LocalObjectStore(tmp_path / "original")
+    backup = LocalObjectStore(tmp_path / "backup")
+    artifact = original.put(b"<DEMO/>")
+    assert verify_objects([artifact], original, backup) == 1
+    assert verify_objects([artifact], backup) == 1
+
+    (original.root / artifact.object_key).write_bytes(b"corrupt")
+    with pytest.raises(ValueError, match=artifact.checksum):
+        verify_objects([artifact], original, backup)
+    assert backup.read(artifact) == b"<DEMO/>"

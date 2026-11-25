@@ -974,3 +974,29 @@
 - 已手動觸發 [Official patent E2E 45550486217](https://github.com/Johnnnny0823/RAG/actions/runs/45550486217)，最後查核狀態 `in_progress`，不是通過；GitHub 雲端 runner 可在本機關機後繼續執行。下次先用 `gh run view 45550486217 --repo Johnnnny0823/RAG` 查詢，若失敗收集 `--log-failed`，不要未查狀態就重啟同一工作。
 - 已開始調查原始檔持久保存：Compose 目前只有 PostgreSQL named volume；匯入與驗證要求明確 `--objects`，常用文件指向暫存快取。尚未修改保存機制，也未建立備份還原功能。
 - 本機沒有新啟動的開發服務或新程式碼修改。下一步先確認遠端完整 CPU 索引與瀏覽器結果，再補持久 raw store 與實測備份／還原。整體 Goal 保持未完成。
+
+## 原始 XML 保存工作範圍
+
+- Codex 負責 Compose 的原始物件卷、匯入與驗證 CLI、校驗複製指令、測試及操作文件。
+
+## 官方 E2E 結果與原始 XML 復原
+
+- Date/time (timezone): 2026-11-25 20:51（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `d806ca9`，本節隨持久保存提交。
+- Current milestone and status: M1 原始物件保存切片已實測，完整 Goal 的 M6 仍 IN_PROGRESS。
+- Goal of this session: 驗收遠端 CPU 修復，並補足開發環境的 XML 備份還原。
+- Files changed (with purpose): `docker-compose.yml` 配置遷移服務的物件卷。匯入與驗證 CLI 共用目錄設定。新增 `services/ingestion/sync_objects.py`，依資料庫校驗或複製原始物件。測試驗證損毀來源會保留已有備份。SETUP、PROGRESS、HANDOFF 記錄操作與結果。
+- Database migrations added/applied: 無新增。在隔離專案套用到 `0010_login_failures`，以 `pg_dump -Fc`／`pg_restore --exit-on-error` 復原至第二套隔離資料庫。
+- API/Schema changes: 無。實測復原後 readiness 與專利請求項端點。
+- Commands actually run and results:
+  - `gh run view 45550486217 --log`（對應工作 `138990245525`）：提交 `8cea2f1` 成功，CPU 117 個版本、1,624 個向量；Playwright 兩套分別 5／12 通過。
+  - `pytest -q --basetemp <unique-temp>`：58 passed、3 skipped、1 則既有 Starlette 警告。Ruff 74 檔格式通過且 lint 通過。
+  - `docker compose --env-file .env.example config --quiet` 通過。隔離專案匯入 19 筆書目、1 份全文。不同一次性容器讀回資料卷並核對 19 項請求項和 122 段。複製 2 份原始物件，復原 PostgreSQL 後再複製到第二個新資料卷，原文再校驗通過。復原後 API readiness 正常，公開號 `202639611` 回傳 19 項請求項。
+- Tests NOT run and reason: 此提交未重跑完整官方 Playwright 或所有歷史語料的復原。本機使用第 024019 期前 20 筆及一份全文驗證備份流程，遠端 17 項屬上一項 CPU 修復的結果。三項預設停用的 PostgreSQL 套件本輪未另執行。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-25 從 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index.xml` 及 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639611/113133932-A0304.xml` 重新下載，分別符合既有固定雜湊 `7befed78…`、`0537aedd…`。沿用 [DATA_SOURCES](DATA_SOURCES.md) 的既有來源紀錄。
+- Known bugs / risks / blockers: 備份會在遇到首個遺失或損毀物件時退出，既有語料需用其成對的檔案和 DB 備份核對。最小權限、資源配額與人工品質評估仍待完成。
+- Decisions made (ADR links): 沿用現有雜湊物件儲存。開發環境以 Compose 專案資料卷持久保存，顯式傳入 `--objects` 的呼叫保留自訂路徑。
+- Uncommitted changes / file ownership warnings: 獨立測試專案停止，保留資料卷。無正式資料變更。
+- Next 1–3 concrete actions: 統一舊冒煙測試所需的期別語料，補上資源配額及資料庫最小權限，準備人工標註與檢索量測。
+- Exact reproduction steps: 見 [SETUP 原始 XML 備份操作](SETUP.md#原始-xml-持久保存備份及還原)，使用空白還原專案。

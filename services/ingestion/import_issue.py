@@ -12,7 +12,12 @@ from psycopg.types.json import Jsonb
 from sqlalchemy.engine import Connection
 
 from services.api.db import engine
-from services.ingestion.artifacts import MAX_XML_BYTES, LocalObjectStore, RawArtifact
+from services.ingestion.artifacts import (
+    MAX_XML_BYTES,
+    LocalObjectStore,
+    RawArtifact,
+    add_objects_argument,
+)
 from services.ingestion.grant_index import parse_grant
 from services.ingestion.issue_index import parse_issue_index
 from services.ingestion.issue_manifest import fetch_specifications, resolve_spec_urls
@@ -396,7 +401,7 @@ def main():
     parser.add_argument(
         "--batch", required=True, help="Official issue ID or DEMO batch ID"
     )
-    parser.add_argument("--objects", type=Path, required=True)
+    add_objects_argument(parser)
     parser.add_argument("--limit", type=int, default=100)
     parser.add_argument(
         "--grant-number",
