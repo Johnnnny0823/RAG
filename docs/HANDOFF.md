@@ -1042,3 +1042,24 @@
 - Uncommitted changes / file ownership warnings: 隔離資料庫於測試後停止。
 - Next 1–3 concrete actions: 確認遠端官方驗收，實作 API 與遷移帳號的資料庫權限分離，補足逐客戶與多程序的資源限制。
 - Exact reproduction steps: `python -m pytest -q tests/test_model_limits.py`。含 DB 的重跑環境見 TESTING 的 PostgreSQL 與 API 整合章節。
+
+## PostgreSQL 帳號分離工作範圍
+
+- Codex 負責 API 資料庫角色、Compose 啟動流程、隔離整合測試、CI 及操作文件。所有測試使用獨立資料庫。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `5bf5fa7`。
+- Current milestone and status: 完整目標 M6 安全性 IN_PROGRESS。
+- Goal of this session: 限制線上 API 的 PostgreSQL 權限。
+- Files changed (with purpose): `services/api/provision_db_role.py` 設定專用登入與明確授權，Compose 與環境範例分離帳密，CI、整合測試與操作文件更新。
+- Database migrations added/applied: 無新增。空白測試環境套用既有遷移到 `0010_login_failures`，接著建立角色。另實測對同一測試庫重跑配置。
+- API/Schema changes: 無，資料庫執行角色改為 `patentscope_api`。
+- Commands actually run and results: 隔離 Compose 新卷啟動成功。開啟 PostgreSQL 整合後 `pytest -q --basetemp <unique-temp>` 共 63 pass，既有 Starlette 警告 1 則。Ruff lint 與格式通過。專用 Playwright 設定的 Chromium 三種螢幕各 4 項，共 12 pass。初次透過 Windows npm 傳 `--output` 時參數被誤作過濾器，改用本機 Playwright CLI 後正常執行。重跑角色配置後，以管理帳號匯入已驗證官方 XML 並建立詞彙索引，透過受限 API 查到 `202639611` 及 19 項請求項。
+- Tests NOT run and reason: 本修訂尚未跑完官方全文／向量瀏覽器 suite 或正式部署。前一提交的 [45618424111](https://github.com/Johnnnny0823/RAG/actions/runs/45618424111) 仍在建置語料。
+- Data sources checked (exact URL/date) and license/access notes: 本輪沿用先前核對雜湊的 024019 期索引與個案原文，未重新下載。見 DATA_SOURCES。
+- Known bugs / risks / blockers: 既有 `.env` 需補設定。API 角色提供跨研究資料的功能性權限，應用所有權檢查仍須維持。多程序及逐客戶配額尚未完成。
+- Decisions made (ADR links): 權限清單置於角色配置程式，遷移及匯入保留管理帳號。資料庫還原後重跑角色配置以套用授權。
+- Uncommitted changes / file ownership warnings: 專用測試容器停止，保留隔離資料卷。
+- Next 1–3 concrete actions: 確認官方 CI 及當前分支回歸，補跨程序與逐客戶配額，進行人工檢索評估。
+- Exact reproduction steps: 用 `docker-compose.test.yml` 啟動隔離環境，再依 TESTING 的 PostgreSQL 整合章節執行。Playwright 使用獨立 Web origin。

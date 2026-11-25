@@ -6,11 +6,12 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
+import psycopg
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
-from psycopg.errors import ForeignKeyViolation
-from sqlalchemy.exc import IntegrityError
+from psycopg.errors import ForeignKeyViolation, InsufficientPrivilege
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 
 from services.api.db import engine
 from services.api.main import app
@@ -37,11 +38,15 @@ def test_migration_head_and_vector_operator():
     config = Config(str(root / "alembic.ini"))
     config.set_main_option("script_location", str(root / "database/migrations"))
     expected = ScriptDirectory.from_config(config).get_current_head()
-    with engine.connect() as conn:
+    with psycopg.connect(
+        user=os.environ["PATENTSCOPE_PG_ADMIN_USER"],
+        password=os.environ["PATENTSCOPE_PG_ADMIN_PASSWORD"],
+    ) as admin:
         assert (
-            conn.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one()
+            admin.execute("SELECT version_num FROM alembic_version").fetchone()[0]
             == expected
         )
+    with engine.connect() as conn:
         assert (
             conn.exec_driver_sql(
                 "SELECT '[1, 2]'::vector <-> '[4, 6]'::vector"
@@ -50,6 +55,24 @@ def test_migration_head_and_vector_operator():
         )
     with TestClient(app) as client:
         assert client.get("/api/v1/ready").json() == {"status": "ready"}
+
+
+def test_api_role_cannot_write_corpus_or_manage_schema():
+    with engine.connect() as conn:
+        role = conn.exec_driver_sql(
+            """SELECT current_user, rolsuper, rolcreatedb, rolcreaterole, rolbypassrls
+               FROM pg_roles WHERE rolname = current_user"""
+        ).one()
+        assert tuple(role) == ("patentscope_api", False, False, False, False)
+        conn.exec_driver_sql("SELECT id FROM patent_documents LIMIT 1").all()
+        for statement in (
+            "DELETE FROM patent_documents WHERE false",
+            "CREATE TABLE public.should_not_create (id integer)",
+            "SELECT version_num FROM alembic_version",
+        ):
+            with pytest.raises(ProgrammingError) as error, conn.begin_nested():
+                conn.exec_driver_sql(statement)
+            assert isinstance(error.value.orig, InsufficientPrivilege)
 
 
 @pytest.fixture
@@ -99,8 +122,12 @@ def test_repeated_login_failures_are_throttled_per_address(accounts):
             "SELECT count(*) FROM login_failures WHERE email_hash = %s", (key,)
         ).scalar_one()
         assert stored == 5
-        # Age the failures instead of waiting for the window to pass.
-        conn.exec_driver_sql(
+    # Modify the synthetic timestamps as the test administrator.
+    with psycopg.connect(
+        user=os.environ["PATENTSCOPE_PG_ADMIN_USER"],
+        password=os.environ["PATENTSCOPE_PG_ADMIN_PASSWORD"],
+    ) as admin:
+        admin.execute(
             """UPDATE login_failures SET failed_at = failed_at - interval '16 minutes'
                WHERE email_hash = %s""",
             (key,),

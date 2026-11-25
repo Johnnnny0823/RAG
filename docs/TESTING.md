@@ -138,13 +138,17 @@ docker compose @compose run --rm --build migrate
 $env:PATENTSCOPE_PG_INTEGRATION = "1"
 $env:PGHOST = "127.0.0.1"
 $env:PGDATABASE = "patentscope_test"
-$env:PGUSER = "patentscope"
-$env:PGPASSWORD = "dev_only_change_me"
+$env:PGUSER = "patentscope_api"
+$env:PGPASSWORD = "dev_api_only_change_me"
+$env:PATENTSCOPE_PG_ADMIN_USER = "patentscope"
+$env:PATENTSCOPE_PG_ADMIN_PASSWORD = "dev_only_change_me"
 .venv/Scripts/python -m pytest -q tests/integration
 docker compose @compose stop
 ```
 
 CI 在空白測試資料卷套用遷移後執行此套件。測試驗證 Alembic head、pgvector 距離運算、真實 DB readiness、研究專案讀寫、另一帳號讀取遭拒，以及 PostgreSQL 拒絕跨帳號的搜尋紀錄外鍵。單獨執行整合套件時須設定上方旗標。
+
+整合測試用 API 角色連線，另用管理帳號查遷移版本並調整合成登入失敗時間。權限測試以交易及 savepoint 確認 PostgreSQL 拒絕 API 修改語料、建立持久資料表、讀取遷移版本。
 
 ### 搜尋失敗、空結果與逾時
 

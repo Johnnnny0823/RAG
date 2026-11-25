@@ -38,8 +38,10 @@ jobs:
           PGHOST: 127.0.0.1
           PGPORT: "15432"
           PGDATABASE: patentscope_test
-          PGUSER: patentscope
-          PGPASSWORD: dev_only_change_me
+          PGUSER: patentscope_api
+          PGPASSWORD: dev_api_only_change_me
+          PATENTSCOPE_PG_ADMIN_USER: patentscope
+          PATENTSCOPE_PG_ADMIN_PASSWORD: dev_only_change_me
       - run: python scripts/smoke.py
       - run: npm run test:e2e --prefix apps/web
         env:

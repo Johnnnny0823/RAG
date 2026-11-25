@@ -113,3 +113,4 @@
 
 - [x] 三支 API 冒煙腳本加入 `--official-e2e`，接到官方 CI，在 Playwright 前驗收來源雜湊、中英文檢索、IPC、公開／公告版本與分頁。在本機 117 版本的隔離語料，三支腳本均通過。新增的遠端步驟仍待實跑。見 [測試指令](TESTING.md)。
 - [x] 線上模型操作共用每程序併發上限，滿載回傳 `429 MODEL_BUSY`。並行 API 測試驗證飽和時健康檢查可用、模型失敗後名額能重用。含 PostgreSQL 整合共 62 項測試通過。跨程序／逐客戶配額及 DB 最小權限仍待完成。見 [API](API.md) 與 [交接](HANDOFF.md)。
+- [x] 已分離 Compose API 與遷移／匯入帳號。隔離資料庫驗證 API 可操作研究資料、讀取官方語料，且 PostgreSQL 拒絕它寫入語料、建立資料表或讀取 Alembic 記錄。共 63 項 pytest 與 12 項 Chromium E2E 通過。既有環境升級須設定獨立的 `API_DB_PASSWORD`。見 [設定](SETUP.md#postgresql-執行帳號)。

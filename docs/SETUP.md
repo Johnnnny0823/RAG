@@ -242,7 +242,8 @@ docker compose run --rm --no-deps -v "${backup}:/backup" migrate python -m servi
 docker compose up -d --wait db
 docker compose build migrate
 docker compose cp (Join-Path $backup 'db.dump') db:/tmp/patentscope-backup.dump
-docker compose exec -T db pg_restore -U patentscope --exit-on-error -d patentscope /tmp/patentscope-backup.dump
+docker compose exec -T db pg_restore -U patentscope --exit-on-error --no-acl -d patentscope /tmp/patentscope-backup.dump
+docker compose run --rm --no-deps migrate
 docker compose run --rm --no-deps -v "${backup}:/backup:ro" migrate python -m services.ingestion.sync_objects --objects /backup --copy-to /var/lib/patentscope/objects
 docker compose run --rm --no-deps migrate python -m services.ingestion.sync_objects
 docker compose run --rm --no-deps migrate python -m services.ingestion.verify_document 202639611
@@ -251,3 +252,10 @@ docker compose run --rm --no-deps migrate python -m services.ingestion.verify_do
 最後一個指令適用於已匯入 `202639611` 全文的語料。校驗指令會依資料庫逐筆核對物件大小及 SHA-256，也包含已隔離、但留有原始檔記錄的物件。遇到遺失或損毀會以非零狀態退出，已成功複製的檔案可保留供重跑。舊物件目錄可按同樣方式掛在 `/backup:ro` 搬入；若缺少原始位元組，需從原來源找回與資料庫雜湊相符的檔案。未列入資料庫的下載快取不在備份範圍。
 
 範例使用預設資料庫名稱和帳號 `patentscope`。若已自訂，請調整 `-U` 與資料庫名稱。每次備份使用新目錄，並將備份視同私有資料庫管理，因為其中也包含研究紀錄。
+## PostgreSQL 執行帳號
+
+Compose 在遷移完成後建立 `patentscope_api` 並授權。API 使用這個帳號讀取專利與索引，並依功能存取研究資料。遷移與離線匯入則使用 `POSTGRES_USER`。API 的容器環境只取得自己的資料庫密碼。
+
+既有環境須在 `.env` 新增獨立的 `API_DB_PASSWORD`，然後用原專案名稱執行 `docker compose up -d --build --wait`。沿用既有 PostgreSQL 磁碟卷及管理帳密。變更 API 密碼時，先更新設定並執行 `docker compose run --rm migrate`，再重建 API 容器。若宿主機直接啟動 API，`PGUSER` 與 `PGPASSWORD` 應改用對應的執行帳號與密碼。
+
+使用 `patentscope_api` 作為本專案專用角色。若同一 PostgreSQL 叢集已存在同名帳號，先核對既有角色及授權再執行，因為重新配置會設定該角色的密碼。API 的各使用者資料仍依應用層的所有權檢查及資料庫約束隔離。
