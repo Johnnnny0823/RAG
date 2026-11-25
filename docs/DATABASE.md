@@ -1,6 +1,6 @@
 # 資料庫設計
 
-PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，目前 head 為 `0010_login_failures`。本文件依遷移檔整理，欄位以遷移檔為準。
+PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，目前 head 為 `0011_claim_dependencies`。
 
 主鍵多為 UUID（`gen_random_uuid()`），時間欄位為 `timestamptz`，只知道日期時用 `date`。
 
@@ -16,6 +16,8 @@ erDiagram
     patent_documents ||--o{ patent_classifications : "document_id"
     patent_documents ||--o{ patent_sections : "document_id"
     patent_documents ||--o{ patent_claims : "document_id"
+    patent_claims ||--o{ claim_dependencies : "citing claim"
+    patent_claims ||--o{ claim_dependencies : "cited claim"
     patent_documents ||--o{ patent_lexical_chunks : "document_id"
     patent_documents ||--o{ patent_dense_chunks : "document_id"
     patent_embedding_models ||--o{ patent_dense_chunks : "model_id"
@@ -50,6 +52,7 @@ erDiagram
 | `patent_classifications` | IPC 與來源提供的分類版次。 | `(document_id, scheme, code, version)` 唯一。 |
 | `patent_sections` | 說明書段落原文與 XPath、原始檔雜湊。 | `(document_id, section_type, ordinal)` 唯一。 |
 | `patent_claims` | 請求項原文、編號、是否獨立項與來源定位。 | `(document_id, claim_number)` 唯一。 |
+| `claim_dependencies` | 同版本的請求項原文援引。 | `(document_id, child_number, parent_number)` 唯一。 |
 
 同一申請案的公開版與公告版是不同的 `patent_documents` 列，共用 `application_id`。同一公開號也可以同時有書目版與全文版。
 
@@ -98,3 +101,8 @@ erDiagram
 ## 查詢計畫
 
 登入節流查詢在測試資料庫的 `EXPLAIN (ANALYZE, BUFFERS)` 使用 `ix_login_failures_recent` 的 Bitmap Index Scan，執行時間 0.057 ms（2026-11-10，空資料表）。檢索查詢在代表性資料量下的查詢計畫尚未有系統地記錄。
+### 請求項原文援引
+
+`0011_claim_dependencies` 新增 `claim_dependencies(document_id, child_number, parent_number)`。兩個複合外鍵都指向同一文件版本內的請求項，且被援引項號須小於援引項號，因此無循環。欄位名稱中的 `dependencies` 記錄可由正文核對的援引關係。來源 XML 的獨立項標記仍保留在 `patent_claims`。
+
+遷移需連線至資料庫，會從已保存的正文分文件版本回填。新匯入在請求項寫入後，於同一交易保存援引。前綴用語未符合規則、範圍不完整或向後援引時，不建立該組關係。降版移除衍生表，會保留原始請求項；用 Compose 重新升版時會重建關係並補齊 API 讀取權限。

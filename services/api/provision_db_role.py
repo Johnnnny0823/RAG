@@ -16,6 +16,7 @@ CORPUS_TABLES = (
     "patent_classifications",
     "patent_sections",
     "patent_claims",
+    "claim_dependencies",
     "patent_lexical_chunks",
     "patent_embedding_models",
     "patent_dense_chunks",

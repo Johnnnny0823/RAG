@@ -248,6 +248,7 @@ class PatentClaim(BaseModel):
     claim_number: int
     text: str
     independent: bool | None
+    referenced_claim_numbers: list[int]
     source: SourceLocation
 
 
@@ -785,9 +786,13 @@ def patent_claims(document_id: UUID):
                 return not_found()
             rows = (
                 conn.exec_driver_sql(
-                    """SELECT claim_number, text, independent_flag_nullable AS independent,
-                          source_locator_jsonb AS source
-                   FROM patent_claims WHERE document_id = %s ORDER BY claim_number""",
+                    """SELECT c.claim_number, c.text, c.independent_flag_nullable AS independent,
+                          c.source_locator_jsonb AS source,
+                          ARRAY(SELECT d.parent_number FROM claim_dependencies d
+                                WHERE d.document_id = c.document_id
+                                  AND d.child_number = c.claim_number
+                                ORDER BY d.parent_number) AS referenced_claim_numbers
+                   FROM patent_claims c WHERE c.document_id = %s ORDER BY c.claim_number""",
                     (document_id,),
                 )
                 .mappings()

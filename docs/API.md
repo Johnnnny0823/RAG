@@ -58,6 +58,8 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 `POST /api/v1/patents/{document_id}/compare` 接受 1–5 項已確認的 `features`。以指定版本中可回溯的請求項和說明書搜尋字詞，每項特徵至多選一段原文供本機模型判定。回傳 `supported`、`partially_supported`、`uncertain` 或 `not_found_in_checked_content`。最後一種表示在已檢視的內容未找到字詞。只有書目的版本回傳不確定。
 
+`GET /api/v1/patents/{document_id}/claims` 的 `referenced_claim_numbers` 列出正文中可核對的同版本援引項。支援明確的單項、列舉與區間表述。空陣列表示未擷取到符合規則的援引。`independent` 照錄來源 XML 標記，可能和正文中的援引並存。
+
 引文由後端從保存的原文擷取，附原檔 SHA-256、XPath、段落或請求項序號，以及以 Unicode 字元計算的起訖位置（終點不包含）。回傳文件版本及模型識別。本預覽不保存構想或判定。
 
 ## 私人搜尋紀錄

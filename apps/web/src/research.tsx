@@ -44,7 +44,7 @@ type Detail = {
   sections: { ordinal: number; section_type: string; original_text: string }[];
   sources: { dataset_name: string; publisher: string; dataset_url: string | null; source_url: string | null; batch_key: string; ingested_at: string }[];
 };
-type Claim = { claim_number: number; text: string };
+type Claim = { claim_number: number; text: string; referenced_claim_numbers: number[] };
 type SearchFilters = {
   published_from: string;
   published_to: string;
@@ -726,7 +726,18 @@ export function Research() {
           <h3>摘要</h3>
           <p className="mb-4 whitespace-pre-wrap">{selected.detail.abstract_zh || selected.detail.abstract_en || "此版本未提供摘要。"}</p>
           <details className="my-3"><summary>請求項（{selected.claims.length}）</summary>
-            {selected.claims.map((claim) => <p key={claim.claim_number} className="my-2 whitespace-pre-wrap">第 {claim.claim_number} 項 · {claim.text}</p>)}
+            {selected.claims.map((claim) => (
+              <div key={claim.claim_number} id={`claim-${claim.claim_number}`} className="my-2 scroll-mt-4">
+                <p className="whitespace-pre-wrap">第 {claim.claim_number} 項 · {claim.text}</p>
+                {claim.referenced_claim_numbers.length > 0 && (
+                  <p className="text-sm">原文援引：
+                    {claim.referenced_claim_numbers.map((number) => (
+                      <a key={number} href={`#claim-${number}`} className="ml-2 underline">第 {number} 項</a>
+                    ))}
+                  </p>
+                )}
+              </div>
+            ))}
           </details>
           <details className="my-3"><summary>說明書段落（{selected.detail.sections.length}）</summary>
             {selected.detail.sections.map((section) => <p key={`${section.section_type}-${section.ordinal}`} className="my-2 whitespace-pre-wrap">第 {section.ordinal} 段 · {section.original_text}</p>)}

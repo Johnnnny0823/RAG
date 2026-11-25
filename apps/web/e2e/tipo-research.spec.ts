@@ -68,6 +68,11 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     await expect(page.getByRole("heading", { name: "專利詳情" })).toBeVisible();
     await expect(page.getByRole("link", { name: "官方資料集" }).first()).toHaveAttribute("href", "https://data.gov.tw/dataset/15996");
     await page.getByText(/^請求項（\d+）$/).click();
+    const secondClaim = page.locator("#claim-2");
+    const reference = secondClaim.getByRole("link", { name: "第 1 項", exact: true });
+    await expect(reference).toHaveAttribute("href", "#claim-1");
+    await reference.click();
+    await expect(page).toHaveURL(/#claim-1$/);
     await expect(page.getByText(/^第 1 項 ·/).first()).toBeVisible();
 
     const comparisonResponse = page.waitForResponse((response) =>

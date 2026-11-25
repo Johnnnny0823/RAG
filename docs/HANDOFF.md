@@ -1063,3 +1063,25 @@
 - Uncommitted changes / file ownership warnings: 專用測試容器停止，保留隔離資料卷。
 - Next 1–3 concrete actions: 確認官方 CI 及當前分支回歸，補跨程序與逐客戶配額，進行人工檢索評估。
 - Exact reproduction steps: 用 `docker-compose.test.yml` 啟動隔離環境，再依 TESTING 的 PostgreSQL 整合章節執行。Playwright 使用獨立 Web origin。
+
+## 請求項原文援引工作範圍
+
+- Codex 負責原文援引擷取、關聯遷移與匯入、請求項 API／畫面及驗收。維持來源標記與文本援引的不同語義。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `433c02d`。
+- Current milestone and status: M1／M3 請求項結構與定位的增量，完整 Goal IN_PROGRESS。
+- Goal of this session: 保存同版本請求項正文的明確援引，並提供詳情頁跳轉。
+- Files changed (with purpose): `0011_claim_dependencies.py` 建表與回填，`claim_references_v1.py` 解析，匯入與 API 讀權限更新，請求項 JSON 和詳情頁互動加欄位。新增解析測試及擴增官方 Playwright 案例。
+- Database migrations added/applied: 空白隔離庫升至 `0011_claim_dependencies`；原有小語料庫從 `0010` 回填。以隔離 DB 降版確認原文仍有 19 項，再升版回填 128 筆。
+- API/Schema changes: `GET /api/v1/patents/{document_id}/claims` 新增 `referenced_claim_numbers`。每個外鍵只允許目標在同一文件版本內，父項須先於子項。
+- Commands actually run and results: pytest 啟用 PostgreSQL 整合後 65 passed、1 則既有 Starlette 警告。Ruff 格式及 lint、前端 lint 和 TypeScript 通過。固定官方全文的初次匯入與回填各得到 128 筆，API 第 2／3／4 項分別回傳 `[1]`、`[1,2]`、`[1,2,3]`。用隔離 PostgreSQL 實測拒絕自我援引與不存在的子項。
+- Commands actually run and results（續）: 本機以隔離小語料 20 個版本、230 個向量與真實模型執行 `PATENTSCOPE_E2E_TIPO=1` 的 `desktop-chromium`，1 passed。新增援引跳轉斷言及既有引文、歷史、PDF 斷言均通過。
+- Tests NOT run and reason: 本輪尚未以此提交重跑遠端全文、公告版本與全瀏覽器套件。本機 E2E 範圍限新增 UI 所在的官方文件案例。
+- Data sources checked (exact URL/date) and license/access notes: 本輪重用已驗證的 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639611/113133932-A0304.xml`，固定 SHA-256 為 `0537aedd…`。來源 XML 第 2–4 項標為 `independent-claim`，正文仍有援引。
+- Known bugs / risks / blockers: 規則只涵蓋已支援的明確正文形式，結果不等同法律上的依附性判定；未覆蓋含糊或其他語言的表述。
+- Decisions made (ADR links): 獨立項來源標記保持原值。使用兩個指向同版本複合鍵的 FK，衍生關係可重建。
+- Uncommitted changes / file ownership warnings: 隔離 Compose 服務驗收後停止，保留測試卷，沒有改動正式語料。
+- Next 1–3 concrete actions: 以封存公告交叉驗證，繼續改進證據語義與完整工作流程。
+- Exact reproduction steps: 用測試 Compose 匯入固定官方 XML 或對現有隔離庫升版，再查 `202639611` 請求項。依 TESTING 執行 `PATENTSCOPE_E2E_TIPO=1` 的官方流程。

@@ -19,6 +19,7 @@ from services.ingestion.artifacts import (
     add_objects_argument,
 )
 from services.ingestion.grant_index import parse_grant
+from services.ingestion.claim_references_v1 import INSERT_REFERENCES, reference_pairs
 from services.ingestion.issue_index import parse_issue_index
 from services.ingestion.issue_manifest import fetch_specifications, resolve_spec_urls
 from services.ingestion.patentpub import PatentPublication
@@ -177,6 +178,12 @@ def store_document(
                         }
                     ),
                 ),
+            )
+        pairs = reference_pairs((claim.number, claim.text) for claim in spec.claims)
+        if pairs:
+            conn.exec_driver_sql(
+                INSERT_REFERENCES,
+                [(document_id, child, parent) for child, parent in pairs],
             )
     return document_id
 
