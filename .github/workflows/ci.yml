@@ -31,7 +31,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
         working-directory: apps/web
       - run: cp .env.example .env
-      - run: docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build --wait --wait-timeout 180
+      - run: docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build --wait --wait-timeout 180 api web
       - run: python -m pytest -q tests/integration
         env:
           PATENTSCOPE_PG_INTEGRATION: "1"
@@ -43,6 +43,7 @@ jobs:
           PATENTSCOPE_PG_ADMIN_USER: patentscope
           PATENTSCOPE_PG_ADMIN_PASSWORD: dev_only_change_me
       - run: python scripts/smoke.py
+      - run: docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build --wait search-worker
       - run: npm run test:e2e --prefix apps/web
         env:
           PATENTSCOPE_E2E_URL: http://127.0.0.1:5173

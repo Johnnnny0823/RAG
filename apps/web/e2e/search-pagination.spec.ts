@@ -76,7 +76,7 @@ test("saved search restores its ranked snapshot and paginates it @versions", asy
   try {
     await page.getByLabel(/^構想描述（最多 /).fill("動態導通電阻");
     const savedResponse = page.waitForResponse((response) =>
-      new URL(response.url()).pathname === "/api/v1/search-runs" &&
+      new URL(response.url()).pathname === "/api/v1/search-jobs" &&
       response.request().method() === "POST", { timeout: 90_000 },
     );
     const initialSnapshotResponse = page.waitForResponse((response) =>
@@ -85,12 +85,13 @@ test("saved search restores its ranked snapshot and paginates it @versions", asy
     );
     await button("搜尋並保存").click();
     const saved = await savedResponse;
-    expect(saved.status()).toBe(201);
-    const { id } = await saved.json();
+    expect(saved.status()).toBe(202);
+    expect((await saved.json()).status).toBe("queued");
     const initialSnapshot = await initialSnapshotResponse;
     expect(initialSnapshot.ok()).toBe(true);
-    expect(new URL(initialSnapshot.url()).pathname).toBe(`/api/v1/search-runs/${id}`);
     const initial = await initialSnapshot.json();
+    const { id } = initial;
+    expect(new URL(initialSnapshot.url()).pathname).toBe(`/api/v1/search-runs/${id}`);
     await expect(results.first()).toBeVisible();
 
     await button("登出此頁").click();

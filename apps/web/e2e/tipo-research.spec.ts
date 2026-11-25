@@ -70,13 +70,20 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     await page.getByLabel("申請人（中英文名稱）").fill("九州大學");
 
     const savedResponse = page.waitForResponse((response) =>
-      response.url().endsWith("/api/v1/search-runs") && response.request().method() === "POST",
+      response.url().endsWith("/api/v1/search-jobs") && response.request().method() === "POST",
       { timeout: 90_000 },
+    );
+    const openedRun = page.waitForResponse((response) =>
+      /^\/api\/v1\/search-runs\/[^/]+$/.test(new URL(response.url()).pathname) &&
+      response.request().method() === "GET", { timeout: 120_000 },
     );
     await button("搜尋並保存").click();
     const saved = await savedResponse;
-    expect(saved.status()).toBe(201);
-    const { id } = await saved.json();
+    expect(saved.status()).toBe(202);
+    expect((await saved.json()).status).toBe("queued");
+    const opened = await openedRun;
+    expect(opened.ok()).toBe(true);
+    const { id } = await opened.json();
     await expect(publication).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: "公告 " })).toHaveCount(0);
 

@@ -118,6 +118,21 @@ async function request<T>(path: string, payload?: object, token?: string, method
   return response.json();
 }
 
+type SearchJob = {
+  id: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  run_id: string | null;
+  error_code: string | null;
+};
+
+const searchJobErrors: Record<string, string> = {
+  MODEL_BUSY: "本機模型忙碌中，請稍後重試。",
+  EMBEDDING_UNAVAILABLE: "目前無法使用本機嵌入模型。",
+  ANALYSIS_UNAVAILABLE: "本機模型目前無法重排專利候選。",
+  SEMANTIC_INDEX_UNAVAILABLE: "目前沒有可用的語意索引。",
+  SEARCH_JOB_EXPIRED: "搜尋工作已逾時，請重新送出。",
+};
+
 export function Research() {
   const [query, setQuery] = useState("");
   const [ipc, setIpc] = useState("");
@@ -125,6 +140,7 @@ export function Research() {
   const [rerank, setRerank] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [busy, setBusy] = useState("");
+  const [searchJob, setSearchJob] = useState<SearchJob | null>(null);
   const [error, setError] = useState("");
   const [search, setSearch] = useState<Search | null>(null);
   const [results, setResults] = useState<Results | null>(null);
@@ -384,12 +400,50 @@ export function Research() {
       applicant: filters.applicant.trim() || null,
     };
     if (save && session) {
-      const { id } = await request<RunSummary>("/search-runs", payload, session.token);
-      setHistory(null);
-      await openRun(id, session.token);
+      const active = await request<SearchJob | null>("/search-jobs/active", undefined, session.token);
+      await followSearchJob(
+        active ?? await request<SearchJob>("/search-jobs", payload, session.token),
+        session.token,
+        active !== null,
+      );
       return;
     }
     await loadResults(payload, true);
+  }
+
+  async function followSearchJob(initial: SearchJob, token: string, resumed: boolean) {
+    const deadline = Date.now() + 10 * 60_000;
+    let job = initial;
+    try {
+      while (job.status === "queued" || job.status === "running") {
+        setSearchJob(job);
+        const label = resumed ? "先前的背景搜尋" : "背景搜尋";
+        setBusy(job.status === "queued" ? `${label}等待中…` : `${label}處理中…`);
+        if (Date.now() >= deadline) throw new Error("目前無法取得最終結果。可重新查看背景搜尋或從歷史載入成果。");
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+        job = await request<SearchJob>(`/search-jobs/${job.id}`, undefined, token);
+      }
+      if (job.status === "cancelled") {
+        setError("已取消背景搜尋。");
+        return;
+      }
+      if (job.status === "failed" || !job.run_id) {
+        throw new Error(searchJobErrors[job.error_code ?? ""] ?? "背景搜尋失敗，請重新送出。");
+      }
+      setHistory(null);
+      await openRun(job.run_id, token);
+    } finally {
+      setSearchJob(null);
+    }
+  }
+
+  async function cancelSearchJob() {
+    if (!session || !searchJob) return;
+    try {
+      await request<SearchJob>(`/search-jobs/${searchJob.id}/cancel`, {}, session.token);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "目前無法取消搜尋。");
+    }
   }
 
   async function openPatent(hit: PatentVersion, fromResults = true) {
@@ -425,6 +479,7 @@ export function Research() {
     <>
       <p className="mb-6 max-w-3xl text-slate-700">描述你的構想，從已索引的 TIPO 公開資料找出相關技術。涵蓋範圍以本機已匯入的批次為限。比對僅供研究參考。</p>
       <p className="mb-4 font-medium text-teal-900" role="status">{busy}</p>
+      {searchJob && <button type="button" onClick={() => void cancelSearchJob()}>取消背景搜尋</button>}
       {error && <p className="mb-4 rounded-lg bg-red-50 p-3 text-red-900" role="alert">{error}</p>}
       <section className="research-panel mb-6">
         <h2>私人搜尋歷史</h2>

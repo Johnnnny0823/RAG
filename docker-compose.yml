@@ -55,6 +55,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
+  search-worker:
+    <<: *api
+    command: ["python", "-m", "services.api.search_worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
   web:
     build: ./apps/web
     environment:

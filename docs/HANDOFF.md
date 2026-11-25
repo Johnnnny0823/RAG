@@ -1127,3 +1127,25 @@
 - Uncommitted changes / file ownership warnings: 本機測試專案驗收後停止，原服務及資料卷保留。
 - Next 1–3 concrete actions: 驗收新版遠端官方流程，優先補任務狀態及人工相關性評估。
 - Exact reproduction steps: 依 TESTING 的官方語料步驟啟動隔離環境並執行 `PATENTSCOPE_E2E_TIPO=1` 桌面 Chromium。
+
+## 背景搜尋工作範圍
+
+- Codex 負責工作表遷移、背景搜尋 API 與工作程序、研究介面、測試及文件。本輪在隔離資料庫驗收。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `0949898`。
+- Current milestone and status: M3／M4 背景搜尋與狀態，完整 Goal IN_PROGRESS。
+- Goal of this session: 登入後可將混合搜尋排入背景、查看進度、取消，以及完成後取得一般研究快照。
+- Files changed (with purpose): `0012_search_jobs.py` 遷移、工作 API 與工作程序、搜尋快照共用寫入、受限角色授權、Compose／CI、前端輪詢與取消、整合和 Playwright 驗收及對應文件。
+- Database migrations added/applied: 在既有隔離資料庫與新空白隔離庫驗證 `0012_search_jobs`。活動工作按帳號限制一筆；取消或終止後清除暫存的構想。研究快照在成功交易中一次保存。
+- API/Schema changes: `/api/v1/search-jobs` 增加 HTTP 202 接收、狀態、目前工作與取消。前端「搜尋並保存」走新流程，已保存搜尋讀取 API 維持原來的路徑。
+- Commands actually run and results: 啟用 PostgreSQL 整合的 pytest 71 passed、1 則既有 Starlette 警告。Ruff、前端 lint 與 TypeScript 通過。測試使用真實資料庫與替身檢索，核對跨帳號 404、重複送出 409、工作完成保存，以及執行中取消不留快照。
+- Commands actually run and results（續）: 隔離 Compose 啟動工作程序後，真實模型及官方 `202639611` 的 Chromium 桌面案例 1 passed。瀏覽器收到 202，輪詢成功後開啟已保存的快照，並完成引文、歷史與 PDF 驗收。
+- Tests NOT run and reason: 這版尚無遠端官方及其他瀏覽器的結果。取消路徑由 PostgreSQL 整合測試執行，瀏覽器官方流程驗收成功保存。
+- Data sources checked (exact URL/date) and license/access notes: 沿用已核對雜湊的第 024019 期與小語料索引，沒有新增來源。
+- Known bugs / risks / blockers: 取消屬盡力取消，已送出的模型請求仍可能執行到回應或逾時。Worker 漏失的工作會由後續工作程序標為逾時，不自動重試。報告、向量索引及匯入的任務狀態尚未整合。
+- Decisions made (ADR links): 使用 PostgreSQL 佇列與單獨 Compose 工作程序。匿名預覽仍使用現有同步搜尋；已登入保存流程使用背景工作。
+- Uncommitted changes / file ownership warnings: 隔離工作程序、Web、API 與 DB 驗證後停止，保留測試卷。
+- Next 1–3 concrete actions: 驗收遠端官方流程；補報告及匯入任務狀態；進行相關性評估。
+- Exact reproduction steps: 在 worker 停止時跑 PostgreSQL 整合 pytest。以 `docker compose up -d --build search-worker` 啟動後，依 TESTING 執行官方 Playwright。

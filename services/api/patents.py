@@ -60,6 +60,8 @@ ErrorCode = Literal[
     "PASSWORD_CONFIRMATION_FAILED",
     "LOGIN_THROTTLED",
     "MODEL_BUSY",
+    "SEARCH_JOB_ACTIVE",
+    "SEARCH_JOB_NOT_FOUND",
 ]
 
 

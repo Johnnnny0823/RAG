@@ -1,6 +1,6 @@
 # 資料庫設計
 
-PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，目前 head 為 `0011_claim_dependencies`。
+PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，目前 head 為 `0012_search_jobs`。
 
 主鍵多為 UUID（`gen_random_uuid()`），時間欄位為 `timestamptz`，只知道日期時用 `date`。
 
@@ -22,6 +22,8 @@ erDiagram
     patent_documents ||--o{ patent_dense_chunks : "document_id"
     patent_embedding_models ||--o{ patent_dense_chunks : "model_id"
     users ||--o{ auth_sessions : "user_id"
+    users ||--o{ search_jobs : "user_id"
+    search_runs o|--o{ search_jobs : "run_id"
     users ||--o{ projects : "owner_user_id"
     users ||--o{ search_runs : "user_id"
     projects ||--o{ search_runs : "user_id, project_id"
@@ -106,3 +108,8 @@ erDiagram
 `0011_claim_dependencies` 新增 `claim_dependencies(document_id, child_number, parent_number)`。兩個複合外鍵都指向同一文件版本內的請求項，且被援引項號須小於援引項號，因此無循環。欄位名稱中的 `dependencies` 記錄可由正文核對的援引關係。來源 XML 的獨立項標記仍保留在 `patent_claims`。
 
 遷移需連線至資料庫，會從已保存的正文分文件版本回填。新匯入在請求項寫入後，於同一交易保存援引。前綴用語未符合規則、範圍不完整或向後援引時，不建立該組關係。降版移除衍生表，會保留原始請求項；用 Compose 重新升版時會重建關係並補齊 API 讀取權限。
+### 背景搜尋工作
+
+`search_jobs` 保存狀態與活動期間的搜尋請求。部分唯一索引限制每個帳號一次只有一項等待中或執行中工作。工作程序以 `FOR UPDATE SKIP LOCKED` 認領佇列，提交交易後執行模型推論，避免長時間持有資料庫鎖。成功保存時，同一交易建立搜尋快照與候選並將工作標記為成功；取消後無法進入保存交易。
+
+完成、失敗及取消會移除工作上的原始請求。刪除帳號或已保存搜尋，相關工作狀態也會一併清理。

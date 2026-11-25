@@ -148,6 +148,8 @@ docker compose @compose stop
 
 CI 在空白測試資料卷套用遷移後執行此套件。測試驗證 Alembic head、pgvector 距離運算、真實 DB readiness、研究專案讀寫、另一帳號讀取遭拒，以及 PostgreSQL 拒絕跨帳號的搜尋紀錄外鍵。單獨執行整合套件時須設定上方旗標。
 
+跑 PostgreSQL pytest 整合測試時，保持 Compose 的 `search-worker` 停止。測試會用真實資料庫、TestClient 和固定的檢索回應，驗證背景工作認領、跨帳號隔離、結果保存及執行中取消。執行官方 Playwright 前則要啟動工作程序，該套件使用真實檢索與模型。
+
 整合測試用 API 角色連線，另用管理帳號查遷移版本並調整合成登入失敗時間。權限測試以交易及 savepoint 確認 PostgreSQL 拒絕 API 修改語料、建立持久資料表、讀取遷移版本。
 
 ### 搜尋失敗、空結果與逾時

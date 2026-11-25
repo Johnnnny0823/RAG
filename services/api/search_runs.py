@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import JSONResponse
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel
+from sqlalchemy.engine import Connection
 from sqlalchemy.exc import SQLAlchemyError
 
 from services.api.db import engine
@@ -17,6 +18,7 @@ from services.api.projects import project_missing
 from services.api.patents import (
     HybridPatentHit,
     HybridSearchRequest,
+    HybridSearchResults,
     PatentErrorEnvelope,
     PatentRoute,
     api_error,
@@ -60,41 +62,51 @@ def save_search(request: HybridSearchRequest, account: Owner, response: Response
     result = run_hybrid(request, full_snapshot=True)
     if isinstance(result, JSONResponse):
         return result
-    settings = result.model_dump(
-        mode="json", exclude={"items", "limit", "offset", "has_more"}
-    )
     try:
         with engine.begin() as conn:
-            run = (
-                conn.exec_driver_sql(
-                    """INSERT INTO search_runs (user_id,request,settings) VALUES (%s,%s,%s)
-                   RETURNING id, created_at""",
-                    (
-                        account.id,
-                        Jsonb(request.model_dump(mode="json")),
-                        Jsonb(settings),
-                    ),
-                )
-                .mappings()
-                .one()
-            )
-            if result.items:
-                conn.exec_driver_sql(
-                    """INSERT INTO search_run_candidates (run_id, position, document_id, result)
-                       VALUES (%s,%s,%s,%s)""",
-                    [
-                        (
-                            run["id"],
-                            position,
-                            hit.document_id,
-                            Jsonb(hit.model_dump(mode="json")),
-                        )
-                        for position, hit in enumerate(result.items, 1)
-                    ],
-                )
+            run = persist_search(conn, account.id, request, result)
     except SQLAlchemyError:
         return unavailable()
     response.headers["Cache-Control"] = "no-store"
+    return run
+
+
+def persist_search(
+    conn: Connection,
+    user_id: UUID,
+    request: HybridSearchRequest,
+    result: HybridSearchResults,
+) -> SavedRun:
+    settings = result.model_dump(
+        mode="json", exclude={"items", "limit", "offset", "has_more"}
+    )
+    run = (
+        conn.exec_driver_sql(
+            """INSERT INTO search_runs (user_id,request,settings) VALUES (%s,%s,%s)
+           RETURNING id, created_at""",
+            (
+                user_id,
+                Jsonb(request.model_dump(mode="json")),
+                Jsonb(settings),
+            ),
+        )
+        .mappings()
+        .one()
+    )
+    if result.items:
+        conn.exec_driver_sql(
+            """INSERT INTO search_run_candidates (run_id, position, document_id, result)
+               VALUES (%s,%s,%s,%s)""",
+            [
+                (
+                    run["id"],
+                    position,
+                    hit.document_id,
+                    Jsonb(hit.model_dump(mode="json")),
+                )
+                for position, hit in enumerate(result.items, 1)
+            ],
+        )
     return SavedRun.model_validate(run)
 
 

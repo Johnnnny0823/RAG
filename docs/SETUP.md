@@ -259,3 +259,8 @@ Compose 在遷移完成後建立 `patentscope_api` 並授權。API 使用這個�
 既有環境須在 `.env` 新增獨立的 `API_DB_PASSWORD`，然後用原專案名稱執行 `docker compose up -d --build --wait`。沿用既有 PostgreSQL 磁碟卷及管理帳密。變更 API 密碼時，先更新設定並執行 `docker compose run --rm migrate`，再重建 API 容器。若宿主機直接啟動 API，`PGUSER` 與 `PGPASSWORD` 應改用對應的執行帳號與密碼。
 
 使用 `patentscope_api` 作為本專案專用角色。若同一 PostgreSQL 叢集已存在同名帳號，先核對既有角色及授權再執行，因為重新配置會設定該角色的密碼。API 的各使用者資料仍依應用層的所有權檢查及資料庫約束隔離。
+## 背景搜尋工作程序
+
+一般 `docker compose up -d --build --wait` 會啟動 `search-worker`，並在資料庫遷移後開始取件。若只啟動 `api web`，也須執行 `docker compose up -d --build search-worker` 才會處理背景搜尋。工作程序使用與 API 相同的資料庫執行角色與模型設定。
+
+目前預設一個工作程序，每次處理一項搜尋。工作程序會將等待超過 10 分鐘或執行超過 6 分鐘的工作標為逾時，並於完成狀態保存一日後清理工作狀態。成功的研究紀錄有自己的生命週期，可以持續從歷史查看。

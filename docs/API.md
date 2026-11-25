@@ -124,3 +124,15 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 `GET /api/v1/search-runs/{run_id}/report.pdf` 用 Bearer token 驗證搜尋紀錄所有權，成功回傳 `application/pdf` 及附件檔名。未登入為 401，其他帳號的紀錄或不存在的紀錄為 404。回應標示 `private, no-store`。
 
 報告同步產生，涵蓋當次保存的構想、篩選、檢索設定、候選順位及已保存比對。官方來源連結於匯出時讀取。伺服器不留存 PDF 檔案，瀏覽器會下載一份本機副本。
+## 背景搜尋
+
+已登入使用者可用下列端點把混合搜尋排入背景。成功後會取得一般研究歷史可用的搜尋紀錄 ID。
+
+| 請求 | 行為 |
+| --- | --- |
+| `POST /api/v1/search-jobs` | 接受混合搜尋請求，回傳 HTTP 202、工作 ID 及狀態網址 `Location`。同一帳號已有活動工作時回傳 409。 |
+| `GET /api/v1/search-jobs/active` | 取得目前的等待中或執行中工作，沒有時回傳 `null`。 |
+| `GET /api/v1/search-jobs/{job_id}` | 回傳狀態、起訖時間、失敗代碼和成功時的 `run_id`。 |
+| `POST /api/v1/search-jobs/{job_id}/cancel` | 取消等待中或執行中工作。完成後呼叫會取得既有的完成狀態。 |
+
+狀態為 `queued`、`running`、`succeeded`、`failed` 或 `cancelled`。跨帳號存取回傳 404。成功時以 `GET /api/v1/search-runs/{run_id}` 讀取保存的候選。取消會阻止工作寫入新的研究紀錄。已送出的模型請求可能持續執行到回應或逾時。

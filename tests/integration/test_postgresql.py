@@ -15,6 +15,8 @@ from sqlalchemy.exc import IntegrityError, ProgrammingError
 
 from services.api.db import engine
 from services.api.main import app
+from services.api import search_worker
+from services.api.patents import HybridSearchResults
 
 pytestmark = pytest.mark.skipif(
     os.getenv("PATENTSCOPE_PG_INTEGRATION") != "1",
@@ -169,3 +171,71 @@ def test_projects_isolated_in_api_and_foreign_key(accounts):
             )
         assert isinstance(error.value.orig, ForeignKeyViolation)
         assert error.value.orig.diag.constraint_name == "fk_search_runs_owner_project"
+
+
+def test_background_search_saves_snapshot_only_for_completed_owner_job(
+    accounts, monkeypatch
+):
+    client, ((_, owner, _), (_, other, _)) = accounts
+    response = client.post("/api/v1/search-jobs", headers=owner, json={"query": "DEMO"})
+    assert response.status_code == 202
+    path = response.headers["Location"]
+    assert response.json()["status"] == "queued"
+    assert client.get(path, headers=other).status_code == 404
+    assert client.post(f"{path}/cancel", headers=other).status_code == 404
+    assert (
+        client.post(
+            "/api/v1/search-jobs", headers=owner, json={"query": "DEMO again"}
+        ).status_code
+        == 409
+    )
+
+    result = HybridSearchResults(
+        items=[],
+        tokenizer_version="DEMO",
+        model_name="DEMO",
+        model_digest="a" * 64,
+        pipeline="DEMO",
+        query_expansion_version="DEMO",
+        rrf_k=60,
+        candidate_limit=100,
+        applied_feature_ids=[],
+        reranker=None,
+        limit=20,
+        offset=0,
+        has_more=False,
+    )
+
+    def run_hybrid(request, *, full_snapshot):
+        assert full_snapshot and request.query == "DEMO"
+        assert client.get(path, headers=owner).json()["status"] == "running"
+        return result
+
+    monkeypatch.setattr(search_worker, "run_hybrid", run_hybrid)
+    assert search_worker.process_one()
+    completed = client.get(path, headers=owner).json()
+    assert completed["status"] == "succeeded"
+    saved_path = f"/api/v1/search-runs/{completed['run_id']}"
+    assert client.get(saved_path, headers=owner).json()["request"]["query"] == "DEMO"
+    assert client.get(saved_path, headers=other).status_code == 404
+    with engine.connect() as conn:
+        assert conn.exec_driver_sql(
+            "SELECT request IS NULL FROM search_jobs WHERE id=%s", (completed["id"],)
+        ).scalar_one()
+
+    queued = client.post(
+        "/api/v1/search-jobs", headers=owner, json={"query": "DEMO cancel"}
+    )
+    path = queued.headers["Location"]
+
+    def cancel_during_work(*_, **__):
+        assert client.get(path, headers=owner).json()["status"] == "running"
+        assert (
+            client.post(f"{path}/cancel", headers=owner).json()["status"] == "cancelled"
+        )
+        return result
+
+    monkeypatch.setattr(search_worker, "run_hybrid", cancel_during_work)
+    assert search_worker.process_one()
+    assert client.get(path, headers=owner).json()["run_id"] is None
+    assert len(client.get("/api/v1/search-runs", headers=owner).json()) == 1
