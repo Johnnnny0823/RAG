@@ -343,12 +343,21 @@ LEXICAL_SEARCH = f"""
     LIMIT %s OFFSET %s
 """
 
-SEMANTIC_SEARCH = f"""
+SEMANTIC_CANDIDATES = f"""
     WITH candidates AS (
         SELECT {SUMMARY_FIELDS}
         {PUBLIC_DOCUMENTS}
         {SEARCH_FILTERS}
-    ), matches AS (
+    )
+"""
+SEMANTIC_ORDER = f"""
+    ORDER BY m.score DESC, {SCOPE_ORDER.format("c.content_scope")}, c.document_id
+    LIMIT %s OFFSET %s
+"""
+SEMANTIC_SEARCH = (
+    SEMANTIC_CANDIDATES
+    + """
+    , matches AS (
         SELECT t.document_id, 1 - min(t.embedding <=> %s::vector) AS score
         FROM patent_dense_chunks t JOIN candidates c ON c.document_id = t.document_id
         WHERE t.model_id = %s
@@ -356,9 +365,24 @@ SEMANTIC_SEARCH = f"""
     )
     SELECT c.*, m.score
     FROM candidates c JOIN matches m ON m.document_id = c.document_id
-    ORDER BY m.score DESC, {SCOPE_ORDER.format("c.content_scope")}, c.document_id
-    LIMIT %s OFFSET %s
 """
+    + SEMANTIC_ORDER
+)
+
+# For an exact IPC code, look up each candidate's vectors by (model_id, document_id).
+SEMANTIC_IPC_SEARCH = (
+    SEMANTIC_CANDIDATES
+    + """
+    SELECT c.*, m.score
+    FROM candidates c CROSS JOIN LATERAL (
+        SELECT 1 - min(t.embedding <=> %s::vector) AS score
+        FROM patent_dense_chunks t
+        WHERE t.model_id = %s AND t.document_id = c.document_id
+    ) m
+    WHERE m.score IS NOT NULL
+"""
+    + SEMANTIC_ORDER
+)
 
 
 def normalize_ipc(value: str | None) -> str | None:
@@ -405,11 +429,21 @@ def indexed_model_id(model: LocalEmbeddingModel) -> int:
     return identity
 
 
+def lexical_statement(terms: str, filters: tuple, limit: int, offset: int):
+    return LEXICAL_SEARCH, (terms, TOKENIZER_VERSION, *filters, limit, offset)
+
+
+def semantic_statement(
+    embedding: str, identity: int, filters: tuple, limit: int, offset: int
+):
+    ipc = filters[0]
+    sql = SEMANTIC_IPC_SEARCH if ipc and "/" in ipc else SEMANTIC_SEARCH
+    return sql, (*filters, embedding, identity, limit, offset)
+
+
 def lexical_rows(conn: Connection, terms: str, filters: tuple, limit: int, offset: int):
     return (
-        conn.exec_driver_sql(
-            LEXICAL_SEARCH, (terms, TOKENIZER_VERSION, *filters, limit, offset)
-        )
+        conn.exec_driver_sql(*lexical_statement(terms, filters, limit, offset))
         .mappings()
         .all()
     )
@@ -425,7 +459,7 @@ def semantic_rows(
 ):
     return (
         conn.exec_driver_sql(
-            SEMANTIC_SEARCH, (*filters, embedding, identity, limit, offset)
+            *semantic_statement(embedding, identity, filters, limit, offset)
         )
         .mappings()
         .all()

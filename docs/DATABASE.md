@@ -103,7 +103,7 @@ erDiagram
 
 ## 查詢計畫
 
-登入節流查詢在測試資料庫的 `EXPLAIN (ANALYZE, BUFFERS)` 使用 `ix_login_failures_recent` 的 Bitmap Index Scan，執行時間 0.057 ms（2026-11-10，空資料表）。檢索查詢在代表性資料量下的查詢計畫尚未有系統地記錄。
+登入節流查詢在測試資料庫的 `EXPLAIN (ANALYZE, BUFFERS)` 使用 `ix_login_failures_recent` 的 Bitmap Index Scan，執行時間 0.057 ms（2026-11-10，空資料表）。詞彙與向量檢索的初步查詢計畫、數據及重現指令見 [檢索評估](EVALUATION.md#2026-11-26-postgresql-查詢計畫基線)。
 ### 請求項原文援引
 
 `0011_claim_dependencies` 新增 `claim_dependencies(document_id, child_number, parent_number)`。兩個複合外鍵都指向同一文件版本內的請求項，且被援引項號須小於援引項號，因此無循環。欄位名稱中的 `dependencies` 記錄可由正文核對的援引關係。來源 XML 的獨立項標記仍保留在 `patent_claims`。

@@ -1192,3 +1192,24 @@
 - Uncommitted changes / file ownership warnings: 測試專案停止，保留隔離資料卷及已結束的驗收容器紀錄。
 - Next 1–3 concrete actions: 查核遠端官方流程，完成評估基準與人工標註，補作較大規模規劃分析。
 - Exact reproduction steps: 依 SETUP 官方匯入監控段落設定輸入與管理者 UUID，執行 detached 流程後以管理帳號查看。
+
+## PostgreSQL 檢索計畫驗收範圍
+
+- Codex 負責檢索 SQL 的重現指令、隔離語料量測、測試與效能證據文件。
+
+- Date/time (timezone): 2026-11-26 01:51（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `fbe109e`。
+- Current milestone and status: M2／M6 PostgreSQL 小語料基線完成，完整 Goal IN_PROGRESS。
+- Goal of this session: 量測真實 SQL，避免精確 IPC 案例仍掃描全部向量。
+- Files changed (with purpose): `patents.py` 新增精確 IPC 的候選向量查詢，`scripts/explain_search.py` 以生產 SQL 重現量測，`test_explain_search.py` 驗證計畫只輸出所需欄位，更新評估、資料庫與交接文件。
+- Database migrations added/applied: 無新增。將已核對的公開資料備份還原至新建隔離庫，從空白遷移到 `0014`，對隔離語料執行 `ANALYZE`。
+- API/Schema changes: 無。精確 IPC 向量分支改用先篩文件的查詢；無 IPC 或四碼子類使用原查詢。兩個精確 IPC 案例的結果、順序及分數逐筆一致。
+- Commands actually run and results: PostgreSQL 整合開啟後 pytest 74 passed、1 則既有 Starlette 警告。Ruff 格式及 lint 通過。隔離真實 API 的三支 `--official-e2e` 冒煙通過。117 版本／1,560 詞彙片段／1,624 向量，用唯讀快照及 7 次量測比對兩個精確 IPC 案例。完整本機輸出在 `%TEMP%/patentscope-sql-plans-520c713b-a4ea-43dd-a28a-fa04c1d6fd46.json`，數字見 EVALUATION。
+- Tests NOT run and reason: 本機未重跑全瀏覽器套件，此輪沒有前端修改。更早提交 `073c076` 的遠端官方 E2E 45618424111 通過，含三支冒煙及 17 項 Playwright。本次變更另需自己的遠端結果。
+- Data sources checked (exact URL/date) and license/access notes: 沿用已驗證的 TIPO 第 024019／053028 期封存檔形成的公開資料備份，未重新下載。來源及授權見 DATA_SOURCES。
+- Known bugs / risks / blockers: 小語料、預熱查詢、未加併發負載。未量測大規模資料及向量索引的速度／召回取捨。人工相關性標註仍待完成。
+- Decisions made (ADR links): 目前保留精確向量排序，不加入近似索引。候選查詢優化限精確 IPC，保留較寬查詢的行為。
+- Uncommitted changes / file ownership warnings: 隔離 API 與 DB 停止，保留測試卷。
+- Next 1–3 concrete actions: 核對新版官方工作；準備人工標註並量測代表性負載；檢查尚未完成的產品與部署驗收。
+- Exact reproduction steps: 依 [EVALUATION SQL 計畫](EVALUATION.md#2026-11-26-postgresql-查詢計畫基線) 執行。
