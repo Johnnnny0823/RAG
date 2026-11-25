@@ -1,6 +1,12 @@
 from pytest import approx, raises
 
-from scripts.evaluate_search import evaluate, score
+from scripts import evaluate_search
+from scripts.evaluate_search import (
+    build_review_pool,
+    check_reviewed_version,
+    evaluate,
+    score,
+)
 
 
 def test_duplicate_versions_consume_rank_and_only_first_earns_credit():
@@ -34,3 +40,62 @@ def test_human_review_requires_reviewer_and_written_basis():
         evaluate("", dataset, 1)
     with raises(ValueError, match="require a basis"):
         evaluate("", {**dataset, "reviewer": "example-reviewer"}, 1)
+
+
+def test_review_pool_pins_richest_available_version(monkeypatch):
+    metadata = {"document_id": "metadata", "content_scope": "metadata_and_abstract"}
+    fulltext = {
+        "document_id": "fulltext",
+        "content_scope": "fulltext",
+        "document_sha256": "a" * 64,
+        "parser_version": "example-v1",
+        "title_zh": "Fixture",
+        "sources": [],
+    }
+
+    def fixture_request(api, path):
+        if path.startswith("/patents?"):
+            return {"items": [metadata, fulltext], "has_more": False}
+        assert path == "/patents/fulltext"
+        return fulltext
+
+    monkeypatch.setattr(evaluate_search, "request", fixture_request)
+    dataset = {"cases": [{"id": "example", "query": "fixture", "judgments": []}]}
+    evaluation = {
+        "runs": {
+            "lexical": [
+                {
+                    "case": "example",
+                    "results": [
+                        {
+                            **metadata,
+                            "document_stage": "publication",
+                            "publication_no": "A",
+                        }
+                    ],
+                }
+            ]
+        },
+    }
+    pool = build_review_pool("", dataset, evaluation)
+    row = pool["cases"][0]["judgments"][0]
+    assert row["document_sha256"] == "a" * 64
+    assert row["parser_version"] == "example-v1"
+    assert row["grade"] is None and not row["basis"]
+    assert "lexical" not in row
+    check_reviewed_version(
+        "", {**row, "document_id": "different-db-id"}, iter([fulltext])
+    )
+    with raises(ValueError, match="Reviewed version missing"):
+        check_reviewed_version(
+            "", {**row, "document_sha256": "b" * 64}, iter([fulltext])
+        )
+
+
+def test_pending_pool_does_not_produce_scores():
+    with raises(ValueError, match="pending human review"):
+        evaluate(
+            "",
+            {"label_status": "pending_human_review", "cases": [{"id": "example"}]},
+            1,
+        )

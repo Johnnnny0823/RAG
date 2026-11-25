@@ -1256,3 +1256,24 @@
 - Uncommitted changes / file ownership warnings: 隔離測試的資料卷與原始檔保留，日常專案資料未動。
 - Next 1–3 concrete actions: 追蹤遠端官方驗收，擴充評估用的代表性官方語料與人工標註，量測檢索品質及負載。
 - Exact reproduction steps: 依 SETUP 的 `services.ingestion.gazette_dates` 兩條命令補齊隔離資料，再以 `PATENTSCOPE_E2E_TIPO=dates` 執行 Playwright。
+
+## 官方檢索評估工作範圍
+
+- Codex 負責評估器、固定版本的待複核候選、測試及評估文件。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `70dd57a`。
+- Current milestone and status: M2／M6 官方種子重驗通過，人工相關性驗收 IN_PROGRESS。
+- Goal of this session: 用可重建的官方語料重跑評估並保留可獨立複核的文件版本。
+- Files changed (with purpose): `evaluate_search.py` 按文件號取最完整版本，人工標註集用雜湊及解析版本預檢；`test_evaluate_search.py` 核對版本漂移及未複核拒評；`tipo_official_117_review.json` 為 34 組待複核候選。
+- Database migrations added/applied: 無新增。沿用唯讀隔離官方語料驗證。
+- API/Schema changes: 無。人工複核資料格式要求 `content_scope`、`document_sha256`、`parser_version`。
+- Commands actually run and results: PostgreSQL 整合啟用後 pytest 86 passed、1 則既有 Starlette 警告，Ruff 格式與 lint 通過。四案三模式各兩次共 24 個檢索請求，均找回五項已知文件。34 組候選用 API 重驗指紋，不依資料庫 UUID。引用腳本 7 次比對、14 個判定、6 個引文均逐字驗證成功。細項 JSON 在本機 `%TEMP%/patentscope-official-117-evaluation-20261126.json` 及 `%TEMP%/patentscope-official-117-citations-20261126.json`。
+- Tests NOT run and reason: 純評估工具變更，本機未重跑瀏覽器。前一提交一般 CI [45674020726](https://github.com/Johnnnny0823/RAG/actions/runs/45674020726) 通過。前版遠端官方流程 [45671575813](https://github.com/Johnnnny0823/RAG/actions/runs/45671575813) 查核時仍在準備種子語料。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 DATA_SOURCES 的 TIPO 第 024019、053028 期，未重新下載。
+- Known bugs / risks / blockers: 尚無人工標註，現有分數是種子已知命中基線。書目摘要 19 組，技術相關性可能需另外取得全文。大語料與正式負載仍待驗證。
+- Decisions made (ADR links): 依文件階段與編號計排行；人工複核綁定可重建的文件內容。待複核資料不產生分數。
+- Uncommitted changes / file ownership warnings: 隔離語料資料卷留供複驗。
+- Next 1–3 concrete actions: 人工評估 34 組候選並重跑指標，擴充資料規模與主題，查核官方遠端工作。
+- Exact reproduction steps: 依 EVALUATION 執行 `evaluate_search.py --repeats 2 --review-pool <新檔名>` 及 `evaluate_citations.py`，API 指向隔離官方語料。

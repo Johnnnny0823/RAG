@@ -3,6 +3,7 @@
 import argparse
 import json
 import math
+import re
 from pathlib import Path
 from statistics import mean, median
 from time import perf_counter
@@ -15,6 +16,8 @@ MODES = {
     "hybrid_rerank": ("/hybrid", {"rerank": True}),
 }
 K = 10
+SCOPES = {"metadata_and_abstract": 0, "claims_only": 1, "fulltext": 2}
+VERSION_FIELDS = ("content_scope", "document_sha256", "parser_version")
 
 
 def request(api, path, payload=None):
@@ -58,10 +61,45 @@ def score(items, labels):
     }
 
 
+def version_details(api, stage, number):
+    offset = 0
+    while True:
+        params = urlencode(
+            {"number": number, "number_type": stage, "limit": 100, "offset": offset}
+        )
+        result = request(api, "/patents?" + params)
+        for version in result["items"]:
+            yield version
+        if not result["has_more"]:
+            break
+        offset += len(result["items"])
+
+
+def check_reviewed_version(api, row, versions):
+    if (
+        row.get("content_scope") not in SCOPES
+        or not re.fullmatch(r"[0-9a-f]{64}", row.get("document_sha256") or "")
+        or not (row.get("parser_version") or "").strip()
+    ):
+        raise ValueError("Human-reviewed judgments require a pinned document version")
+    for version in versions:
+        if version["content_scope"] == row["content_scope"]:
+            detail = request(api, "/patents/" + version["document_id"])
+            if all(detail[field] == row[field] for field in VERSION_FIELDS):
+                return
+    raise ValueError(f"Reviewed version missing: {row['stage']}/{row['number']}")
+
+
 def evaluate(api, dataset, repeats):
     if not dataset["cases"]:
         raise ValueError("Evaluation dataset must contain at least one case")
+    if repeats < 1:
+        raise ValueError("Evaluation requires at least one repeat")
+    if len({case["id"] for case in dataset["cases"]}) != len(dataset["cases"]):
+        raise ValueError("Evaluation case IDs must be unique")
     human_reviewed = dataset["label_status"] == "human_reviewed"
+    if dataset["label_status"] == "pending_human_review":
+        raise ValueError("The review pool is still pending human review")
     if human_reviewed and not dataset.get("reviewer", "").strip():
         raise ValueError("Human-reviewed datasets require a reviewer")
     modes = {mode: [] for mode in MODES}
@@ -75,12 +113,17 @@ def evaluate(api, dataset, repeats):
         if (
             len(labels) != len(judgments)
             or not any(labels.values())
-            or not all(grade in (0, 1, 2) for grade in labels.values())
+            or not all(
+                type(grade) is int and 0 <= grade <= 2 for grade in labels.values()
+            )
         ):
             raise ValueError(f"Invalid or duplicate judgments for {case['id']}")
-        for stage, number in labels:
-            params = urlencode({"number": number, "number_type": stage})
-            if not request(api, "/patents?" + params)["items"]:
+        for row in judgments:
+            stage, number = row["stage"], row["number"]
+            versions = version_details(api, stage, number)
+            if human_reviewed:
+                check_reviewed_version(api, row, versions)
+            elif next(versions, None) is None:
                 raise ValueError(
                     f"Required evaluation document missing: {stage}/{number}"
                 )
@@ -127,32 +170,40 @@ def evaluate(api, dataset, repeats):
 
 
 def build_review_pool(api, dataset, evaluation):
-    candidates = {case["id"]: {} for case in dataset["cases"]}
-    scopes = {"metadata_and_abstract": 0, "claims_only": 1, "fulltext": 2}
+    candidates = {case["id"]: set() for case in dataset["cases"]}
     for runs in evaluation["runs"].values():
         for run in runs:
             pool = candidates[run["case"]]
-            for hit in run["results"]:
-                key = (hit["document_stage"], hit["publication_no"])
-                current = pool.get(key)
-                if (
-                    current is None
-                    or scopes[hit["content_scope"]] > scopes[current["content_scope"]]
-                ):
-                    pool[key] = hit
+            pool.update(
+                (hit["document_stage"], hit["publication_no"]) for hit in run["results"]
+            )
 
     cases = []
+    documents = {}
     for case in dataset["cases"]:
         pool = candidates[case["id"]]
-        for label in case["judgments"]:
-            key = (label["stage"], label["number"])
-            if key not in pool:
-                params = urlencode({"number": key[1], "number_type": key[0]})
-                versions = request(api, "/patents?" + params)["items"]
-                pool[key] = max(versions, key=lambda hit: scopes[hit["content_scope"]])
+        pool.update((row["stage"], row["number"]) for row in case["judgments"])
         rows = []
-        for (stage, number), hit in sorted(pool.items()):
-            detail = request(api, "/patents/" + hit["document_id"])
+        for stage, number in sorted(pool):
+            key = (stage, number)
+            if key not in documents:
+                versions = list(version_details(api, stage, number))
+                if not versions:
+                    raise ValueError(f"Candidate document missing: {stage}/{number}")
+                scope = max(SCOPES[version["content_scope"]] for version in versions)
+                details = (
+                    request(api, "/patents/" + version["document_id"])
+                    for version in versions
+                    if SCOPES[version["content_scope"]] == scope
+                )
+                documents[key] = min(
+                    details,
+                    key=lambda detail: (
+                        detail["document_sha256"],
+                        detail["parser_version"],
+                    ),
+                )
+            detail = documents[key]
             urls = {
                 url
                 for source in detail["sources"]
@@ -164,8 +215,8 @@ def build_review_pool(api, dataset, evaluation):
                     "stage": stage,
                     "number": number,
                     "title": detail["title_zh"] or detail["title_en"],
-                    "document_id": hit["document_id"],
-                    "content_scope": hit["content_scope"],
+                    "document_id": detail["document_id"],
+                    **{field: detail[field] for field in VERSION_FIELDS},
                     "official_sources": sorted(urls),
                     "grade": None,
                     "basis": "",
