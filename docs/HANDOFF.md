@@ -1299,3 +1299,25 @@
 - Uncommitted changes / file ownership warnings: 資料卷及臨時公開原檔保留供重現。
 - Next 1–3 concrete actions: 驗收新版遠端分段和快取，擴充代表性資料與人工評估，補上測試報告證據。
 - Exact reproduction steps: 依 TESTING 先跑 `--prepare-only`，對空白已遷移隔離庫跑 `--offline --skip-semantic`，另執行 `services.retrieval.index_semantic`、官方 API 冒煙及 Playwright。
+
+## 官方語料規模與併發量測
+
+- Codex 負責隔離語料擴充、檢索量測、測試及評估紀錄。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `fb427f2`。
+- Current milestone and status: M2／M6 518 版本負載已量測，完整目標 IN_PROGRESS。
+- Goal of this session: 以較多官方書目比較實際 SQL，量測小型本機服務在併發下的有效產出及忙碌回覆。
+- Files changed (with purpose): `benchmark_search_load.py` 提供迴圈式併發及有來源的已知案核對；`test_benchmark_search_load.py` 檢查延遲與拒絕各自計數；`smoke_patents.py` 加擴充語料的版本斷言，原固定語料仍採原先預期。
+- Database migrations added/applied: 無新增。以既有隔離庫 `patentscope_ci_replay` 增量重建至 518 版本、3,006 詞彙片段、3,164 向量。從官方原 XML 第 401 筆核對 API 公開案 `202640836` 的申請號、文件雜湊、來源及 XPath。
+- API/Schema changes: 無。
+- Commands actually run and results: pytest 含 PostgreSQL 整合 90 passed、1 則既有 Starlette 警告。Ruff 格式、lint、Git diff 檢查通過。擴充庫三支官方 API 冒煙通過。初次直接套用 117 版本冒煙時，`202639611` 因多一個合法書目版本觸發解包失敗。以明確的擴充語料模式驗證兩個版本後通過。
+- Commands actually run and results（續）: SQL 兩組精確 IPC 的候選、順序和分數逐筆與原 SQL 一致。180 個 HTTP 查詢中，150 個成功且均命中已知案，30 個回覆 `429 MODEL_BUSY`。各組成功延遲與吞吐在 EVALUATION。
+- Tests NOT run and reason: 本輪僅評估及驗收工具修改，未重跑 Playwright。一般 CI [45677084566](https://github.com/Johnnnny0823/RAG/actions/runs/45677084566) 通過。新版官方流程 [45677086302](https://github.com/Johnnnny0823/RAG/actions/runs/45677086302) 已通過固定 XML 驗證與快取寫入，尚在執行其他步驟。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 沿用已驗證的 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index.xml`，未重新下載。來源授權見 DATA_SOURCES。
+- Known bugs / risks / blockers: 語料增加的是書目摘要版本，無法外推完整語料、重排序或多程序生產負載。人工標註與快取命中仍待查核。
+- Decisions made (ADR links): 以已知案命中驗證每筆正常回覆，忙碌回覆單列，成功延遲不計入快速拒絕。
+- Uncommitted changes / file ownership warnings: 隔離資料卷及原始 JSON 保留。量測檔為 `%TEMP%/patentscope-load-117-*.json`、`patentscope-load-518-*.json`、`patentscope-concurrency-final-518-*.json`。
+- Next 1–3 concrete actions: 核對官方遠端流程與後續快取命中，對更多資料來源及全文做規模分析，完成候選人工複核。
+- Exact reproduction steps: 依 EVALUATION 擴充官方樣本，執行 `explain_search`、`benchmark_search_load` 及 `--expanded-corpus` API 冒煙。
