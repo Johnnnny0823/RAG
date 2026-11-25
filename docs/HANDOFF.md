@@ -1321,3 +1321,24 @@
 - Uncommitted changes / file ownership warnings: 隔離資料卷及原始 JSON 保留。量測檔為 `%TEMP%/patentscope-load-117-*.json`、`patentscope-load-518-*.json`、`patentscope-concurrency-final-518-*.json`。
 - Next 1–3 concrete actions: 核對官方遠端流程與後續快取命中，對更多資料來源及全文做規模分析，完成候選人工複核。
 - Exact reproduction steps: 依 EVALUATION 擴充官方樣本，執行 `explain_search`、`benchmark_search_load` 及 `--expanded-corpus` API 冒煙。
+
+## 官方異動公報工作範圍
+
+- Codex 負責已核對的公報事件解析、來源關聯、詳情呈現及隔離驗收。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `e0041d9`。
+- Current milestone and status: M1／M4 已核對的公報事件通過隔離驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 將可追溯的異動公報事件呈現在其同一申請案的專利詳情。
+- Files changed (with purpose): 新增 `0015_legal_events.py`、`legal_events.py`、解析與 Playwright 測試。既有下載器只新增兩種固定路徑，API 與前端顯示公報來源。
+- Database migrations added/applied: 新增 `0015_legal_events`，在已有 518 個官方文件版本的隔離資料庫與空白隔離資料庫套用成功。受限 API 角色有讀權限而無更新權限。
+- API/Schema changes: `GET /api/v1/patents/{document_id}` 回傳 `legal_events`，含類別、證書號、官方可取得生效日與原檔定位。公告版本再比對證書號。
+- Commands actually run and results: Pytest 含 PostgreSQL 整合 93 passed、1 則既有 Starlette 警告。Ruff、前端 lint、TypeScript 和 Vite build 通過。實際下載兩種 XML 後透過 CLI 匯入，31 筆發明更正中 2 筆配對，新跑同一期新增 0 筆；838 筆消滅公告與目前隔離的案件無交集。API 核對兩筆更正與一筆空清單。桌面、平板、手機 Chromium 三項來源定位案例通過。第一次測試有選擇器語法錯誤，改用核對完整官方 URL，重跑後通過。
+- Tests NOT run and reason: 本機未執行完整多瀏覽器套件。目前無同時具消滅公告與匹配專利的驗收樣本，因此消滅日期以官方原檔與解析測試驗證，未宣稱完成對應的瀏覽器流程。一般 CI [45678252779](https://github.com/Johnnnny0823/RAG/actions/runs/45678252779) 在前提交通過，較早官方遠端流程仍在建立向量索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 核對 TIPO 第 53 卷第 33 期 `sud08.xml`、`sud24.xml` 及 P10 最新索引、30126 API 目錄。固定路徑、SHA-256、目錄授權及限制見 DATA_SOURCES。
+- Known bugs / risks / blockers: 歷史事件僅涵蓋已匯入期別、發明類別與兩種已核對的公告結構。任意案件的最新法律狀態與完整歷程未驗證。
+- Decisions made (ADR links): 公報更正不推估日期，只呈現官方提供的卷期及更正欄位。消滅公告保留來源的消滅日及原因。原檔 XML 不直接渲染。
+- Uncommitted changes / file ownership warnings: 測試只使用獨立資料庫與公開原檔，資料卷保留。
+- Next 1–3 concrete actions: 找到可與消滅公報交叉驗證的既有案例，繼續追查官方遠端驗收，完成人工相關性複核。
+- Exact reproduction steps: 依 SETUP 建立擴充官方語料，執行 `legal_events` 的兩種固定卷期匯入，再以 `PATENTSCOPE_E2E_TIPO=events` 跑 Playwright。

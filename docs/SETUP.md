@@ -157,6 +157,17 @@ docker compose run --rm migrate python -m services.ingestion.gazette_dates --sta
 
 程式下載官方固定卷期 XML，核對階段、卷期、申請號及文件號，將缺少的日期與其來源在同一資料庫交易保存。若同案已有不同日期，該交易會回滾，需核對來源。再次執行相同檔案不會新增版本或重複來源連結。既有檢索索引可繼續使用，日期篩選從 PostgreSQL 欄位讀取。公開及公告的來源見 [資料來源](DATA_SOURCES.md#公報書目的申請日公開日與公告日)。
 
+## 匯入官方異動公報
+
+先匯入要關聯的官方發明案件，再對相同 Compose 專案執行。下列第 53 卷第 33 期用於驗證消滅與更正 XML。操作員可依實際取得的官方卷期重跑。事件只會關聯已存在的同申請號案件，重跑同一檔案不會重複新增。
+
+```powershell
+docker compose run --rm migrate python -m services.ingestion.legal_events --year 115 --issue 053033 --type sud08
+docker compose run --rm migrate python -m services.ingestion.legal_events --year 115 --issue 053033 --type sud24
+```
+
+輸出含該公報發明事件數、配對數、新增數與原檔雜湊。舉例來說，對隔離索引前 500 筆公開書目執行第 53 卷第 33 期更正匯入，可核對公開案 `202639186` 和 `202639081`。 [原始資料](DATA_SOURCES.md#專利權異動公報)
+
 ## M3 本機技術特徵驗收
 
 保留嵌入模型設定，另外配置本機 Ollama 分析模型。以 `ollama pull qwen2.5:1.5b` 取得模型，並從本機 `/api/tags` 核對 digest。分析請求使用 CPU。共用模型服務僅用公開測試查詢驗收。

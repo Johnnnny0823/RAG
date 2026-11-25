@@ -56,6 +56,7 @@ erDiagram
 | `patent_sections` | 說明書段落原文與 XPath、原始檔雜湊。 | `(document_id, section_type, ordinal)` 唯一。 |
 | `patent_claims` | 請求項原文、編號、是否獨立項與來源定位。 | `(document_id, claim_number)` 唯一。 |
 | `claim_dependencies` | 同版本的請求項原文援引。 | `(document_id, child_number, parent_number)` 唯一。 |
+| `patent_legal_events` | `0015_legal_events` 保存已核對的異動公報事件。 | 申請案與原始檔外鍵，`(artifact_id, record_locator)` 唯一。消滅公告必須有明確生效日，更正事件只保存已提供的卷期。 |
 
 同一申請案的公開版與公告版是不同的 `patent_documents` 列，共用 `application_id`。同一公開號也可以同時有書目版與全文版。
 

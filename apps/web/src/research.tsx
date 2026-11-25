@@ -44,6 +44,18 @@ type Detail = {
   classifications: { scheme: string; code: string }[];
   sections: { ordinal: number; section_type: string; original_text: string }[];
   sources: { dataset_name: string; publisher: string; dataset_url: string | null; source_url: string | null; batch_key: string; ingested_at: string }[];
+  legal_events: {
+    kind: "extinguishment" | "gazette_correction";
+    certificate_no: string;
+    effective_on: string | null;
+    detail: string | null;
+    source_url: string | null;
+    dataset_url: string | null;
+    batch_key: string;
+    ingested_at: string;
+    artifact_sha256: string;
+    record_locator: string;
+  }[];
 };
 type Claim = { claim_number: number; text: string; referenced_claim_numbers: number[] };
 type SearchFilters = {
@@ -861,6 +873,22 @@ export function Research() {
           <details className="my-3"><summary>說明書段落（{selected.detail.sections.length}）</summary>
             {selected.detail.sections.map((section) => <p key={`${section.section_type}-${section.ordinal}`} className="my-2 whitespace-pre-wrap">第 {section.ordinal} 段 · {section.original_text}</p>)}
           </details>
+          <h3>權利異動公報</h3>
+          <p className="mb-2 text-sm text-slate-700">涵蓋已匯入的公報卷期。查詢目前權利狀態時，請以智慧財產局最新資料為準。</p>
+          {selected.detail.legal_events.length ? <ul className="mb-4">
+            {selected.detail.legal_events.map((event) => <li key={event.artifact_sha256 + event.record_locator} className="my-2">
+              <span>{event.kind === "extinguishment" ? "專利權消滅公告" : "公報更正"} · 證書號 {event.certificate_no} · 卷期 {event.batch_key}</span>
+              {event.effective_on && <span> · 生效日 {event.effective_on}</span>}
+              {event.detail && <span> · {event.detail}</span>}
+              {event.dataset_url && <a className="ml-2" href={event.dataset_url} target="_blank" rel="noreferrer">異動公報資料集</a>}
+              {event.source_url && <a className="ml-2" href={event.source_url} target="_blank" rel="noreferrer">異動公報原始檔</a>}
+              <details className="text-sm"><summary>異動公報來源定位</summary>
+                <p className="break-all">{event.record_locator}</p>
+                <p className="break-all">原始檔 SHA-256 · {event.artifact_sha256}</p>
+                <p>匯入 {event.ingested_at.slice(0, 10)}（UTC）</p>
+              </details>
+            </li>)}
+          </ul> : <p className="mb-4 text-sm text-slate-700">目前索引沒有這筆申請案的異動公報紀錄。</p>}
           <h3>來源批次</h3>
           <ul className="mb-4">
             {selected.detail.sources.map((source, index) => <li key={index} className="my-2">

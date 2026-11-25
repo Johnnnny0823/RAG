@@ -19,7 +19,9 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 `number_type` 必填，支援 `application`（9 位數申請號）、`publication`（9 位數發明公開號）及 `grant`（目前語料支援 I 開頭的發明公告號）。輸入做全半形與大小寫正規化，保留前導零。分頁預設 `limit=20`、`offset=0`，上限分別為 100 與 10,000。同一號碼的不同文件版本可並存，全文版本排在同一文件的書目版本之前。
 
-來源包含資料集、提供機關、授權、批次、匯入時間、原始 XML 雜湊與 XPath。已保存且通過官方來源檢查的原檔 URL 才會回傳。缺少日期、kind code 或原檔 URL 時回傳 `null`。`content_scope` 區分 `metadata_and_abstract`、`claims_only` 和 `fulltext`。請求項的從屬關係與可下載附件留待後續階段。
+來源包含資料集、提供機關、授權、批次、匯入時間、原始 XML 雜湊與 XPath。已保存且通過官方來源檢查的原檔 URL 才會回傳。缺少日期、kind code 或原檔 URL 時回傳 `null`。`content_scope` 區分 `metadata_and_abstract`、`claims_only` 和 `fulltext`。可下載附件留待後續階段。
+
+詳情的 `legal_events` 列出同一申請案已匯入的官方異動公報。公告版本須再符合事件上的證書號。事件種類目前有 `extinguishment`（消滅公告）與 `gazette_correction`（公報更正），並提供證書號、卷期、匯入時間、已知生效日、來源、雜湊及定位。`effective_on` 僅在來源提供時有值。空陣列表示已匯入語料沒有該案的事件，最新權利狀態仍應查智慧財產局。
 
 查無相符號碼時回傳 HTTP 200 與空清單；未知文件版本回傳 404。格式或參數錯誤為 422，資料庫不可查詢為 503。錯誤均使用 `error.code`、`error.message` 和 `error.request_id`。
 

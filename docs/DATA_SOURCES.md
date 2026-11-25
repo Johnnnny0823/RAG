@@ -44,3 +44,18 @@
 | [專利公告公報書目](https://data.gov.tw/dataset/15972) | [第 53 卷第 28 期 patent.xml](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053028/patent.xml)，1,640 筆，含 1,095 筆發明公告 | 23,778,073 bytes，`836c3c9db01099dfe38fa1d15e9e1d3116180126c02f5179ebcf17542c7bd5c8` | `I941082`／`114106690`，公告 2026-10-01，申請 2025-02-24 |
 
 `tipo-gazette-dates-1` 按同卷期、申請號及文件種類與編號對應已匯入版本。日期取 `application-reference/document-id/date` 與 `publication-reference/document-id/date`，把來源民國日曆轉成 PostgreSQL `date`。保留原始 XML、SHA-256 及書目 XPath。此來源用於日期補齊，缺少公報書目的既有版本仍可能無日期。
+
+## 專利權異動公報
+
+2026-11-26 查核[專利權異動公報（15974）](https://data.gov.tw/dataset/15974)。提供者經濟部智慧財產局，目錄列每月更新、免費及政府資料開放授權條款第 1 版。[最新期索引 P10](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/P10) 實得 1,662 筆、214,092 bytes，SHA-256 `3945c07fd8f2b286e00dac8d46c67faf849c998f3c89009b3eec75ebc2226299`。索引列申請號、證書號及異動種類，日期及更正欄位須讀該卷期的類別 XML。FTPS 速率限制未確認。
+
+第 53 卷第 33 期的匿名 FTPS 封存實測如下。
+
+| 類別 | 原檔大小與 SHA-256 | 可取得欄位 |
+| --- | --- | --- |
+| [消滅公告 sud08](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053033/sud08.xml) | 469,608 bytes，`213b98e7337a0f99b74b9eff59ce0d92f0f27ccecf665892f8ee48b8423bd964` | 1,482 筆，含 838 筆發明。申請號、證書號、卷期、消滅日與原因。 |
+| [公報更正 sud24](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053033/sud24.xml) | 41,156 bytes，`97993734e1cd87b54537069ded8593a02615d7aa09442779a47a688ccffc16a3` | 35 筆，含 31 筆發明。申請號、證書號、卷期與更正欄位。公開 API 只使用欄位名稱。 |
+
+`tipo-sundry-events-1` 保留原檔、雜湊及 XML 位置，解析時移除完全符合官方樣本的外部 DTD 宣告，其他 DTD 一律拒絕。僅將可核對申請號的發明事件關聯至已匯入的臺灣案件。事件表示公報記載的歷史事項，來源涵蓋範圍以已匯入期別為限。
+
+[專利權狀態異動資料（發明，30126）](https://data.gov.tw/dataset/30126) 是另一資料來源，官方 [OpenAPI 文件](https://cloud.tipo.gov.tw/S220/opdata/api/file/oas) 列 `/PatentRights` 及 `tk` 欄位。任意案件的最新狀態查詢與授權憑證仍待驗證。此階段使用匿名可取得、可保留原文的固定卷期事件。

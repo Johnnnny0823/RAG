@@ -252,6 +252,19 @@ class PatentSection(BaseModel):
     source: SourceLocation
 
 
+class PatentLegalEvent(BaseModel):
+    kind: Literal["extinguishment", "gazette_correction"]
+    certificate_no: str
+    effective_on: date | None
+    detail: str | None
+    source_url: str | None
+    dataset_url: str | None
+    batch_key: str
+    ingested_at: datetime
+    artifact_sha256: str
+    record_locator: str
+
+
 class PatentDetail(PatentVersion):
     abstract_zh: str | None
     abstract_en: str | None
@@ -262,6 +275,7 @@ class PatentDetail(PatentVersion):
     parser_version: str
     sources: list[SourceArtifact]
     sections: list[PatentSection]
+    legal_events: list[PatentLegalEvent]
 
 
 class PatentClaim(BaseModel):
@@ -841,6 +855,25 @@ def patent_detail(document_id: UUID):
                 .all()
             )
             sources = document_sources(conn, document_id)
+            events = (
+                conn.exec_driver_sql(
+                    """SELECT e.kind,e.certificate_no,e.effective_on,e.detail,e.record_locator,
+                              ia.source_locator,ia.checksum AS artifact_sha256,b.batch_key,
+                              b.finished_at AS ingested_at,s.official_url
+                       FROM patent_documents d
+                       JOIN patent_legal_events e ON e.application_id = d.application_id
+                       JOIN ingestion_artifacts ia ON ia.id = e.artifact_id
+                       JOIN ingestion_batches b ON b.id = ia.batch_id
+                       JOIN source_datasets s ON s.id = b.dataset_id
+                       WHERE d.id=%s AND (d.document_stage='publication' OR d.publication_no=e.certificate_no)
+                         AND NOT s.is_demo AND s.dataset_key='TIPO-15974'
+                         AND ia.status='parsed' AND b.status='complete'
+                       ORDER BY b.batch_key DESC,e.effective_on DESC NULLS LAST,e.id""",
+                    (document_id,),
+                )
+                .mappings()
+                .all()
+            )
     except SQLAlchemyError:
         return unavailable()
     return PatentDetail.model_validate(
@@ -851,6 +884,14 @@ def patent_detail(document_id: UUID):
             "classifications": classifications,
             "sections": sections,
             "sources": sources,
+            "legal_events": [
+                {
+                    **event,
+                    "source_url": source_url(event["source_locator"]),
+                    "dataset_url": source_url(event["official_url"]),
+                }
+                for event in events
+            ],
         }
     )
 

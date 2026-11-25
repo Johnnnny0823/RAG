@@ -18,6 +18,9 @@ INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10"
 SPEC_PATH = re.compile(
     r"/(?:InventionPubXML|PatentIsuRegSpecXMLA)/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_-]+\.xml"
 )
+EVENT_PATH = re.compile(
+    r"/PatentIsuModXML/[0-9]{3}/PatentIsuModXML_[0-9]{6}/sud(?:08|24)\.xml"
+)
 GAZETTE_PATH = re.compile(
     r"/(?:PatentPubRegXMLB/[0-9]{3}/PatentPubRegXMLB_[0-9]{6}/pubinvention"
     r"|PatentIsuRegSpecXMLB/[0-9]{3}/PatentIsuRegSpecXMLB_[0-9]{6}/patent)\.xml"
@@ -69,7 +72,11 @@ def download_ftps_xml(url: str) -> bytes:
         or parsed.netloc not in {"ftp.tipo.gov.tw", "ftp.tipo.gov.tw:990"}
         or parsed.query
         or parsed.fragment
-        or not (gazette or SPEC_PATH.fullmatch(parsed.path))
+        or not (
+            gazette
+            or SPEC_PATH.fullmatch(parsed.path)
+            or EVENT_PATH.fullmatch(parsed.path)
+        )
         or any(part in {".", ".."} for part in parsed.path.split("/"))
     ):
         raise ValueError("Expected a TIPO patent XML FTPS URL")

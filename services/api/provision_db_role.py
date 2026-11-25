@@ -13,6 +13,7 @@ CORPUS_TABLES = (
     "ingestion_jobs",
     "patent_applications",
     "patent_documents",
+    "patent_legal_events",
     "document_artifacts",
     "patent_classifications",
     "patent_sections",
