@@ -287,3 +287,23 @@ def test_background_report_is_private_ephemeral_and_deleted_with_run(
         assert not conn.exec_driver_sql(
             "SELECT EXISTS (SELECT 1 FROM generated_reports WHERE run_id=%s)", (run_id,)
         ).scalar_one()
+
+
+def test_ingestion_monitor_requires_an_operator_selected_account(accounts, monkeypatch):
+    client, ((operator_id, operator, _), (_, other, _)) = accounts
+    path = "/api/v1/admin/ingestion/jobs"
+    assert client.get(path).status_code == 401
+    monkeypatch.setenv("INGESTION_ADMIN_USER_IDS", str(operator_id))
+    assert client.get("/api/v1/me", headers=operator).json()["can_monitor_ingestion"]
+    assert not client.get("/api/v1/me", headers=other).json()["can_monitor_ingestion"]
+    assert client.get(path, headers=other).status_code == 403
+    response = client.get(path, headers=operator)
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "private, no-store"
+    assert isinstance(response.json(), list)
+    with engine.begin() as conn:
+        with pytest.raises(ProgrammingError) as error:
+            conn.exec_driver_sql(
+                "UPDATE ingestion_jobs SET stage = 'lexical' WHERE false"
+            )
+        assert isinstance(error.value.orig, InsufficientPrivilege)

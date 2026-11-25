@@ -1,6 +1,6 @@
 # 資料庫設計
 
-PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，目前 head 為 `0013_generated_reports`。
+PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，目前 head 為 `0014_ingestion_jobs`。
 
 主鍵多為 UUID（`gen_random_uuid()`），時間欄位為 `timestamptz`，只知道日期時用 `date`。
 
@@ -116,3 +116,4 @@ erDiagram
 完成、失敗及取消會移除工作上的原始請求。刪除帳號或已保存搜尋，相關工作狀態也會一併清理。
 
 `generated_reports` 透過搜尋紀錄外鍵繼承所有權。工作成功時才寫入最多 8 MiB 的 PDF，完成一小時後由工作程序清理。刪除搜尋紀錄會連帶刪除報告工作與檔案。若在暫存期間建立資料庫備份，備份可能也包含這些私人 PDF。
+`ingestion_jobs` 保存操作員執行的官方期別、階段、狀態與計數。這項紀錄與 `ingestion_batches` 的來源雜湊和去重紀錄分開，重跑已有批次仍有自己的工作狀態。API 資料庫角色只有讀取權限；背景匯入使用現有離線角色寫入。

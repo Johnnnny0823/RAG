@@ -140,3 +140,6 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 | `POST /api/v1/search-jobs/{job_id}/cancel` | 取消等待中或執行中工作。完成後呼叫會取得既有的完成狀態。 |
 
 狀態為 `queued`、`running`、`succeeded`、`failed` 或 `cancelled`。跨帳號存取回傳 404。成功時以 `GET /api/v1/search-runs/{run_id}` 讀取保存的候選。取消會阻止工作寫入新的研究紀錄。已送出的模型請求可能持續執行到回應或逾時。
+## 官方匯入監控
+
+`GET /api/v1/admin/ingestion/jobs?limit=20&offset=0` 回傳期別、匯入／詞彙／向量階段、執行狀態、時間與筆數。由部署者以 `INGESTION_ADMIN_USER_IDS` 授權既有帳號 UUID；`GET /api/v1/me` 的 `can_monitor_ingestion` 供工作台顯示權限。未登入回傳 401，未授權回傳 403，所有工作紀錄均依權限保護。此 API 提供查詢，匯入由部署者從命令列啟動。

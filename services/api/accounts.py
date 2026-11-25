@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.exc import SQLAlchemyError
 
+from services.api.admin_ingestion import is_ingestion_admin
 from services.api.identity import (
     AccessToken,
     Account,
@@ -67,10 +68,16 @@ def login(payload: AccountInput, response: Response):
     return token
 
 
-@router.get("/me", response_model=Account)
+class AccountProfile(Account):
+    can_monitor_ingestion: bool
+
+
+@router.get("/me", response_model=AccountProfile)
 def me(account: Annotated[Account, Depends(require_account)], response: Response):
     response.headers["Cache-Control"] = "no-store"
-    return account
+    return AccountProfile(
+        **account.model_dump(), can_monitor_ingestion=is_ingestion_admin(account.id)
+    )
 
 
 @router.delete("/me", status_code=204, responses={403: {"model": PatentErrorEnvelope}})

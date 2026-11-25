@@ -266,3 +266,15 @@ Compose 在遷移完成後建立 `patentscope_api` 並授權。API 使用這個�
 目前預設一個工作程序，每次處理一項搜尋。工作程序會將等待超過 10 分鐘或執行超過 6 分鐘的工作標為逾時，並於完成狀態保存一日後清理工作狀態。成功的研究紀錄有自己的生命週期，可以持續從歷史查看。
 
 同一工作程序也處理私人 PDF 匯出，每輪各取一項搜尋與報告（若有）。自訂字型時，API 容器與工作程序需採用相同設定。PDF 在資料庫暫存一小時，刪除來源搜尋時會一併清除。
+## 官方匯入與索引監控
+
+先依前述官方樣本流程取得檔案並核對來源與 SHA-256。以下 PowerShell 範例以 `$inputs` 指定已有 `index.xml` 與 `spec.xml` 的絕對路徑，用已配置模型的 Compose 專案在背景執行。
+
+```powershell
+docker compose run -d --name patentscope-024019-import --no-deps -v "${inputs}:/inputs:ro" migrate python -m services.ingestion.run_pipeline --index-mode hybrid --embedding-batch-size 2 --embedding-timeout 180 -- --verified-tipo --index /inputs/index.xml --index-source-url ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index.xml --spec 202639611=/inputs/spec.xml --batch 024019 --limit 20
+docker logs -f patentscope-024019-import
+```
+
+`--index-mode` 可選 `none`、`lexical` 或 `hybrid`，預設為 `lexical`。索引處理本資料庫缺少的文件版本，因此新增索引筆數可能包含前次匯入的文件。將管理者自己的 `GET /api/v1/me` 回傳的 `id` 填入 `INGESTION_ADMIN_USER_IDS`，多個 UUID 以逗號分隔，再重建 API 容器。登入該帳號後，工作台可手動刷新最近的工作狀態。環境變數留空時，不授予任何帳號監控權限。
+
+每次執行使用不同的容器名稱。跟著日誌時，中止終端等待不會停止背景容器。每個資料庫一次允許一條受監控的匯入流程。若容器異常中斷，下一次取得同一資料庫鎖的流程會把未結束的舊工作標成已中斷。匯入部分成功時仍保存可用資料，請依隔離與下載失敗筆數處理。既有單獨匯入／索引指令可繼續使用，其執行不會出現在這個監控清單。

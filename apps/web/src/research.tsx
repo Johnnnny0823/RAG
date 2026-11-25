@@ -125,6 +125,21 @@ type SearchJob = {
   error_code: string | null;
 };
 
+type IngestionJob = {
+  id: string;
+  batch_key: string;
+  status: "running" | "succeeded" | "partial" | "failed" | "interrupted";
+  stage: "import" | "lexical" | "semantic";
+  counts: {
+    import?: { fulltext?: number; metadata?: number; grants_with_claims?: number; quarantined_specs?: number; download_failures?: number };
+    lexical?: { versions: number };
+    semantic?: { versions: number; vectors: number };
+  };
+  updated_at: string;
+};
+const ingestionStages = { import: "匯入", lexical: "詞彙索引", semantic: "向量索引" };
+const ingestionStatuses = { running: "執行中", succeeded: "完成", partial: "部分完成", failed: "失敗", interrupted: "已中斷" };
+
 const searchJobErrors: Record<string, string> = {
   MODEL_BUSY: "本機模型忙碌中，請稍後重試。",
   EMBEDDING_UNAVAILABLE: "目前無法使用本機嵌入模型。",
@@ -146,7 +161,8 @@ export function Research() {
   const [results, setResults] = useState<Results | null>(null);
   const [selected, setSelected] = useState<{ hit: PatentVersion; detail: Detail; claims: Claim[]; fromResults: boolean } | null>(null);
   const [previewComparisons, setPreviewComparisons] = useState<ComparedDocument[]>([]);
-  const [session, setSession] = useState<{ token: string; email: string } | null>(null);
+  const [session, setSession] = useState<{ token: string; email: string; canMonitorIngestion: boolean } | null>(null);
+  const [ingestionJobs, setIngestionJobs] = useState<IngestionJob[] | null>(null);
   const [accountDeleted, setAccountDeleted] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [history, setHistory] = useState<RunSummary[] | null>(null);
@@ -175,6 +191,7 @@ export function Research() {
 
   function leaveAccount() {
     setSession(null);
+    setIngestionJobs(null);
     setAccountDeleted(false);
     setHistory(null);
     setHistoryOffset(0);
@@ -209,10 +226,10 @@ export function Research() {
       setRegistering(false);
     }
     const { access_token } = await request<{ access_token: string }>("/auth/login", credentials);
-    const account = await request<{ email: string }>("/me", undefined, access_token);
+    const account = await request<{ email: string; can_monitor_ingestion: boolean }>("/me", undefined, access_token);
     const accountProjects = await request<Project[]>("/projects?limit=100", undefined, access_token);
     leaveAccount();
-    setSession({ token: access_token, email: account.email });
+    setSession({ token: access_token, email: account.email, canMonitorIngestion: account.can_monitor_ingestion });
     setProjects(accountProjects);
   }
 
@@ -498,6 +515,30 @@ export function Research() {
         {accountDeleted && <p role="status" className="my-2 text-sm text-teal-900">帳號與伺服器上的私人研究資料已刪除。</p>}
         {session ? <>
           <p className="my-2 break-all text-sm">目前帳號 · {session.email}</p>
+          {session.canMonitorIngestion && (
+            <details className="my-3">
+              <summary>官方匯入與索引狀態</summary>
+              <button className="my-2" disabled={!!busy} onClick={() => void run("正在查詢匯入工作…", async () => {
+                setIngestionJobs(await request<IngestionJob[]>("/admin/ingestion/jobs", undefined, session.token));
+              })}>更新最近 20 筆工作</button>
+              {ingestionJobs?.length === 0 && <p>目前沒有已記錄的匯入工作。</p>}
+              <ul className="space-y-2">
+                {ingestionJobs?.map((job) => (
+                  <li key={job.id} className="rounded border border-slate-300 p-2">
+                    <p>期別 {job.batch_key} · {ingestionStages[job.stage]} · {ingestionStatuses[job.status]}</p>
+                    <p className="text-sm">最後更新 <time dateTime={job.updated_at}>{new Date(job.updated_at).toLocaleString("zh-TW")}</time></p>
+                    {job.counts.import && <p className="text-sm">
+                      全文 {job.counts.import.fulltext ?? 0} · 書目 {job.counts.import.metadata ?? 0}
+                      {job.counts.import.grants_with_claims !== undefined && ` · 公告請求項文件 ${job.counts.import.grants_with_claims}`}
+                      {" · "}隔離 {job.counts.import.quarantined_specs ?? 0} · 下載失敗 {job.counts.import.download_failures ?? 0}
+                    </p>}
+                    {job.counts.lexical && <p className="text-sm">新增詞彙索引版本 {job.counts.lexical.versions}</p>}
+                    {job.counts.semantic && <p className="text-sm">新增向量 {job.counts.semantic.vectors}</p>}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           <details className="my-3">
             <summary>建立研究專案</summary>
             <form className="my-3" onSubmit={(event) => {

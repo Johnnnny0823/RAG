@@ -10,6 +10,7 @@ CORPUS_TABLES = (
     "source_datasets",
     "ingestion_batches",
     "ingestion_artifacts",
+    "ingestion_jobs",
     "patent_applications",
     "patent_documents",
     "document_artifacts",

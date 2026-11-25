@@ -45,6 +45,9 @@ services:
         condition: service_healthy
   api:
     <<: *api
+    environment:
+      <<: *api-env
+      INGESTION_ADMIN_USER_IDS: ${INGESTION_ADMIN_USER_IDS:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

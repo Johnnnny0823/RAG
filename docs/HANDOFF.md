@@ -1171,3 +1171,24 @@
 - Uncommitted changes / file ownership warnings: 專用 Compose 專案驗收後停止，測試資料卷保留。
 - Next 1–3 concrete actions: 補匯入任務的管理及狀態；查核最新版遠端官方驗收；執行 RAG 人工評估。
 - Exact reproduction steps: 依 TESTING 在 worker 停止時執行 PostgreSQL 整合測試；啟動 worker 後執行 `PATENTSCOPE_E2E_TIPO=1` 的官方案例。
+
+## 官方匯入與索引監控工作範圍
+
+- Codex 負責既有匯入／索引的操作員背景指令、狀態紀錄、管理員唯讀 API 與工作台查詢。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `5db035c`。
+- Current milestone and status: M1／M5 官方匯入及索引狀態，完整 Goal IN_PROGRESS。
+- Goal of this session: 以既有官方流程執行可追蹤的背景匯入，並供授權帳號查看。
+- Files changed (with purpose): 遷移 `0014_ingestion_jobs`、`run_pipeline.py`、唯讀管理路由、帳號授權能力標記、Compose 環境設定、研究工作台及 PostgreSQL 測試。
+- Database migrations added/applied: `0014_ingestion_jobs` 已在既有與空白隔離庫成功套用。API 角色可讀工作紀錄，實測不可更新。
+- API/Schema changes: `GET /api/v1/admin/ingestion/jobs`，及 `GET /api/v1/me` 新增 `can_monitor_ingestion`。以 UUID 白名單授權。
+- Commands actually run and results: PostgreSQL 整合啟用後 pytest 73 passed、1 則既有 Starlette 警告，Ruff 格式與 lint、前端 lint、TypeScript 皆通過。隔離空白庫實際用 detached Docker job 匯入 1 份固定官方全文、建 145 個詞彙片段與 157 個向量，容器退出 0，狀態為 `succeeded`。另一隔離庫重跑既有批次為 `partial`；不存在的輸入退出 1 並標記 `failed`。以真實 Chromium 登入隔離版管理帳號並核對兩種狀態。測試帳號於完成後刪除。
+- Tests NOT run and reason: 未重跑完整遠端官方瀏覽器套件。此輪本機 Chromium 驗收範圍為管理頁，既有瀏覽器主要研究流程的紀錄見前節。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 2026-11-25 核對的官方 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index.xml` 及 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639611/113133932-A0304.xml`，未重新下載。
+- Known bugs / risks / blockers: 監控按階段更新，沒有逐向量進度。背景容器異常終止後由下一次受監控操作標記舊工作中斷。尚缺自動排程與人工相關性評估。
+- Decisions made (ADR links): 管理介面唯讀，匯入由操作員在部署環境啟動，沿用官方來源與既有入庫程序。
+- Uncommitted changes / file ownership warnings: 測試專案停止，保留隔離資料卷及已結束的驗收容器紀錄。
+- Next 1–3 concrete actions: 查核遠端官方流程，完成評估基準與人工標註，補作較大規模規劃分析。
+- Exact reproduction steps: 依 SETUP 官方匯入監控段落設定輸入與管理者 UUID，執行 detached 流程後以管理帳號查看。

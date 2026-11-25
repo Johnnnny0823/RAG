@@ -401,7 +401,7 @@ def import_issue(args):
         return {"status": status, "reused": False, **counts}
 
 
-def main():
+def parse_import_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--index", type=Path, required=True)
     parser.add_argument("--index-source-url", help="Official URL of the supplied index")
@@ -434,7 +434,7 @@ def main():
         action="store_true",
         help="Confirm official artifact provenance",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if not 1 <= args.limit <= 500:
         parser.error("--limit must be between 1 and 500")
     if args.index_source_url:
@@ -476,6 +476,11 @@ def main():
         if number in args.specs:
             parser.error("Duplicate publication in --spec")
         args.specs[number] = Path(path)
+    return args
+
+
+def main():
+    args = parse_import_args()
     result = import_issue(args)
     print(json.dumps(result, ensure_ascii=False))
     return int(
