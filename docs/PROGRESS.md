@@ -108,3 +108,4 @@
 - [x] 新測試修復前 2 failed，修復後全套 57 passed、3 skipped；另執行 PostgreSQL 整合 3 passed。Ruff 格式及 lint 通過。細節與初次暫存目錄錯誤見 [交接](HANDOFF.md)。
 - [x] 隔離 Ollama（2 CPU、4 GiB、無 GPU）測試兩段 1000／960 字 DEMO 文本 21.45 秒；官方 `202639611` 兩段請求項 2.01 秒，各產生 1024 維向量。僅為小批量實測，不代表 1624 向量全量建置或 GitHub runner 效能。
 - [ ] 修復尚未在 GitHub 完整官方 E2E 重跑；原有遠端失敗仍有效，不能宣告 CI 修好或整體 Goal 完成。原始物件持久化、最小權限、資源配額與人工標註等仍待完成。
+- [ ] 已推送 `8cea2f1` 至修復分支並啟動 [官方 E2E 45550486217](https://github.com/Johnnnny0823/RAG/actions/runs/45550486217)。關機前最後查核仍在執行，結果待確認；本機關機不會中止 GitHub runner。

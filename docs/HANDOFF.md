@@ -967,3 +967,10 @@
 - Uncommitted changes / file ownership warnings: 修復檔案由 Codex 單獨修改；本機 `main` 起點較 origin/main 超前 1 個既有文件提交，未重寫歷史。測試容器完成後停止，資料卷保留。
 - Next 1–3 concrete actions: 1. 推送修復分支並觸發官方 E2E，按 runner 全量時間調整並記錄。2. 統一煙霧腳本語料契約、持久保存官方原始物件並驗證備份復原。3. 優先處理資源上限與 DB 最小權限，再由人員標註候選並執行品質評估。
 - Exact reproduction steps: 見 [TESTING CPU 離線向量索引](TESTING.md#cpu-離線向量索引)。一般單元測試用唯一 `--basetemp`；PG 使用專用 `patentscope_test`、回環連線與 `PATENTSCOPE_PG_INTEGRATION=1`，切勿改成真實資料庫。
+
+## 2026-11-25 關機前接續點
+
+- 修復提交 `8cea2f1` 已推送至 `origin/fix/cpu-embedding-index`。目前未合併 main。
+- 已手動觸發 [Official patent E2E 45550486217](https://github.com/Johnnnny0823/RAG/actions/runs/45550486217)，最後查核狀態 `in_progress`，不是通過；GitHub 雲端 runner 可在本機關機後繼續執行。下次先用 `gh run view 45550486217 --repo Johnnnny0823/RAG` 查詢，若失敗收集 `--log-failed`，不要未查狀態就重啟同一工作。
+- 已開始調查原始檔持久保存：Compose 目前只有 PostgreSQL named volume；匯入與驗證要求明確 `--objects`，常用文件指向暫存快取。尚未修改保存機制，也未建立備份還原功能。
+- 本機沒有新啟動的開發服務或新程式碼修改。下一步先確認遠端完整 CPU 索引與瀏覽器結果，再補持久 raw store 與實測備份／還原。整體 Goal 保持未完成。
