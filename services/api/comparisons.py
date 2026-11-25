@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import SQLAlchemyError
 
 from services.api.db import engine
+from services.api.model_limits import model_slot
 from services.api.patents import (
     PUBLIC_DOCUMENTS,
     PatentErrorEnvelope,
@@ -32,6 +33,7 @@ router = APIRouter(
     responses={
         404: {"model": PatentErrorEnvelope},
         422: {"model": PatentErrorEnvelope},
+        429: {"model": PatentErrorEnvelope},
         503: {"model": PatentErrorEnvelope},
     },
 )
@@ -125,7 +127,8 @@ def compare(document_id: UUID, request: CompareRequest):
     if pairs:
         try:
             model = LocalOllamaModel.from_env("ANALYSIS")
-            decisions = judge(model, pairs)
+            with model_slot():
+                decisions = judge(model, pairs)
         except LocalModelError:
             return api_error(
                 503, "ANALYSIS_UNAVAILABLE", "本機模型目前無法完成技術比對。"

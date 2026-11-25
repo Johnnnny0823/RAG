@@ -1021,3 +1021,24 @@
 - Uncommitted changes / file ownership warnings: 專用本機 API 及隔離資料庫於驗收後停止。
 - Next 1–3 concrete actions: 查核新增的遠端 API 步驟，然後處理 DB 角色與高成本端點資源限額。
 - Exact reproduction steps: 依 TESTING 的官方語料章節重建並執行三支腳本。
+
+## 模型併發限制工作範圍
+
+- Codex 負責模型呼叫的 API 共用限制、錯誤回應、相關設定及測試。範圍含直接搜尋、分析、重排、比對及研究工作台的相同操作。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `073c076`。
+- Current milestone and status: 完整目標 M6 安全性 IN_PROGRESS。
+- Goal of this session: 限制線上推論的併發並提供可重試的 API 回應。
+- Files changed (with purpose): `services/api/model_limits.py`、模型呼叫所在 API 路由、Compose、環境範例，及 `tests/test_model_limits.py`。API、SETUP、PROGRESS 與本文件更新。
+- Database migrations added/applied: 無。
+- API/Schema changes: `429 MODEL_BUSY`，含 `Retry-After: 5` 及禁止快取。預設每程序兩個推論名額。
+- Commands actually run and results: 首輪 pytest 58 pass、3 skip、1 fail，指出缺少快取標頭。修正後啟用 `PATENTSCOPE_PG_INTEGRATION=1` 並指定隔離 PostgreSQL 與獨立 `--basetemp`，62 項全部通過，保留既有 Starlette 警告。Ruff 格式及 lint、`docker compose --env-file .env.example config --quiet` 通過。
+- Tests NOT run and reason: 本輪未在本機重跑瀏覽器測試。上一提交的官方 [45618424111](https://github.com/Johnnnny0823/RAG/actions/runs/45618424111) 查核時執行中，並不涵蓋這次的併發修復。
+- Data sources checked (exact URL/date) and license/access notes: 無新來源。
+- Known bugs / risks / blockers: 限制以程序為單位，跨程序／逐使用者配額、直接模型端點隔離及 DB 最小權限仍待完成。離線索引不占 API 名額。
+- Decisions made (ADR links): 採每程序非阻塞名額，沿用現有 FastAPI 錯誤格式，未新增基礎設施。
+- Uncommitted changes / file ownership warnings: 隔離資料庫於測試後停止。
+- Next 1–3 concrete actions: 確認遠端官方驗收，實作 API 與遷移帳號的資料庫權限分離，補足逐客戶與多程序的資源限制。
+- Exact reproduction steps: `python -m pytest -q tests/test_model_limits.py`。含 DB 的重跑環境見 TESTING 的 PostgreSQL 與 API 整合章節。

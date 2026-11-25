@@ -18,6 +18,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from services.api.db import engine
 from services.api.identity import IdentityError, IdentityUnavailable
+from services.api.model_limits import ModelBusy, model_slot
 from services.retrieval.embeddings import (
     EmbeddingError,
     LocalEmbeddingModel,
@@ -53,6 +54,7 @@ ErrorCode = Literal[
     "REPORT_UNAVAILABLE",
     "PASSWORD_CONFIRMATION_FAILED",
     "LOGIN_THROTTLED",
+    "MODEL_BUSY",
 ]
 
 
@@ -73,6 +75,11 @@ class PatentRoute(APIRoute):
                 return response
             except IdentityUnavailable:
                 return unavailable()
+            except ModelBusy:
+                response = api_error(429, "MODEL_BUSY", "本機模型忙碌中，請稍後重試。")
+                response.headers["Retry-After"] = "5"
+                response.headers["Cache-Control"] = "no-store"
+                return response
 
         return handle
 
@@ -564,7 +571,11 @@ def lexical_search(request: RankedSearchRequest):
     )
 
 
-@router.post("/search/semantic", response_model=SemanticSearchResults)
+@router.post(
+    "/search/semantic",
+    response_model=SemanticSearchResults,
+    responses={429: {"model": PatentErrorEnvelope}},
+)
 def semantic_search(request: RankedSearchRequest):
     query = request.query.strip()
     if not query:
@@ -576,7 +587,8 @@ def semantic_search(request: RankedSearchRequest):
     try:
         model = LocalEmbeddingModel.from_env()
         identity = indexed_model_id(model)
-        embedding = vector_literal(model.embed_query(query))
+        with model_slot():
+            embedding = vector_literal(model.embed_query(query))
         with engine.connect() as conn:
             rows = semantic_rows(
                 conn, embedding, identity, filters, request.limit + 1, request.offset
@@ -598,7 +610,11 @@ def semantic_search(request: RankedSearchRequest):
     )
 
 
-@router.post("/search/hybrid", response_model=HybridSearchResults)
+@router.post(
+    "/search/hybrid",
+    response_model=HybridSearchResults,
+    responses={429: {"model": PatentErrorEnvelope}},
+)
 def hybrid_search(request: HybridSearchRequest):
     return run_hybrid(request)
 
@@ -620,7 +636,8 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
     try:
         model = LocalEmbeddingModel.from_env()
         identity = indexed_model_id(model)
-        embedding = vector_literal(model.embed_query(semantic_query))
+        with model_slot():
+            embedding = vector_literal(model.embed_query(semantic_query))
         with engine.connect().execution_options(
             isolation_level="REPEATABLE READ"
         ) as conn:
@@ -665,7 +682,8 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
         ]
         try:
             analyzer = LocalOllamaModel.from_env("ANALYSIS")
-            order = rerank_order(analyzer, semantic_query, candidates)
+            with model_slot():
+                order = rerank_order(analyzer, semantic_query, candidates)
         except LocalModelError:
             return api_error(
                 503, "ANALYSIS_UNAVAILABLE", "本機模型目前無法重排專利候選。"

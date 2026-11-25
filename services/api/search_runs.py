@@ -50,7 +50,12 @@ class RunDetails(SavedRun):
     comparisons: list[ComparisonResponse]
 
 
-@router.post("", response_model=SavedRun, status_code=201)
+@router.post(
+    "",
+    response_model=SavedRun,
+    status_code=201,
+    responses={429: {"model": PatentErrorEnvelope}},
+)
 def save_search(request: HybridSearchRequest, account: Owner, response: Response):
     result = run_hybrid(request, full_snapshot=True)
     if isinstance(result, JSONResponse):
@@ -218,7 +223,11 @@ def delete_search(run_id: UUID, account: Owner):
     return Response(status_code=204, headers={"Cache-Control": "no-store"})
 
 
-@router.post("/{run_id}/comparisons/{document_id}", response_model=ComparisonResponse)
+@router.post(
+    "/{run_id}/comparisons/{document_id}",
+    response_model=ComparisonResponse,
+    responses={429: {"model": PatentErrorEnvelope}},
+)
 def save_comparison(
     run_id: UUID, document_id: UUID, account: Owner, response: Response
 ):

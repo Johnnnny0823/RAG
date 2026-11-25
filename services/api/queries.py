@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter
 from pydantic import BaseModel, StringConstraints
 
+from services.api.model_limits import model_slot
 from services.api.patents import PatentErrorEnvelope, PatentRoute, api_error
 from services.retrieval.ollama import LocalModelError, LocalOllamaModel
 from services.retrieval.query_features import (
@@ -19,6 +20,7 @@ router = APIRouter(
     route_class=PatentRoute,
     responses={
         422: {"model": PatentErrorEnvelope},
+        429: {"model": PatentErrorEnvelope},
         503: {"model": PatentErrorEnvelope},
     },
 )
@@ -41,7 +43,8 @@ class AnalyzeResponse(BaseModel):
 def analyze(request: AnalyzeRequest):
     try:
         model = LocalOllamaModel.from_env("ANALYSIS")
-        features = analyze_features(model, request.query)
+        with model_slot():
+            features = analyze_features(model, request.query)
     except LocalModelError:
         return api_error(
             503, "ANALYSIS_UNAVAILABLE", "本機模型目前無法產生有效的技術特徵。"
