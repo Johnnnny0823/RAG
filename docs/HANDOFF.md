@@ -1000,3 +1000,24 @@
 - Uncommitted changes / file ownership warnings: 獨立測試專案停止，保留資料卷。無正式資料變更。
 - Next 1–3 concrete actions: 統一舊冒煙測試所需的期別語料，補上資源配額及資料庫最小權限，準備人工標註與檢索量測。
 - Exact reproduction steps: 見 [SETUP 原始 XML 備份操作](SETUP.md#原始-xml-持久保存備份及還原)，使用空白還原專案。
+
+## 官方語料 API 驗收工作範圍
+
+- Codex 負責三支既有 API 冒煙腳本、官方 E2E workflow 與驗收文件。保留雙期樣本的驗收，另接入可由 CI 重建的官方語料。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `914f8ef`。
+- Current milestone and status: M2 API 測試語料驗收，完整 Goal 仍 IN_PROGRESS。
+- Goal of this session: 讓同一套官方 CI 種子可執行 API 及瀏覽器驗收，保留舊雙期語料的測試方式。
+- Files changed (with purpose): `scripts/smoke_{patents,lexical,semantic}.py` 新增語料選項，`.github/workflows/tipo-e2e.yml` 在種子後執行三支腳本，更新 TESTING、PROGRESS、HANDOFF。
+- Database migrations added/applied: 無。在既有隔離庫讀取 117 個版本。
+- API/Schema changes: 無。
+- Commands actually run and results: 三支腳本以 `--official-e2e --api http://127.0.0.1:18035` 均通過。詞彙 4 組、語意 2 組已知案均排第 1，API 同時驗證全文來源與版本、分頁及錯誤。修改前的舊腳本在該庫缺 024018 期而失敗。Ruff 格式 74 檔、lint 通過。
+- Tests NOT run and reason: 沒有 API 或前端程式變更，未另跑單元套件、舊雙期樣本及 Playwright。新增 workflow 步驟待遠端驗收。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 2026-11-25 驗證的第 024019 期 FTPS 與封存公告；這輪未重新下載。精確 URL 及授權備註見 DATA_SOURCES。
+- Known bugs / risks / blockers: 已知案排名只測固定小語料。人工相關性及正式檢索效能仍未驗收。
+- Decisions made (ADR links): 舊腳本預設保留雙期前置條件；CI 明確選擇官方 E2E 語料。
+- Uncommitted changes / file ownership warnings: 專用本機 API 及隔離資料庫於驗收後停止。
+- Next 1–3 concrete actions: 查核新增的遠端 API 步驟，然後處理 DB 角色與高成本端點資源限額。
+- Exact reproduction steps: 依 TESTING 的官方語料章節重建並執行三支腳本。

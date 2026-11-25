@@ -66,6 +66,16 @@ GitHub Actions 可手動啟動 `Official patent E2E`，在獨立 Compose 網路�
 
 匯入分三批：前 100 筆公開書目加 `202639611` 全文、前 20 筆的全文、公告 `I941082`。預期結果為 117 個文件版本，其中 17 份全文，3 份官方 XML 缺請求項編號而隔離。筆數不符時腳本會失敗，重跑時也會核對。接著從封存 XML 驗證 `202639611`、`202640162` 和 `I941082`，最後建立詞彙和向量索引。這份語料可執行 `PATENTSCOPE_E2E_TIPO=1` 與 `versions` 兩套案例。
 
+建立索引後可獨立執行下列 API 驗收，並依實際連接埠調整 `--api`。官方 CI 在 Playwright 之前執行同一組命令。
+
+```bash
+python scripts/smoke_patents.py --official-e2e --api http://127.0.0.1:8000
+python scripts/smoke_lexical.py --official-e2e --api http://127.0.0.1:8000
+python scripts/smoke_semantic.py --official-e2e --api http://127.0.0.1:8000
+```
+
+此模式使用第 024019 期的光硬化樹脂及動態導通電阻案件，以及第 053028 期的公告。省略旗標則沿用舊雙期樣本，仍須匯入第 024018 期含 `202637274` 的書目。
+
 ```powershell
 $env:API_PORT = "18025"
 $env:WEB_PORT = "18125"
