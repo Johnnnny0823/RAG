@@ -1277,3 +1277,25 @@
 - Uncommitted changes / file ownership warnings: 隔離語料資料卷留供複驗。
 - Next 1–3 concrete actions: 人工評估 34 組候選並重跑指標，擴充資料規模與主題，查核官方遠端工作。
 - Exact reproduction steps: 依 EVALUATION 執行 `evaluate_search.py --repeats 2 --review-pool <新檔名>` 及 `evaluate_citations.py`，API 指向隔離官方語料。
+
+## 官方驗收的固定語料重建
+
+- Codex 負責固定語料準備、官方工作流程、相關測試及驗收文件。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `cba5cde`。
+- Current milestone and status: M6 分段重建通過本機官方語料驗收，遠端快取 IN_PROGRESS。
+- Goal of this session: 拆開 FTPS 準備、PostgreSQL 匯入和索引階段，讓故障能由步驟與檔案進度定位。
+- Files changed (with purpose): `tipo-e2e.yml` 加公開 XML 快取與分段工作，`seed_tipo_e2e.py` 加兩個執行選項及逐檔進度，`test_tipo_e2e_seed.py` 檢查純準備與離線匯入的執行範圍。
+- Database migrations added/applied: 無新增。空白隔離庫 `patentscope_ci_replay` 套用至 `0014_ingestion_jobs`。
+- API/Schema changes: 無。
+- Commands actually run and results: PostgreSQL 整合啟用後 pytest 88 passed、1 則既有 Starlette 警告，Ruff 格式、lint、Git diff 檢查通過。第一次直接跑單檔測試遇 Windows 既有共用暫存目錄權限錯誤，以新 `--basetemp` 跑全套通過。正式 CLI 的準備及離線匯入各核對 24 筆 SHA-256，空白庫完成三批匯入、三項原文校對及獨立建索引。查得 117 版本、1,677 筆詞彙索引（含 117 個標記）、1,624 向量及 334 筆請求項援引。三支官方 API 冒煙通過。
+- Commands actually run and results（續）: 同一空白重建語料的官方桌面 Chromium 案例 1 passed（58.3 秒），包含研究保存、引文、歷史重讀及 PDF。
+- Tests NOT run and reason: 本機未執行完整多瀏覽器套件，向量索引用 24 筆批量，GitHub CPU 流程維持 2 筆。前一提交一般 CI [45675094328](https://github.com/Johnnnny0823/RAG/actions/runs/45675094328) 通過。既有官方工作 [45671575813](https://github.com/Johnnnny0823/RAG/actions/runs/45671575813) 截至本輪仍在原種子步驟，該步驟涵蓋下載、匯入及索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 從 DATA_SOURCES 所列固定 FTPS 路徑取得 22 個原檔，另重用已驗證的同批索引與一份個案檔。原始檔從臨時目錄保存，未提交 Git。
+- Known bugs / risks / blockers: 冷快取仍依賴官方 FTPS。遠端快取寫入及後續命中需 GitHub 實跑。全量專利覆蓋及人工標註仍待完成。
+- Decisions made (ADR links): 快取只保存公開 XML 與公開下載檔，儲存前與匯入前均校驗固定雜湊。GitHub Actions 快取動作鎖定至已核對的 v5 提交。
+- Uncommitted changes / file ownership warnings: 資料卷及臨時公開原檔保留供重現。
+- Next 1–3 concrete actions: 驗收新版遠端分段和快取，擴充代表性資料與人工評估，補上測試報告證據。
+- Exact reproduction steps: 依 TESTING 先跑 `--prepare-only`，對空白已遷移隔離庫跑 `--offline --skip-semantic`，另執行 `services.retrieval.index_semantic`、官方 API 冒煙及 Playwright。

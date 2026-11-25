@@ -26,6 +26,25 @@ jobs:
         with:
           node-version: "22"
       - run: python -m pip install -r requirements-dev.txt
+      - name: Restore pinned public TIPO fixtures
+        id: tipo-fixtures
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ${{ runner.temp }}/tipo-fixture/*.xml
+            ${{ runner.temp }}/tipo-fixture/objects/download-cache
+          key: ${{ runner.os }}-tipo-public-xml-${{ hashFiles('scripts/seed_tipo_e2e.py') }}
+      - name: Prepare and verify official fixture checksums
+        timeout-minutes: 30
+        run: python -m scripts.seed_tipo_e2e "$RUNNER_TEMP/tipo-fixture" --prepare-only
+      - name: Save verified public TIPO fixtures
+        if: steps.tipo-fixtures.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ${{ runner.temp }}/tipo-fixture/*.xml
+            ${{ runner.temp }}/tipo-fixture/objects/download-cache
+          key: ${{ steps.tipo-fixtures.outputs.cache-primary-key }}
       - run: npm ci --prefix apps/web
       - run: npx playwright install --with-deps chromium firefox webkit
         working-directory: apps/web
@@ -37,7 +56,10 @@ jobs:
           docker exec patentscope-tipo-ollama ollama pull "$EMBEDDING_MODEL"
           docker exec patentscope-tipo-ollama ollama pull "$ANALYSIS_MODEL"
       - run: docker compose --env-file .env.example up -d --build --wait --wait-timeout 180
-      - run: python -m scripts.seed_tipo_e2e "$RUNNER_TEMP/tipo-fixture" --embedding-batch-size 2 --embedding-timeout 180
+      - name: Import and verify cached official corpus
+        run: python -m scripts.seed_tipo_e2e "$RUNNER_TEMP/tipo-fixture" --offline --skip-semantic
+      - name: Build official semantic index
+        run: docker compose --env-file .env.example run --rm --no-deps migrate python -m services.retrieval.index_semantic --batch-size 2 --request-timeout 180
       - name: Official patent API smoke checks
         run: |
           python scripts/smoke_patents.py --official-e2e --api http://127.0.0.1:8000

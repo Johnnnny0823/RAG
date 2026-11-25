@@ -112,21 +112,7 @@ def check_import(output: str, expected: dict) -> dict:
     return result
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("cache", type=Path)
-    parser.add_argument("--offline", action="store_true")
-    parser.add_argument("--embedding-batch-size", type=int, default=24)
-    parser.add_argument("--embedding-timeout", type=int, default=90)
-    args = parser.parse_args()
-    if (
-        not 1 <= args.embedding_batch_size <= 24
-        or not 1 <= args.embedding_timeout <= 1800
-    ):
-        parser.error(
-            "Embedding batch size must be 1..24 and timeout must be 1..1800 seconds"
-        )
-    cache = args.cache.resolve()
+def prepare_fixtures(cache: Path, *, offline: bool) -> None:
     # import_issue reads manifest downloads from this cache, keyed by source URL.
     downloads = cache / "objects" / "download-cache" / MANIFEST_SHA256
     downloads.mkdir(parents=True, exist_ok=True)
@@ -141,9 +127,44 @@ def main() -> None:
         fixtures.append(
             (downloads / hashlib.sha256(url.encode()).hexdigest(), url, checksum)
         )
-    for path, url, checksum in fixtures:
-        if prepare(path, url, checksum, offline=args.offline):
+    for position, (path, url, checksum) in enumerate(fixtures, 1):
+        print(
+            f"Checking official fixture {position}/{len(fixtures)}: {url}", flush=True
+        )
+        if prepare(path, url, checksum, offline=offline):
             time.sleep(1)
+    print(f"Verified {len(fixtures)} official fixture checksums", flush=True)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("cache", type=Path)
+    parser.add_argument("--offline", action="store_true")
+    phases = parser.add_mutually_exclusive_group()
+    phases.add_argument(
+        "--prepare-only",
+        action="store_true",
+        help="Check or download raw fixtures without connecting to Docker",
+    )
+    phases.add_argument(
+        "--skip-semantic",
+        action="store_true",
+        help="Import and verify the corpus and build only the lexical index",
+    )
+    parser.add_argument("--embedding-batch-size", type=int, default=24)
+    parser.add_argument("--embedding-timeout", type=int, default=90)
+    args = parser.parse_args()
+    if (
+        not 1 <= args.embedding_batch_size <= 24
+        or not 1 <= args.embedding_timeout <= 1800
+    ):
+        parser.error(
+            "Embedding batch size must be 1..24 and timeout must be 1..1800 seconds"
+        )
+    cache = args.cache.resolve()
+    prepare_fixtures(cache, offline=args.offline)
+    if args.prepare_only:
+        return
 
     volume = ["-v", f"{cache}:/inputs"]
     read_only = ["-v", f"{cache}:/inputs:ro"]
@@ -184,7 +205,10 @@ def main() -> None:
             "053028",
         ],
     ]
-    for options, expected in zip(imports, EXPECTED, strict=True):
+    for position, (options, expected) in enumerate(
+        zip(imports, EXPECTED, strict=True), 1
+    ):
+        print(f"Importing official batch {position}/{len(imports)}", flush=True)
         done = subprocess.run(
             [*RUN, *volume, *IMPORT, *options, *OBJECTS],
             check=True,
@@ -192,24 +216,30 @@ def main() -> None:
             text=True,
             encoding="utf-8",
         )
-        print(json.dumps(check_import(done.stdout, expected), ensure_ascii=False))
+        print(
+            json.dumps(check_import(done.stdout, expected), ensure_ascii=False),
+            flush=True,
+        )
     commands = [
         [*RUN, *read_only, *VERIFY, "202639611", *OBJECTS],
         [*RUN, *read_only, *VERIFY, "202640162", *OBJECTS],
         [*RUN, *read_only, *VERIFY, "I941082", "--grant-issue", "053028", *OBJECTS],
         [*RUN, "migrate", "python", "-m", "services.retrieval.index_lexical"],
-        [
-            *RUN,
-            "migrate",
-            "python",
-            "-m",
-            "services.retrieval.index_semantic",
-            "--batch-size",
-            str(args.embedding_batch_size),
-            "--request-timeout",
-            str(args.embedding_timeout),
-        ],
     ]
+    if not args.skip_semantic:
+        commands.append(
+            [
+                *RUN,
+                "migrate",
+                "python",
+                "-m",
+                "services.retrieval.index_semantic",
+                "--batch-size",
+                str(args.embedding_batch_size),
+                "--request-timeout",
+                str(args.embedding_timeout),
+            ]
+        )
     for command in commands:
         subprocess.run(command, check=True)
 
