@@ -55,11 +55,18 @@ type SearchFilters = {
 type Search = { query: string; ipc: string | null; features: Feature[]; rerank: boolean; offset: number } &
   { [Key in keyof SearchFilters]?: string | null };
 const emptyFilters: SearchFilters = { published_from: "", published_to: "", document_stage: "", applicant: "" };
-type Results = { items: Hit[]; has_more: boolean; limit: number; offset: number };
+type CorpusCoverage = {
+  observed_at: string;
+  lexical_versions: number;
+  semantic_versions: number;
+  latest_document_date: string | null;
+};
+type Results = { items: Hit[]; has_more: boolean; limit: number; offset: number; corpus_coverage?: CorpusCoverage | null };
 type RunSummary = { id: string; created_at: string; project_id: string | null };
 type Project = { id: string; name: string; description: string };
 type SavedRun = RunSummary & {
   request: Search & { limit: number };
+  settings: { corpus_coverage?: CorpusCoverage | null };
   items: Hit[];
   comparisons: Comparison[];
 };
@@ -243,7 +250,7 @@ export function Research() {
   function showSavedPage(record: SavedRun, offset = 0) {
     const limit = record.request.limit;
     setSearch(record.request);
-    setResults({ items: record.items.slice(offset, offset + limit), offset, limit, has_more: offset + limit < record.items.length });
+    setResults({ items: record.items.slice(offset, offset + limit), offset, limit, has_more: offset + limit < record.items.length, corpus_coverage: record.settings?.corpus_coverage });
     setSelected(null);
   }
 
@@ -759,6 +766,9 @@ export function Research() {
           {!results && <p className="mt-3 text-slate-700">完成搜尋後，這裡會顯示候選文件與排序資訊。</p>}
           {search && results && <>
             <p className="my-3 break-words text-slate-700">{saved ? "已保存的查詢" : "本次查詢"} · {search.query}{search.ipc && ` · IPC ${search.ipc}`}</p>
+            {results.corpus_coverage ? <p className="mb-3 text-sm text-slate-700">
+              搜尋涵蓋範圍（依篩選） · 詞彙索引 {results.corpus_coverage.lexical_versions} 個文件版本 · 向量索引 {results.corpus_coverage.semantic_versions} 個文件版本 · 最新文件日期 {results.corpus_coverage.latest_document_date ?? "未提供"} · <time dateTime={results.corpus_coverage.observed_at}>{new Date(results.corpus_coverage.observed_at).toLocaleString("zh-TW")}</time>
+            </p> : saved && <p className="mb-3 text-sm text-slate-700">這筆搜尋未記錄當時的索引涵蓋範圍。</p>}
             {(search.published_from || search.published_to || search.document_stage || search.applicant) && <p className="mb-3 break-words text-sm text-slate-700">
               {[
                 search.published_from && `起日 ${search.published_from}`,

@@ -62,7 +62,11 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     await button("搜尋臺灣專利").click();
     const empty = await emptyResponse;
     expect(empty.ok()).toBe(true);
-    expect((await empty.json()).items).toEqual([]);
+    const emptyResult = await empty.json();
+    expect(emptyResult.items).toEqual([]);
+    expect(emptyResult.corpus_coverage).toMatchObject({
+      lexical_versions: 0, semantic_versions: 0, latest_document_date: null,
+    });
     await expect(page.getByText("已索引的資料中沒有符合這次條件的結果。")).toBeVisible();
     await expect(page.getByRole("alert")).toHaveCount(0);
     await ipc.fill("C08F");
@@ -83,7 +87,14 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     expect((await saved.json()).status).toBe("queued");
     const opened = await openedRun;
     expect(opened.ok()).toBe(true);
-    const { id } = await opened.json();
+    const { id, settings } = await opened.json();
+    const coverage = settings.corpus_coverage;
+    expect(coverage.lexical_versions).toBeGreaterThanOrEqual(1);
+    expect(coverage.semantic_versions).toBeGreaterThanOrEqual(1);
+    expect(coverage.latest_document_date).toBeNull();
+    const scopeLine = page.getByText(/^搜尋涵蓋範圍（依篩選）/);
+    await expect(scopeLine.locator("time")).toHaveAttribute("datetime", coverage.observed_at);
+    await expect(scopeLine).toContainText("最新文件日期 未提供");
     await expect(publication).toBeVisible();
     await expect(page.getByRole("listitem").filter({ hasText: "公告 " })).toHaveCount(0);
 
@@ -175,6 +186,8 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     const reopenedRun = await reopened.json();
     expect(reopenedRun.request.query).toBe(longIdea);
     expect(reopenedRun.settings.query_expansion_version).toBe("sentence-expansion-v2");
+    expect(reopenedRun.settings.corpus_coverage).toEqual(coverage);
+    await expect(scopeLine).toContainText(`向量索引 ${coverage.semantic_versions} 個文件版本`);
     expect(reopenedRun.comparisons).toEqual([
       expect.objectContaining({ document_id: documentId, items }),
     ]);
@@ -220,6 +233,9 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     for (const expected of [
       "先前技術研究報告",
       "研究限制",
+      "搜尋涵蓋範圍",
+      `詞彙索引 ${coverage.lexical_versions} 個文件版本`,
+      `向量索引 ${coverage.semantic_versions} 個文件版本`,
       "構想與檢索策略",
       "光硬化性樹脂組成物",
       ...longIdea.split("\n"),

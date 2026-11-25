@@ -86,11 +86,13 @@ $env:PATENTSCOPE_E2E_URL = "http://127.0.0.1:18125"
 
 已有已驗證快取時可加 `--offline` 重跑，不會重新連到 TIPO。檔案雜湊錯誤會在匯入前失敗，保留原檔供排查。Docker Desktop 若無法掛載快取所在的磁碟（曾在 D: 槽遇到 `mkdir /run/desktop/mnt/host/d: file exists`），把快取目錄放到 C: 槽再加 `--offline` 重跑。
 
+遠端官方工作 [45669425487](https://github.com/Johnnnny0823/RAG/actions/runs/45669425487) 在準備語料時收到 TIPO FTPS 暫時錯誤 425，未開始 API 和 Playwright 驗收。下載器現在遇到 425 時，分別等待 15、45 秒再開立新連線，合計最多三次。其他 FTP 錯誤及資料驗證錯誤維持原本的回報，成功下載的固定樣本仍須通過 SHA-256 核對。
+
 2026-11-10 在全新資料卷實測：下載與匯入約 4 分鐘，本機 GPU 建立 1,677 個詞彙片段與 1,624 個向量約 100 秒。離線重跑三批皆 `reused`，各表筆數不變。Chromium 桌面、平板與手機的 `versions` 套件 12 項、`@tipo` 套件 3 項通過。
 
 ### 研究歷史與平板
 
-真實資料案例保存比對後會登出、重新載入頁面並登入，從歷史開啟相同搜尋。測試比對 API 重新讀取的文件 ID、判定和引文，展開原文定位，並驗證從重開的研究紀錄匯出的 PDF。兩套 E2E 均使用桌面、Pixel 7 與 iPad 第七代的 Chromium 模擬。Firefox 與 WebKit 見下節。
+真實資料案例保存比對後會登出、重新載入頁面並登入，從歷史開啟相同搜尋。測試比對 API 重新讀取的文件 ID、判定、引文及搜尋涵蓋範圍，展開原文定位，並驗證從重開的研究紀錄匯出的 PDF 含兩種索引的版本數。無符合篩選的官方案例同時核對兩種索引的計數為零。兩套 E2E 均使用桌面、Pixel 7 與 iPad 第七代的 Chromium 模擬。Firefox 與 WebKit 見下節。
 
 ### Firefox 與 WebKit 相容性
 

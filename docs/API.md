@@ -43,6 +43,8 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 `POST /api/v1/patents/search/hybrid` 沿用詞彙檢索的 JSON 欄位，構想描述上限為 1,200 字元。兩個檢索分支各取最多 100 個文件版本，在同一資料庫快照查詢。回傳 `rrf_k`、`candidate_limit`、`query_expansion_version`、分詞器與嵌入模型版本，以及每筆的 `lexical_rank`、`lexical_score`、`semantic_rank`、`semantic_score` 和 `rrf_score`。某版本未進入分支候選時，該分支欄位為 `null`。
 
+`corpus_coverage` 在同一讀取交易記錄 `observed_at`、`lexical_versions`、`semantic_versions` 與 `latest_document_date`。計數涵蓋符合 IPC、日期、文件類型及申請人篩選的官方文件版本，於關鍵字比對、候選上限及分頁之前計算。詞彙計入目前分詞版本具可檢索詞的文件，向量計入目前模型及索引版本已有向量的文件。兩個計數可能包含相同版本。日期取兩種索引涵蓋文件中已知的最晚文件日期，缺日期時回傳 `null`。保存後可從 `settings.corpus_coverage` 重讀，既有紀錄可缺此欄位。
+
 `sentence-expansion-v2` 將逾 160 字的描述依句段分組，各句段與使用者確認的檢索詞分別參與全文檢索。語意檢索保留完整原描述，並附上特徵描述。短查詢可繼續附帶展開詞；當短查詢的展開內容超過 1,600 字，改用完整原描述及特徵描述，展開詞仍參與全文檢索。保存搜尋時保留原描述及查詢展開版本。
 
 按文件版本 UUID 融合，再依文件階段、公開或公告號及 kind code 去重。同一申請案的公開和公告可同時呈現。分頁套用在融合後的候選集合。模型服務或索引不可用時，錯誤行為與語意檢索一致。此端點不保存查詢或排名。
@@ -127,7 +129,7 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 工作狀態為 `queued`、`running`、`succeeded` 或 `failed`。生成結果有 8 MiB 上限。完成一小時後，狀態及檔案不再提供，工作程序負責清理暫存。原同步下載端點仍可供既有客戶端使用。
 
-報告同步產生，涵蓋當次保存的構想、篩選、檢索設定、候選順位及已保存比對。官方來源連結於匯出時讀取。伺服器不留存 PDF 檔案，瀏覽器會下載一份本機副本。
+同步端點直接產生報告供下載。報告涵蓋當次保存的構想、篩選、檢索設定、索引涵蓋範圍、候選順位及已保存比對。官方來源連結於匯出時讀取。背景端點的暫存行為見下方說明。
 ## 背景搜尋
 
 已登入使用者可用下列端點把混合搜尋排入背景。成功後會取得一般研究歷史可用的搜尋紀錄 ID。

@@ -193,6 +193,13 @@ class RerankMetadata(BaseModel):
     candidate_count: int
 
 
+class CorpusCoverage(BaseModel):
+    observed_at: datetime
+    lexical_versions: int
+    semantic_versions: int
+    latest_document_date: date | None
+
+
 class HybridSearchResults(BaseModel):
     items: list[HybridPatentHit]
     tokenizer_version: str
@@ -204,6 +211,7 @@ class HybridSearchResults(BaseModel):
     candidate_limit: int
     applied_feature_ids: list[str]
     reranker: RerankMetadata | None
+    corpus_coverage: CorpusCoverage | None = None
     limit: int
     offset: int
     has_more: bool
@@ -350,6 +358,29 @@ SEMANTIC_CANDIDATES = f"""
         {SEARCH_FILTERS}
     )
 """
+CORPUS_COVERAGE = (
+    SEMANTIC_CANDIDATES
+    + """
+    , coverage AS (
+        SELECT c.publication_date,
+            EXISTS (
+                SELECT 1 FROM patent_lexical_chunks t
+                WHERE t.document_id = c.document_id AND t.tokenizer_version = %s
+                  AND t.terms <> ''::tsvector
+            ) AS lexical,
+            EXISTS (
+                SELECT 1 FROM patent_dense_chunks t
+                WHERE t.model_id = %s AND t.document_id = c.document_id
+            ) AS semantic
+        FROM candidates c
+    )
+    SELECT transaction_timestamp() AS observed_at,
+        count(*) FILTER (WHERE lexical) AS lexical_versions,
+        count(*) FILTER (WHERE semantic) AS semantic_versions,
+        max(publication_date) FILTER (WHERE lexical OR semantic) AS latest_document_date
+    FROM coverage
+"""
+)
 SEMANTIC_ORDER = f"""
     ORDER BY m.score DESC, {SCOPE_ORDER.format("c.content_scope")}, c.document_id
     LIMIT %s OFFSET %s
@@ -692,6 +723,13 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
             semantic = semantic_rows(
                 conn, embedding, identity, filters, CANDIDATE_LIMIT, 0
             )
+            coverage = CorpusCoverage.model_validate(
+                conn.exec_driver_sql(
+                    CORPUS_COVERAGE, (*filters, TOKENIZER_VERSION, identity)
+                )
+                .mappings()
+                .one()
+            )
             ranked = fuse_rankings(lexical, semantic)
             abstracts = {}
             if request.rerank and len(ranked) > 1:
@@ -755,6 +793,7 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
         candidate_limit=CANDIDATE_LIMIT,
         applied_feature_ids=feature_ids,
         reranker=reranker,
+        corpus_coverage=coverage,
         limit=request.limit,
         offset=request.offset,
         has_more=len(ranked) > end,

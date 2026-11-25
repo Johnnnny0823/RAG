@@ -1213,3 +1213,25 @@
 - Uncommitted changes / file ownership warnings: 隔離 API 與 DB 停止，保留測試卷。
 - Next 1–3 concrete actions: 核對新版官方工作；準備人工標註並量測代表性負載；檢查尚未完成的產品與部署驗收。
 - Exact reproduction steps: 依 [EVALUATION SQL 計畫](EVALUATION.md#2026-11-26-postgresql-查詢計畫基線) 執行。
+
+## 搜尋涵蓋範圍工作範圍
+
+- Codex 負責混合搜尋索引涵蓋範圍、既有快照設定、研究介面、PDF、測試及對應文件。
+- Codex 同步處理官方 E2E 的 TIPO FTPS 暫時性 425 錯誤，範圍限既有下載器及測試。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `4154d66`。
+- Current milestone and status: M4／M5 搜尋涵蓋範圍通過本機官方案例，M6 官方遠端驗收 IN_PROGRESS。
+- Goal of this session: 讓使用者在當次搜尋、歷史及 PDF 查到相同的索引涵蓋範圍，處理官方 CI 下載暫時失敗。
+- Files changed (with purpose): `patents.py` 同快照計數，`reports.py` 與 `research.tsx` 顯示範圍，`tipo-research.spec.ts` 跨 API、畫面及 PDF 核對；`download.py` 和 `test_download.py` 覆蓋 425 重試、耗盡及非暫時故障。
+- Database migrations added/applied: 無新增遷移。重用 `0014` 的隔離資料庫。舊公開資料備份未含 `claim_dependencies`，用既有遷移的解析方式從真實原文補建 334 筆後重跑瀏覽器驗收。未改動日常資料庫。
+- API/Schema changes: 混合 API 增 `corpus_coverage`，保存於既有 `settings` JSONB。舊紀錄缺欄位時明示未記錄。觀察時間、詞彙及向量版本數及最新文件日期於排名相同讀取交易取得。
+- Commands actually run and results: 含 PostgreSQL 的 pytest 78 通過、1 則既有 Starlette 警告。Ruff、前端 lint、TypeScript、Vite build 通過。隔離官方語料三支 API 冒煙通過。桌面 Chromium 官方全文、歷史與 PDF 案例 1 通過（48.6 秒）。首次廣域測試遇到模型分析等待，切回文件指定 1.5B 模型後，先後遇到並行註冊逾時與隔離備份缺依附資料。單獨執行並補回依附資料後通過。
+- Tests NOT run and reason: 本機未執行完整多瀏覽器官方套件。前一提交的一般 CI [45669424746](https://github.com/Johnnnny0823/RAG/actions/runs/45669424746) 通過。相同提交的官方工作 [45669425487](https://github.com/Johnnnny0823/RAG/actions/runs/45669425487) 因伺服器回覆 `425 Unable to listen, too many pending PASV/EPSV requests` 中止，三支 API 冒煙及 Playwright 均未開始。
+- Data sources checked (exact URL/date) and license/access notes: 本機 E2E 使用固定官方第 024019、053028 期還原語料。2026-11-26 另以新版下載器實際下載 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index.xml`，15,253,438 bytes，SHA-256 `7befed78be2cc6067266f13afd4a34f6feca4730b9a717f3f99890d551da9b69`。實際下載成功，425 復原與耗盡以測試替身分別驗證。授權與來源條件見 DATA_SOURCES。
+- Known bugs / risks / blockers: 117 個驗收版本的日期欄全部空白。大語料的計數負載、完整索引重建及人工評估仍待完成。425 重試耗盡時應保留失敗狀態。
+- Decisions made (ADR links): 索引計數按本次篩選及實際模型／分詞版本保存。FTPS 僅對已觀察的 425 等待 15、45 秒後重開資料傳輸。
+- Uncommitted changes / file ownership warnings: 隔離容器的資料卷保留，供後續驗收。
+- Next 1–3 concrete actions: 確認新版官方 CI 通過三個 API 冒煙與瀏覽器；查證可追溯的官方文件日期；完成人工相關性複核及較大語料效能驗收。
+- Exact reproduction steps: 依 TESTING 啟動隔離官方語料與 worker，設定 `PATENTSCOPE_E2E_TIPO=1` 後執行桌面 Chromium 官方案例。使用 `python -m pytest tests/test_download.py` 重現 425 測試。
