@@ -27,7 +27,12 @@ from services.retrieval.embeddings import (
     vector_literal,
 )
 from services.retrieval.lexical import TOKENIZER_VERSION, tokenize
-from services.retrieval.query_features import TechnicalFeature, expand_query
+from services.retrieval.query_features import (
+    MAX_INVENTION_LENGTH,
+    QUERY_EXPANSION_VERSION,
+    TechnicalFeature,
+    expand_query,
+)
 from services.retrieval.ollama import LocalModelError, LocalOllamaModel
 from services.retrieval.rerank import RERANK_LIMIT, RERANK_VERSION, rerank_order
 from services.retrieval.fusion import CANDIDATE_LIMIT, RRF_K, fuse_rankings
@@ -154,6 +159,7 @@ class RankedSearchRequest(BaseModel):
 
 
 class HybridSearchRequest(RankedSearchRequest):
+    query: str = Field(min_length=1, max_length=MAX_INVENTION_LENGTH)
     features: list[TechnicalFeature] = Field(default_factory=list, max_length=5)
     rerank: bool = False
 
@@ -188,6 +194,7 @@ class HybridSearchResults(BaseModel):
     model_name: str
     model_digest: str
     pipeline: str
+    query_expansion_version: str
     rrf_k: int
     candidate_limit: int
     applied_feature_ids: list[str]
@@ -632,8 +639,6 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
     if len(set(feature_ids)) != len(feature_ids):
         return api_error(422, "INVALID_REQUEST", "技術特徵 ID 必須唯一。")
     terms, semantic_query = expand_query(query, request.features)
-    if len(semantic_query) > 1600:
-        return api_error(422, "INVALID_REQUEST", "技術特徵展開後超過 1,600 字元。")
     try:
         model = LocalEmbeddingModel.from_env()
         identity = indexed_model_id(model)
@@ -702,6 +707,7 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
     end = len(ranked) if full_snapshot else start + request.limit
     return HybridSearchResults(
         items=[HybridPatentHit.model_validate(row) for row in ranked[start:end]],
+        query_expansion_version=QUERY_EXPANSION_VERSION,
         tokenizer_version=TOKENIZER_VERSION,
         model_name=model.name,
         model_digest=model.digest,

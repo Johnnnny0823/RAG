@@ -30,7 +30,27 @@ test("official publication supports saved evidence and PDF export @tipo", async 
   await expect(page.getByText(`目前帳號 · ${email}`)).toBeVisible();
 
   try {
-    await page.getByLabel("構想描述（最多 160 字）").fill("光硬化性樹脂組成物");
+    const longIdea = [
+      "光硬化性樹脂組成物。",
+      "我想研發一種用於半導體元件組裝的光硬化接著劑。製程先在基材上塗布薄層樹脂，再以波長高於五百奈米的可見光照射，使接著劑在零件之間完成硬化。",
+      "我希望配方能在較低溫度下施工，以避免細小零件因受熱而變形，並利用顆粒分散的方式控制塗層厚度。研究時需要區分光源波長、感光成分與粒子尺寸等條件。",
+      "若先前技術也使用長波光源，還需要檢查其是否揭露相同的樹脂成分與使用方法，以及原文是否限制了封裝用途。",
+    ].join("\n");
+    const ideaField = page.getByLabel(/^構想描述（最多 /);
+    await ideaField.fill(longIdea);
+    await expect(ideaField).toHaveValue(longIdea);
+    const analysisResponse = page.waitForResponse((response) =>
+      response.url().endsWith("/api/v1/queries/analyze"), { timeout: 120_000 },
+    );
+    await button("AI 拆解技術特徵").click();
+    const analysis = await analysisResponse;
+    expect(analysis.ok()).toBe(true);
+    expect(analysis.request().postDataJSON().query).toBe(longIdea);
+    const { features } = await analysis.json();
+    expect(features.length).toBeGreaterThan(0);
+    for (let index = features.length; index > 0; index--) {
+      await button(`刪除特徵 ${index}`).click();
+    }
     await button("新增特徵").click();
     await page.getByLabel("特徵描述", { exact: true }).fill("光硬化性樹脂組成物");
     await page.getByLabel("繁中檢索詞（逗號分隔）").fill("光硬化性樹脂組成物");
@@ -146,10 +166,12 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     const reopened = await historyResponse;
     expect(reopened.ok()).toBe(true);
     const reopenedRun = await reopened.json();
+    expect(reopenedRun.request.query).toBe(longIdea);
+    expect(reopenedRun.settings.query_expansion_version).toBe("sentence-expansion-v2");
     expect(reopenedRun.comparisons).toEqual([
       expect.objectContaining({ document_id: documentId, items }),
     ]);
-    await expect(page.getByText(/已保存的查詢 · 光硬化性樹脂組成物 · IPC C08F/)).toBeVisible();
+    await expect(page.getByText(`已保存的查詢 · ${longIdea} · IPC C08F`, { exact: true })).toBeVisible();
     const matrix = page.getByRole("table", { name: "跨文件比對矩陣" });
     await expect(matrix.getByRole("columnheader", { name: /公開 202639611/ })).toBeVisible();
     const savedEvidence = matrix.getByRole("cell").filter({ hasText: citation.quote });
@@ -181,6 +203,7 @@ test("official publication supports saved evidence and PDF export @tipo", async 
       "研究限制",
       "構想與檢索策略",
       "光硬化性樹脂組成物",
+      ...longIdea.split("\n"),
       "公開 202639611",
       "經濟部智慧財產局",
       citation.quote,

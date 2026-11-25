@@ -20,7 +20,7 @@ test("publication and grant keep separate claim citations @versions", async ({ p
   test.setTimeout(300_000);
   const button = (name: string) => page.getByRole("button", { name, exact: true });
   await page.goto("/");
-  await page.getByLabel("構想描述（最多 160 字）").fill("動態導通電阻");
+  await page.getByLabel(/^構想描述（最多 /).fill("動態導通電阻");
   await button("新增特徵").click();
   await page.getByLabel("特徵描述", { exact: true }).fill("動態導通電阻量測電路");
   await page.getByLabel("繁中檢索詞（逗號分隔）").fill("動態導通電阻");

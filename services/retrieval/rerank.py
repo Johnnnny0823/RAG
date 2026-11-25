@@ -43,7 +43,7 @@ def rerank_order(
             "format": output_schema,
             "options": {
                 "temperature": 0,
-                "num_ctx": 4096,
+                "num_ctx": 8192 if len(query) > 800 else 4096,
                 "num_predict": 128,
                 "num_gpu": 0,
             },

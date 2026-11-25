@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ComparisonMatrix, EvidenceLocator, verdicts } from "./comparison-matrix";
 import { ResearchSessions } from "./research-sessions";
+import { MAX_INVENTION_LENGTH } from "./invention";
 
 export type Feature = {
   feature_id: string;
@@ -591,8 +592,8 @@ export function Research() {
           <h2>發明構想</h2>
           <form onSubmit={(event) => { event.preventDefault(); if (!busy && query.trim()) void run("正在檢索專利…", () => submitSearch(false)); }}>
             <fieldset disabled={!!busy}>
-              <label className="research-field">構想描述（最多 160 字）
-                <textarea rows={4} value={query} maxLength={160} required onChange={(event) => setQuery(event.target.value)} />
+              <label className="research-field">構想描述（最多 {MAX_INVENTION_LENGTH} 字）
+                <textarea rows={5} value={query} maxLength={MAX_INVENTION_LENGTH} required onChange={(event) => setQuery(event.target.value)} />
               </label>
               <button type="button" disabled={!query.trim()} onClick={() => void run("正在拆解技術特徵…", analyze)}>AI 拆解技術特徵</button>
               <h3 className="mt-5">技術特徵</h3>

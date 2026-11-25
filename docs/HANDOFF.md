@@ -1106,3 +1106,24 @@
 - Uncommitted changes / file ownership warnings: 測試環境驗收後停止，保留資料卷。無正式資料變更。
 - Next 1–3 concrete actions: 接續人工證據品質評估及多段候選驗證，補完整遠端瀏覽器回歸。
 - Exact reproduction steps: 用 TESTING 的官方語料及模型設定執行桌面 `PATENTSCOPE_E2E_TIPO=1`；案例會比對純字詞與語意的可核對引文差異。
+
+## 長篇發明構想工作範圍
+
+- Codex 負責前端構想欄位、分析與搜尋需求驗證、查詢展開、測試及文件。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `f8323e4`。
+- Current milestone and status: M2／M3 長篇構想流程已實測，整體 Goal IN_PROGRESS。
+- Goal of this session: 長描述可直接拆解、送入混合搜尋、保存並重開研究結果。
+- Files changed (with purpose): 分析、混合搜尋 Schema，查詢展開、模型上下文、前端兩個構想欄位、pytest／Playwright 與文件。短篇專用詞彙及語意端點保留原上限。
+- Database migrations added/applied: 無新增。使用既有隔離庫 `0011`、20 版本／230 向量。
+- API/Schema changes: 混合搜尋、獨立分析、Session 共用 1,200 字元限制。混合回應與已保存設定加入 `query_expansion_version`。
+- Commands actually run and results: 70 項 pytest 通過，含 PostgreSQL 整合及超限 422；Ruff、前端 lint、TypeScript 通過。第一次官方 Chromium 案例到達歷史重開，但仍以短句檢查畫面而失敗。改為核對完整長文，瀏覽器案例驗證真實模型、已保存查詢、引文和 PDF 中的各句。1,200 字真實模型實測最初回傳 `503 ANALYSIS_UNAVAILABLE`，完整輸出結構曾導致本機模型中斷連線，外層結構仍允許不符規則的巢狀 IPC 值。用 Ollama 可接受的欄位型別與陣列上限約束，並保留 Pydantic 驗證後，1,200 字的 Session 成功生成 1 項特徵、重讀的原文逐字相符，混合檢索命中 `202639611`。
+- Tests NOT run and reason: 未於本輪重跑新版完整遠端官方與跨瀏覽器 suite；桌面使用本機模型及小語料。前一筆 `f8323e4` 的一般遠端 CI `45621413069` 通過。
+- Data sources checked (exact URL/date) and license/access notes: 沿用既有官方封存第 024019 期，未重新下載。來源與授權見 DATA_SOURCES。
+- Known bugs / risks / blockers: 長描述的相對檢索品質尚待人工評估；仍缺非同步搜尋、進度及取消。報告只證明已驗收樣本的呈現。
+- Decisions made (ADR links): 長描述先按句段做詞彙查詢，語意檢索保留完整構想與確認的特徵描述。特徵詞另外參與詞彙查詢。
+- Uncommitted changes / file ownership warnings: 本機測試專案驗收後停止，原服務及資料卷保留。
+- Next 1–3 concrete actions: 驗收新版遠端官方流程，優先補任務狀態及人工相關性評估。
+- Exact reproduction steps: 依 TESTING 的官方語料步驟啟動隔離環境並執行 `PATENTSCOPE_E2E_TIPO=1` 桌面 Chromium。

@@ -28,7 +28,9 @@ class LocalEmbeddingModel(LocalOllamaModel):
                 "model": self.name,
                 "input": texts,
                 "truncate": False,
-                "options": {"num_ctx": 4096},
+                "options": {
+                    "num_ctx": 8192 if any(len(text) > 1000 for text in texts) else 4096
+                },
             },
             timeout=timeout,
         )

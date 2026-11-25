@@ -41,7 +41,9 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 ## 混合檢索
 
-`POST /api/v1/patents/search/hybrid` 沿用詞彙檢索的 JSON 欄位。兩個檢索分支各取最多 100 個文件版本，在同一資料庫快照查詢。回傳 `rrf_k`、`candidate_limit`、分詞器與嵌入模型版本，以及每筆的 `lexical_rank`、`lexical_score`、`semantic_rank`、`semantic_score` 和 `rrf_score`。某版本未進入分支候選時，該分支欄位為 `null`。
+`POST /api/v1/patents/search/hybrid` 沿用詞彙檢索的 JSON 欄位，構想描述上限為 1,200 字元。兩個檢索分支各取最多 100 個文件版本，在同一資料庫快照查詢。回傳 `rrf_k`、`candidate_limit`、`query_expansion_version`、分詞器與嵌入模型版本，以及每筆的 `lexical_rank`、`lexical_score`、`semantic_rank`、`semantic_score` 和 `rrf_score`。某版本未進入分支候選時，該分支欄位為 `null`。
+
+`sentence-expansion-v2` 將逾 160 字的描述依句段分組，各句段與使用者確認的檢索詞分別參與全文檢索。語意檢索保留完整原描述，並附上特徵描述。短查詢可繼續附帶展開詞；當短查詢的展開內容超過 1,600 字，改用完整原描述及特徵描述，展開詞仍參與全文檢索。保存搜尋時保留原描述及查詢展開版本。
 
 按文件版本 UUID 融合，再依文件階段、公開或公告號及 kind code 去重。同一申請案的公開和公告可同時呈現。分頁套用在融合後的候選集合。模型服務或索引不可用時，錯誤行為與語意檢索一致。此端點不保存查詢或排名。
 
@@ -49,7 +51,7 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 ## 技術特徵拆解與編輯
 
-`POST /api/v1/queries/analyze` 接受 `{"query":"發明構想"}`（1–160 字元）。回傳至多 5 個技術特徵，以及模型名稱、權重 SHA-256 與分析版本。特徵包含 `feature_id`、繁中描述、繁中和英文檢索詞、必要條件標記、提取把握及 IPC 候選。
+`POST /api/v1/queries/analyze` 接受 `{"query":"發明構想"}`（1–1,200 字元）。回傳至多 5 個技術特徵，以及模型名稱、權重 SHA-256 與分析版本。特徵包含 `feature_id`、繁中描述、繁中和英文檢索詞、必要條件標記、提取把握及 IPC 候選。
 
 呼叫端可以編輯或刪除草稿特徵，再將已確認的 `features` 陣列連同原始 `query` 傳給混合檢索。每個特徵 ID 須唯一，回傳 `applied_feature_ids`。詞彙分支對原始查詢及已確認詞組取聯集，詞組內須全部命中。向量分支附加特徵描述與檢索詞，展開上限 1,600 字元。IPC 候選供檢視，真正的 IPC 篩選由獨立的 `ipc` 欄位控制。必要條件標記及提取把握供後續比對，目前不參與硬篩選或排序。
 
@@ -110,7 +112,7 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 | --- | --- | --- |
 | POST | `/api/v1/sessions` | 用 `project_id` 與 `title`（1–120 字）建立 Session。 |
 | GET | `/api/v1/sessions` | 以 `project_id` 指定專案，支援 `limit`、`offset`。 |
-| POST | `/api/v1/sessions/{session_id}/messages` | 接受 `{"query":"…"}`（1–160 字）。本機拆解成功才一起保存並回傳 `user` 和 `assistant` 兩筆訊息。 |
+| POST | `/api/v1/sessions/{session_id}/messages` | 接受 `{"query":"…"}`（1–1,200 字元）。本機拆解成功才一起保存並回傳 `user` 和 `assistant` 兩筆訊息。 |
 | GET | `/api/v1/sessions/{session_id}/messages` | 回傳最近 `limit` 筆（預設 40）並按保存順序排列。可用 `before` 指定同一 Session 內的訊息 UUID 讀取更早的訊息。 |
 | DELETE | `/api/v1/sessions/{session_id}` | 擁有者永久刪除 Session 與全部訊息，回傳 204。 |
 

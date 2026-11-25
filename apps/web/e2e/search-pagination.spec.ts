@@ -10,7 +10,7 @@ type SearchPage = {
 test("official results keep fusion order across pages @versions", async ({ page }) => {
   test.setTimeout(180_000);
   await page.goto("/");
-  await page.getByLabel("構想描述（最多 160 字）").fill("動態導通電阻");
+  await page.getByLabel(/^構想描述（最多 /).fill("動態導通電阻");
 
   const button = (name: string) => page.getByRole("button", { name, exact: true });
   const previous = button("上一頁");
@@ -74,7 +74,7 @@ test("saved search restores its ranked snapshot and paginates it @versions", asy
   await button("建立帳號").click();
   await signIn("註冊並登入");
   try {
-    await page.getByLabel("構想描述（最多 160 字）").fill("動態導通電阻");
+    await page.getByLabel(/^構想描述（最多 /).fill("動態導通電阻");
     const savedResponse = page.waitForResponse((response) =>
       new URL(response.url()).pathname === "/api/v1/search-runs" &&
       response.request().method() === "POST", { timeout: 90_000 },

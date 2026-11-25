@@ -10,6 +10,7 @@ from services.api.patents import PatentErrorEnvelope, PatentRoute, api_error
 from services.retrieval.ollama import LocalModelError, LocalOllamaModel
 from services.retrieval.query_features import (
     ANALYSIS_VERSION,
+    MAX_INVENTION_LENGTH,
     TechnicalFeature,
     analyze_features,
 )
@@ -28,7 +29,10 @@ router = APIRouter(
 
 class AnalyzeRequest(BaseModel):
     query: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=160)
+        str,
+        StringConstraints(
+            strip_whitespace=True, min_length=1, max_length=MAX_INVENTION_LENGTH
+        ),
     ]
 
 

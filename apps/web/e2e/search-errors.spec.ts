@@ -7,7 +7,7 @@ test("search distinguishes invalid filters from a missing model", async ({ page 
   const search = page.getByRole("button", { name: "搜尋臺灣專利", exact: true });
   const alert = page.getByRole("alert");
   await expect(search).toBeDisabled();
-  await page.getByLabel("構想描述（最多 160 字）").fill("光硬化性樹脂組成物");
+  await page.getByLabel(/^構想描述（最多 /).fill("光硬化性樹脂組成物");
 
   const from = page.getByLabel("公開／公告起日");
   const to = page.getByLabel("公開／公告迄日");
@@ -44,7 +44,7 @@ test("a stalled search triggers the client deadline and can be retried", async (
   // Hold the network request without returning a synthetic API response.
   await page.route(`**${hybrid}`, () => {});
   await page.goto("/");
-  const idea = page.getByLabel("構想描述（最多 160 字）");
+  const idea = page.getByLabel(/^構想描述（最多 /);
   await idea.fill("光硬化性樹脂組成物");
   const search = page.getByRole("button", { name: "搜尋臺灣專利", exact: true });
   const request = page.waitForRequest((entry) => entry.url().endsWith(hybrid));

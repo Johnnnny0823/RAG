@@ -1,0 +1,1 @@
+export const MAX_INVENTION_LENGTH = 1200;
