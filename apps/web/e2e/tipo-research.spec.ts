@@ -64,7 +64,7 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     await publication.getByRole("button").click();
     const claims = await claimsResponse;
     expect(claims.ok()).toBe(true);
-    const { claims: originalClaims } = await claims.json();
+    const { document_id: detailId, claims: originalClaims } = await claims.json();
     await expect(page.getByRole("heading", { name: "專利詳情" })).toBeVisible();
     await expect(page.getByRole("link", { name: "官方資料集" }).first()).toHaveAttribute("href", "https://data.gov.tw/dataset/15996");
     await page.getByText(/^請求項（\d+）$/).click();
@@ -74,6 +74,38 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     await reference.click();
     await expect(page).toHaveURL(/#claim-1$/);
     await expect(page.getByText(/^第 1 項 ·/).first()).toBeVisible();
+
+    const comparePath = `/api/v1/patents/${detailId}/compare`;
+    const paraphrase = [{
+      feature_id: "f1",
+      description_zh: "Polymer composition curable by light above 500 nanometers",
+      keywords_zh: [],
+      keywords_en: [],
+      must_have: true,
+      confidence: "high",
+      ipc_candidates: [],
+    }];
+    const literal = await page.request.post(comparePath, { data: { features: paraphrase, semantic_evidence: false } });
+    expect(literal.ok()).toBe(true);
+    expect((await literal.json()).items[0]).toMatchObject({
+      verdict: "not_found_in_checked_content",
+      evidence: null,
+    });
+    const semantic = await page.request.post(comparePath, { data: { features: paraphrase }, timeout: 90_000 });
+    expect(semantic.ok()).toBe(true);
+    const semanticResult = await semantic.json();
+    expect(semanticResult.document_id).toBe(detailId);
+    expect(semanticResult.items[0].evidence_method).toBe("semantic");
+    const semanticQuote: Citation = semanticResult.items[0].evidence;
+    const detail = await page.request.get(`/api/v1/patents/${detailId}`);
+    expect(detail.ok()).toBe(true);
+    const semanticSource = semanticQuote.kind === "claim"
+      ? originalClaims.find((item: { claim_number: number }) => item.claim_number === semanticQuote.ordinal)
+      : (await detail.json()).sections.find((item: { section_type: string; ordinal: number }) =>
+        item.section_type === semanticQuote.kind && item.ordinal === semanticQuote.ordinal);
+    expect(semanticSource?.source).toEqual({ xpath: semanticQuote.xpath, artifact_sha256: semanticQuote.artifact_sha256 });
+    const semanticText: string = semanticSource.text ?? semanticSource.original_text;
+    expect(Array.from(semanticText).slice(semanticQuote.char_start, semanticQuote.char_end).join("")).toBe(semanticQuote.quote);
 
     const comparisonResponse = page.waitForResponse((response) =>
       response.url().includes(`/api/v1/search-runs/${id}/comparisons/`) && response.request().method() === "POST",

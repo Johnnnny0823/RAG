@@ -54,7 +54,12 @@ class LocalEmbeddingModel(LocalOllamaModel):
         return vectors
 
     def embed_query(self, query: str) -> list[float]:
-        return self.embed([f"Instruct: {QUERY_INSTRUCTION}\nQuery:{query}"])[0]
+        return self.embed_queries([query])[0]
+
+    def embed_queries(self, queries: list[str]) -> list[list[float]]:
+        return self.embed(
+            [f"Instruct: {QUERY_INSTRUCTION}\nQuery:{query}" for query in queries]
+        )
 
 
 def vector_literal(vector: list[float]) -> str:

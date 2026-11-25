@@ -1,5 +1,6 @@
 """Compare reviewed technical features against one public document version."""
 
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter
@@ -18,11 +19,14 @@ from services.api.patents import (
 )
 from services.retrieval.evidence import (
     COMPARISON_VERSION,
+    Excerpt,
     Passage,
     Verdict,
+    indexed_excerpt,
     judge,
     select_excerpt,
 )
+from services.retrieval.embeddings import LocalEmbeddingModel, model_id, vector_literal
 from services.retrieval.ollama import LocalModelError, LocalOllamaModel
 from services.retrieval.query_features import TechnicalFeature
 
@@ -61,9 +65,61 @@ PASSAGES = """
     ORDER BY (kind <> 'claim'), kind, ordinal
 """
 
+EVIDENCE_NEIGHBORS = """
+    SELECT field, ordinal, char_start, char_end
+    FROM patent_dense_chunks
+    WHERE model_id = %s AND document_id = %s
+      AND (field = 'claim' OR starts_with(field, 'section:'))
+    ORDER BY embedding <=> %s::vector, field, ordinal, char_start
+    LIMIT 10
+"""
+
+
+def semantic_excerpts(
+    document_id: UUID, features: list[TechnicalFeature], passages: list[Passage]
+) -> tuple[dict[str, Excerpt], str | None]:
+    model = LocalEmbeddingModel.from_env()
+    with engine.connect() as conn:
+        identity = model_id(conn, model)
+        available = (
+            identity is not None
+            and conn.exec_driver_sql(
+                """SELECT EXISTS (SELECT 1 FROM patent_dense_chunks
+               WHERE model_id = %s AND document_id = %s
+                 AND (field = 'claim' OR starts_with(field, 'section:')))""",
+                (identity, document_id),
+            ).scalar_one()
+        )
+    if not available:
+        return {}, None
+
+    sources = {
+        ("claim" if p.kind == "claim" else f"section:{p.kind}", p.ordinal): p
+        for p in passages
+    }
+    with model_slot():
+        embeddings = model.embed_queries(
+            [feature.description_zh for feature in features]
+        )
+    excerpts = {}
+    with engine.connect() as conn:
+        for feature, embedding in zip(features, embeddings, strict=True):
+            positions = (
+                conn.exec_driver_sql(
+                    EVIDENCE_NEIGHBORS,
+                    (identity, document_id, vector_literal(embedding)),
+                )
+                .tuples()
+                .all()
+            )
+            if excerpt := indexed_excerpt(sources, positions):
+                excerpts[feature.feature_id] = excerpt
+    return excerpts, model.digest
+
 
 class CompareRequest(BaseModel):
     features: list[TechnicalFeature] = Field(min_length=1, max_length=5)
+    semantic_evidence: bool = True
 
 
 class EvidenceCitation(BaseModel):
@@ -80,6 +136,7 @@ class FeatureComparison(BaseModel):
     feature_id: str
     verdict: Verdict
     evidence: EvidenceCitation | None
+    evidence_method: Literal["literal", "semantic"] | None = None
     basis: str
 
 
@@ -90,6 +147,7 @@ class ComparisonResponse(BaseModel):
     passages_checked: int
     model_name: str | None
     model_digest: str | None
+    evidence_embedding_digest: str | None = None
     items: list[FeatureComparison]
 
 
@@ -117,6 +175,22 @@ def compare(document_id: UUID, request: CompareRequest):
         feature.feature_id: select_excerpt(feature, passages)
         for feature in request.features
     }
+    missing = [
+        feature for feature in request.features if excerpts[feature.feature_id] is None
+    ]
+    semantic = {}
+    embedding_digest = None
+    embedding_unavailable = False
+    if request.semantic_evidence and missing and passages:
+        try:
+            semantic, embedding_digest = semantic_excerpts(
+                document_id, missing, passages
+            )
+        except LocalModelError:
+            embedding_unavailable = True
+        except SQLAlchemyError:
+            return unavailable()
+        excerpts.update(semantic)
     pairs = [
         (feature, excerpts[feature.feature_id])
         for feature in request.features
@@ -142,11 +216,16 @@ def compare(document_id: UUID, request: CompareRequest):
             "not_found_in_checked_content" if passages else "uncertain",
         )
         evidence = None
-        basis = (
-            "在已保存且可追溯的請求項及說明書中未找到指定字詞。"
-            if passages
-            else "此版本缺少可追溯的請求項或說明書。"
-        )
+        method = None
+        basis = "此版本缺少可追溯的請求項或說明書。"
+        if passages:
+            basis = "在已保存且可追溯的請求項及說明書中未找到指定字詞。"
+            if request.semantic_evidence:
+                basis += (
+                    "本機嵌入模型目前無法使用。"
+                    if embedding_unavailable
+                    else "未取得可核對的語意候選片段。"
+                )
         if excerpt is not None:
             passage = excerpt.passage
             evidence = EvidenceCitation(
@@ -158,12 +237,18 @@ def compare(document_id: UUID, request: CompareRequest):
                 char_end=excerpt.end,
                 quote=excerpt.quote,
             )
-            basis = "本機模型根據所附的單一原文片段判定。"
+            method = "semantic" if feature.feature_id in semantic else "literal"
+            basis = (
+                "本機模型根據語意檢索找到的單一原文片段判定。"
+                if method == "semantic"
+                else "本機模型根據字詞命中的單一原文片段判定。"
+            )
         items.append(
             FeatureComparison(
                 feature_id=feature.feature_id,
                 verdict=verdict,
                 evidence=evidence,
+                evidence_method=method,
                 basis=basis,
             )
         )
@@ -174,5 +259,6 @@ def compare(document_id: UUID, request: CompareRequest):
         passages_checked=len(passages),
         model_name=model.name if model else None,
         model_digest=model.digest if model else None,
+        evidence_embedding_digest=embedding_digest,
         items=items,
     )

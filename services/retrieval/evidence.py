@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from services.retrieval.ollama import LocalModelError, LocalOllamaModel
 from services.retrieval.query_features import TechnicalFeature
 
-COMPARISON_VERSION = "literal-candidates-v1"
+COMPARISON_VERSION = "literal-dense-candidates-v2"
 Verdict = Literal[
     "supported", "partially_supported", "not_found_in_checked_content", "uncertain"
 ]
@@ -53,6 +53,19 @@ def select_excerpt(
     return None
 
 
+def indexed_excerpt(
+    passages: dict[tuple[str, int], Passage],
+    positions: list[tuple[str, int, int, int]],
+) -> Excerpt | None:
+    for field, ordinal, start, end in positions:
+        passage = passages.get((field, ordinal))
+        if passage and 0 <= start < end <= len(passage.text) and end - start <= 1000:
+            excerpt = Excerpt(passage, start, end)
+            if excerpt.quote.strip():
+                return excerpt
+    return None
+
+
 class ModelDecision(BaseModel):
     feature_id: str
     verdict: Literal["supported", "partially_supported", "uncertain"]
@@ -82,7 +95,9 @@ def judge(
             "format": "json",
             "options": {
                 "temperature": 0,
-                "num_ctx": 4096,
+                "num_ctx": 8192
+                if sum(len(item["excerpt"]) for item in payload) > 2000
+                else 4096,
                 "num_predict": 350,
                 "num_gpu": 0,
             },

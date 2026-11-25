@@ -56,11 +56,13 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 分析模型未設定、無法連線或回應未通過結構驗證時回傳 503 `ANALYSIS_UNAVAILABLE`。兩個端點目前均不保存正文。
 ## 文件版本技術比對預覽
 
-`POST /api/v1/patents/{document_id}/compare` 接受 1–5 項已確認的 `features`。以指定版本中可回溯的請求項和說明書搜尋字詞，每項特徵至多選一段原文供本機模型判定。回傳 `supported`、`partially_supported`、`uncertain` 或 `not_found_in_checked_content`。最後一種表示在已檢視的內容未找到字詞。只有書目的版本回傳不確定。
+`POST /api/v1/patents/{document_id}/compare` 接受 1–5 項已確認的 `features`。先在指定版本的請求項與說明書找出字詞命中，再對未命中的特徵查詢同版本的向量索引。每項特徵至多選一段原文供本機模型判定。預設啟用語意候選，直接呼叫可傳 `semantic_evidence: false` 進行純字詞基準測試。
+
+回傳 `supported`、`partially_supported`、`uncertain` 或 `not_found_in_checked_content`，後者表示在指定範圍內未取得可提交判定的片段。只有書目的版本回傳不確定。若沒有相容索引或嵌入模型暫時無法使用，系統保留字詞比對並在判定依據中揭露語意候選狀態。
 
 `GET /api/v1/patents/{document_id}/claims` 的 `referenced_claim_numbers` 列出正文中可核對的同版本援引項。支援明確的單項、列舉與區間表述。空陣列表示未擷取到符合規則的援引。`independent` 照錄來源 XML 標記，可能和正文中的援引並存。
 
-引文由後端從保存的原文擷取，附原檔 SHA-256、XPath、段落或請求項序號，以及以 Unicode 字元計算的起訖位置（終點不包含）。回傳文件版本及模型識別。本預覽不保存構想或判定。
+引文由後端從保存的原文擷取，附原檔 SHA-256、XPath、段落或請求項序號，以及以 Unicode 字元計算的起訖位置（終點不包含）。`evidence_method` 標示候選來自字詞或語意檢索，`evidence_embedding_digest` 記錄用於語意候選的模型摘要。回傳也保留文件版本及判定模型識別。本預覽不保存構想或判定。
 
 ## 私人搜尋紀錄
 

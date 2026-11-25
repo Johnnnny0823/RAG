@@ -1085,3 +1085,24 @@
 - Uncommitted changes / file ownership warnings: 隔離 Compose 服務驗收後停止，保留測試卷，沒有改動正式語料。
 - Next 1–3 concrete actions: 以封存公告交叉驗證，繼續改進證據語義與完整工作流程。
 - Exact reproduction steps: 用測試 Compose 匯入固定官方 XML 或對現有隔離庫升版，再查 `202639611` 請求項。依 TESTING 執行 `PATENTSCOPE_E2E_TIPO=1` 的官方流程。
+
+## 比對證據的語意候選工作範圍
+
+- Codex 負責比對候選檢索、API 及保存相容性、測試和技術文件。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `a10678a`。
+- Current milestone and status: M3 語意證據候選增量，完整 Goal IN_PROGRESS。
+- Goal of this session: 對字詞未命中的特徵補充同版本語意證據，保留引用的精確可追溯性。
+- Files changed (with purpose): `comparisons.py` 檢索及保存兼容欄位，`evidence.py` 驗證原文位置，`embeddings.py` 批量查詢向量，更新證據單元測試、官方 Playwright、舊字詞基準腳本及 API 文件。
+- Database migrations added/applied: 無。沿用 `0011` 測試庫的 20 版本與 230 向量。
+- API/Schema changes: 比對預設補語意候選，直接比較可傳 `semantic_evidence: false` 回到字詞行為。每特徵回傳 `evidence_method`，比對回傳 `evidence_embedding_digest`，舊保存結果欄位預設空值。
+- Commands actually run and results: 啟用 PostgreSQL 整合執行 pytest 共 66 passed、1 則既有 Starlette 警告。Ruff 格式與 lint、前端 lint 與型別查核通過。使用真實模型，官方 `202639611` 對「Polymer composition curable by light above 500 nanometers」字詞結果無片段，語意結果回傳第 9 項 [0,53) 與模型判定 `supported`，用 GET claims 驗證原文逐字相符，查詢耗時 3.77 秒。Chromium 官方案例 1 passed，涵蓋新增語意引文與原有保存／歷史／PDF。
+- Tests NOT run and reason: 尚未以新提交重跑遠端完整官方 suite，也未做人工作業以驗證語意判定品質。首次 Ruff 因測試 import 位置及空白未通過，整理後通過。
+- Data sources checked (exact URL/date) and license/access notes: 沿用先前核對的官方 `202639611` XML（FTPS 來源與雜湊見上節）。未取得新資料。
+- Known bugs / risks / blockers: 每特徵最多給模型一段原文，未做多段綜合。嵌入或分析判定可能出錯，尚無真人相關性覆核與大量語料效能驗收。
+- Decisions made (ADR links): 原文字詞命中保有優先順序，語意候選只使用同模型、同文件版本及通過來源篩選的請求項或說明書。
+- Uncommitted changes / file ownership warnings: 測試環境驗收後停止，保留資料卷。無正式資料變更。
+- Next 1–3 concrete actions: 接續人工證據品質評估及多段候選驗證，補完整遠端瀏覽器回歸。
+- Exact reproduction steps: 用 TESTING 的官方語料及模型設定執行桌面 `PATENTSCOPE_E2E_TIPO=1`；案例會比對純字詞與語意的可核對引文差異。

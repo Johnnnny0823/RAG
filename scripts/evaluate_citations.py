@@ -86,7 +86,9 @@ def evaluate(api):
             }
             for feature_id, text in (("f1", query), ("f2", ABSENT))
         ]
-        comparison = request(api, path + "/compare", {"features": features})
+        comparison = request(
+            api, path + "/compare", {"features": features, "semantic_evidence": False}
+        )
         if (
             comparison["document_id"] != detail["document_id"]
             or comparison["document_sha256"] != detail["document_sha256"]
