@@ -11,12 +11,16 @@ from time import sleep
 from urllib.parse import urlsplit
 from urllib.request import urlopen
 
-from services.ingestion.artifacts import MAX_XML_BYTES
+from services.ingestion.artifacts import MAX_GAZETTE_XML_BYTES, MAX_XML_BYTES
 
 logger = logging.getLogger(__name__)
 INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10"
 SPEC_PATH = re.compile(
     r"/(?:InventionPubXML|PatentIsuRegSpecXMLA)/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_-]+\.xml"
+)
+GAZETTE_PATH = re.compile(
+    r"/(?:PatentPubRegXMLB/[0-9]{3}/PatentPubRegXMLB_[0-9]{6}/pubinvention"
+    r"|PatentIsuRegSpecXMLB/[0-9]{3}/PatentIsuRegSpecXMLB_[0-9]{6}/patent)\.xml"
 )
 
 
@@ -59,20 +63,22 @@ class TIPOTransfer(FTP_TLS):
 
 def download_ftps_xml(url: str) -> bytes:
     parsed = urlsplit(url)
+    gazette = GAZETTE_PATH.fullmatch(parsed.path)
     if (
         parsed.scheme != "ftps"
         or parsed.netloc not in {"ftp.tipo.gov.tw", "ftp.tipo.gov.tw:990"}
         or parsed.query
         or parsed.fragment
-        or not SPEC_PATH.fullmatch(parsed.path)
+        or not (gazette or SPEC_PATH.fullmatch(parsed.path))
         or any(part in {".", ".."} for part in parsed.path.split("/"))
     ):
         raise ValueError("Expected a TIPO patent XML FTPS URL")
     context = tls_context()
+    size_limit = MAX_GAZETTE_XML_BYTES if gazette else MAX_XML_BYTES
     # A busy passive listener can temporarily refuse otherwise valid transfers.
     for delay in (15, 45):
         try:
-            return _transfer_xml(parsed.path, context)
+            return _transfer_xml(parsed.path, context, size_limit)
         except error_temp as error:
             if str(error)[:3] != "425":
                 raise
@@ -80,14 +86,14 @@ def download_ftps_xml(url: str) -> bytes:
                 "TIPO FTPS data channel unavailable (425); retry in %ds", delay
             )
             sleep(delay)
-    return _transfer_xml(parsed.path, context)
+    return _transfer_xml(parsed.path, context, size_limit)
 
 
-def _transfer_xml(path: str, context: ssl.SSLContext) -> bytes:
+def _transfer_xml(path: str, context: ssl.SSLContext, size_limit: int) -> bytes:
     payload = bytearray()
 
     def append(chunk: bytes) -> None:
-        if len(payload) + len(chunk) > MAX_XML_BYTES:
+        if len(payload) + len(chunk) > size_limit:
             raise ValueError("TIPO specification exceeds the XML size limit")
         payload.extend(chunk)
 
@@ -97,7 +103,7 @@ def _transfer_xml(path: str, context: ssl.SSLContext) -> bytes:
         ftp.prot_p()
         ftp.voidcmd("TYPE I")
         size = ftp.size(path)
-        if size is None or not 0 < size <= MAX_XML_BYTES:
+        if size is None or not 0 < size <= size_limit:
             raise ValueError("Unexpected TIPO specification size")
         response = ftp.retrbinary(f"RETR {path}", append)
         if not response.startswith("226 ") or len(payload) != size:

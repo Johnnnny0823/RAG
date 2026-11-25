@@ -146,6 +146,17 @@ docker compose -p $project run --rm --no-deps -p 127.0.0.1:18006:8000 api
 python scripts/smoke_hybrid.py
 ```
 
+## 從官方公報書目補齊日期
+
+先匯入指定卷期的官方公開或公告文件，再執行日期補齊。操作員需使用具有匯入權限的 Compose `migrate` 服務。下列指令以固定驗收語料的兩個卷期為例，可用同一 Compose 專案重跑。
+
+```powershell
+docker compose run --rm migrate python -m services.ingestion.gazette_dates --stage publication --year 115 --issue 024019
+docker compose run --rm migrate python -m services.ingestion.gazette_dates --stage grant --year 115 --issue 053028
+```
+
+程式下載官方固定卷期 XML，核對階段、卷期、申請號及文件號，將缺少的日期與其來源在同一資料庫交易保存。若同案已有不同日期，該交易會回滾，需核對來源。再次執行相同檔案不會新增版本或重複來源連結。既有檢索索引可繼續使用，日期篩選從 PostgreSQL 欄位讀取。公開及公告的來源見 [資料來源](DATA_SOURCES.md#公報書目的申請日公開日與公告日)。
+
 ## M3 本機技術特徵驗收
 
 保留嵌入模型設定，另外配置本機 Ollama 分析模型。以 `ollama pull qwen2.5:1.5b` 取得模型，並從本機 `/api/tags` 核對 digest。分析請求使用 CPU。共用模型服務僅用公開測試查詢驗收。

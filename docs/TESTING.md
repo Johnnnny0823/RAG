@@ -76,6 +76,16 @@ python scripts/smoke_semantic.py --official-e2e --api http://127.0.0.1:8000
 
 此模式使用第 024019 期的光硬化樹脂及動態導通電阻案件，以及第 053028 期的公告。省略旗標則沿用舊雙期樣本，仍須匯入第 024018 期含 `202637274` 的書目。
 
+需要驗收日期時，另外執行 [公報書目日期補齊](SETUP.md#從官方公報書目補齊日期)。使用 `GET /api/v1/patents?number_type=publication&number=202639611` 與 `number_type=grant&number=I941082` 核對日期。混合檢索以 `ipc=C08F2/48`、查詢 `photocurable resin composition` 及起迄皆 `2026-10-01` 應可查到公開案。把起迄一起設為 `2026-10-02` 時，固定語料應回傳空清單。
+
+```powershell
+$env:PATENTSCOPE_E2E_URL = "http://127.0.0.1:18125"
+$env:PATENTSCOPE_E2E_TIPO = "dates"
+npm run test:e2e --prefix apps/web
+```
+
+日期套件會驗證搜尋結果、詳情申請日及日期來源。若同時要跑原先的全官方瀏覽器案例，使用尚未補齊日期的隔離語料執行該套件，以保留空日期欄位驗收。
+
 ```powershell
 $env:API_PORT = "18025"
 $env:WEB_PORT = "18125"

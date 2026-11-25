@@ -9,6 +9,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 MAX_XML_BYTES = 16 * 1024 * 1024
+MAX_GAZETTE_XML_BYTES = 32 * 1024 * 1024
 SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
@@ -35,7 +36,7 @@ class LocalObjectStore:
         self.root = root
 
     def put(self, data: bytes) -> RawArtifact:
-        if len(data) > MAX_XML_BYTES:
+        if len(data) > MAX_GAZETTE_XML_BYTES:
             raise ValueError("XML artifact exceeds the size limit")
         checksum = hashlib.sha256(data).hexdigest()
         artifact = RawArtifact(checksum, f"sha256/{checksum[:2]}/{checksum}", len(data))
@@ -59,9 +60,9 @@ class LocalObjectStore:
         ):
             raise ValueError("Invalid artifact locator")
         with (self.root / artifact.object_key).open("rb") as stream:
-            data = stream.read(MAX_XML_BYTES + 1)
+            data = stream.read(MAX_GAZETTE_XML_BYTES + 1)
         if (
-            len(data) > MAX_XML_BYTES
+            len(data) > MAX_GAZETTE_XML_BYTES
             or len(data) != artifact.size_bytes
             or hashlib.sha256(data).hexdigest() != checksum
         ):

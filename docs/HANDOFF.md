@@ -1235,3 +1235,24 @@
 - Uncommitted changes / file ownership warnings: 隔離容器的資料卷保留，供後續驗收。
 - Next 1–3 concrete actions: 確認新版官方 CI 通過三個 API 冒煙與瀏覽器；查證可追溯的官方文件日期；完成人工相關性複核及較大語料效能驗收。
 - Exact reproduction steps: 依 TESTING 啟動隔離官方語料與 worker，設定 `PATENTSCOPE_E2E_TIPO=1` 後執行桌面 Chromium 官方案例。使用 `python -m pytest tests/test_download.py` 重現 425 測試。
+
+## 官方公報日期工作範圍
+
+- Codex 負責公報書目原檔的日期、識別碼與卷期核對，以及隔離語料的寫入和 API 驗收。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `658447d`。
+- Current milestone and status: M1／M4 日期補齊已通過官方樣本驗收，整體 Goal IN_PROGRESS。
+- Goal of this session: 從同卷期官方書目補正申請日和文件日期，讓既有日期篩選可用。
+- Files changed (with purpose): `gazette_dates.py` 負責比對與寫入，`download.py`、`artifacts.py` 提供有上限的公報下載及物件保存，`verify_document.py` 仍選原請求項來源。研究詳情同時提供原始檔與資料集連結，新增日期 Playwright 案例。
+- Database migrations added/applied: 無新增。公開、公告兩次各寫入後再重跑，保留 117 個文件版本、2 個新增原始檔及 117 筆新增來源連結。資料僅寫入 `patentscope_plan_proof`。
+- API/Schema changes: 路徑及欄位維持原契約，既有詳情、候選及索引涵蓋範圍能讀到已補齊的日期。既有私有搜尋紀錄保留原本結果。
+- Commands actually run and results: PostgreSQL 整合啟用後 pytest 84 passed、1 則既有 Starlette 警告。Ruff lint 與格式、前端 lint 及 TypeScript 通過。官方公開案 19 項、公告案 13 項請求項仍引用各自原檔。官方 API 精確查詢、來源雜湊與日期包含／排除驗收通過。桌面、平板、手機 Chromium 日期案例 3 passed。首輪案例指出 UI 僅顯示 FTPS 原檔，補上可從瀏覽器開啟的官方目錄連結後同套件通過。
+- Tests NOT run and reason: 此次未重跑本機全官方套件。上一提交一般 CI [45671574773](https://github.com/Johnnnny0823/RAG/actions/runs/45671574773) 通過，上一提交官方流程 [45671575813](https://github.com/Johnnnny0823/RAG/actions/runs/45671575813) 截至本輪驗收仍在準備種子語料。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 實際下載公開第 024019 期及公告第 053028 期公報，核對位元組、SHA-256、卷期及日期，見 DATA_SOURCES。公開期另透過正式 CLI 重新下載與重跑。
+- Known bugs / risks / blockers: 日期補齊目前由操作員按卷期獨立執行，未接入自動排程。覆蓋限已匯入且可核對的同卷期發明案件。大型公報超過 32 MiB 時會拒絕。代表性負載、完整語料快照及人工評估仍待完成。
+- Decisions made (ADR links): 日期只填既有版本的缺值或確認相同值，原文、引用與舊搜尋紀錄仍可追溯。書目日期與請求項原文分別保留來源。
+- Uncommitted changes / file ownership warnings: 隔離測試的資料卷與原始檔保留，日常專案資料未動。
+- Next 1–3 concrete actions: 追蹤遠端官方驗收，擴充評估用的代表性官方語料與人工標註，量測檢索品質及負載。
+- Exact reproduction steps: 依 SETUP 的 `services.ingestion.gazette_dates` 兩條命令補齊隔離資料，再以 `PATENTSCOPE_E2E_TIPO=dates` 執行 Playwright。

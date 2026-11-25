@@ -33,3 +33,14 @@
 可重建語料另固定第 24 卷第 19 期 `index_all.xml` 及索引前 20 筆的個案說明書，各檔雜湊列於 [種子腳本](../scripts/seed_tipo_e2e.py)。這些雜湊來自 2026-11-09 驗收資料庫保存的原始物件紀錄。
 
 2026-11-10 重新以匿名 FTPS 取得第 24 卷第 19 期索引與公開案 `202639611` 個案 XML，兩者 SHA-256 均符合上列固定值。獨立 E2E 卷只匯入這一案，核對資料庫的 19 項請求項和 122 段說明書與封存 XML 一致。政府目錄當日仍標示每月更新、免費與政府資料開放授權條款第 1 版。[政府資料開放平臺](https://data.gov.tw/dataset/15996)
+
+## 公報書目的申請日、公開日與公告日
+
+2026-11-26 核對政府目錄與匿名 FTPS 封存檔。兩項資料由智慧財產局提供，政府目錄列免費、每月更新、政府資料開放授權條款第 1 版。FTPS 每秒與每日配額未確認。
+
+| 資料集 | 固定卷期與格式 | 下載驗證 | 可核對的範例 |
+| --- | --- | --- | --- |
+| [發明公開公報書目](https://data.gov.tw/dataset/9683) | [第 24 卷第 19 期 pubinvention.xml](ftps://ftp.tipo.gov.tw/PatentPubRegXMLB/115/PatentPubRegXMLB_024019/pubinvention.xml)，2,384 筆 | 17,322,532 bytes，`5eb3c531a3795e685f802289195da4f1779b8ca9eefef3e2f13ea8a85e634558` | `202639611`／`113133932`，公開 2026-10-01，申請 2024-09-06 |
+| [專利公告公報書目](https://data.gov.tw/dataset/15972) | [第 53 卷第 28 期 patent.xml](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053028/patent.xml)，1,640 筆，含 1,095 筆發明公告 | 23,778,073 bytes，`836c3c9db01099dfe38fa1d15e9e1d3116180126c02f5179ebcf17542c7bd5c8` | `I941082`／`114106690`，公告 2026-10-01，申請 2025-02-24 |
+
+`tipo-gazette-dates-1` 按同卷期、申請號及文件種類與編號對應已匯入版本。日期取 `application-reference/document-id/date` 與 `publication-reference/document-id/date`，把來源民國日曆轉成 PostgreSQL `date`。保留原始 XML、SHA-256 及書目 XPath。此來源用於日期補齊，缺少公報書目的既有版本仍可能無日期。

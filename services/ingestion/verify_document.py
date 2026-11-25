@@ -28,6 +28,7 @@ def verify(
                  AND d.publication_no = %s
                  AND (da.record_locator = '/invention-specification'
                       OR (d.document_stage = 'grant' AND
+                          right(da.record_locator, 1) = ']' AND
                           starts_with(da.record_locator, '/tw-patent-grants/tw-patent-grant[')))""",
             (stage, publication_no),
         ).one()

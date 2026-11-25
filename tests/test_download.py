@@ -32,5 +32,7 @@ def test_tipo_download_retries_only_425(monkeypatch, attempts, delays, expected_
     else:
         assert download.download_ftps_xml(OFFICIAL_URL) == b"<index/>"
 
-    assert transfer.call_args_list == [call(OFFICIAL_PATH, context)] * len(attempts)
+    assert transfer.call_args_list == [
+        call(OFFICIAL_PATH, context, download.MAX_XML_BYTES)
+    ] * len(attempts)
     assert wait.call_args_list == [call(seconds) for seconds in delays]
