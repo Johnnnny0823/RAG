@@ -20,7 +20,7 @@ class LocalEmbeddingModel(LocalOllamaModel):
     def identity(self):
         return "ollama", self.name, self.digest, PIPELINE
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
+    def embed(self, texts: list[str], *, timeout: int = 90) -> list[list[float]]:
         self.verify_digest()
         response = self.request_json(
             "/api/embed",
@@ -30,6 +30,7 @@ class LocalEmbeddingModel(LocalOllamaModel):
                 "truncate": False,
                 "options": {"num_ctx": 4096},
             },
+            timeout=timeout,
         )
         self.verify_digest()
         if not isinstance(response, dict) or response.get("model") != self.name:

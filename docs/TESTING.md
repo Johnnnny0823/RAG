@@ -153,3 +153,18 @@ CI 在空白測試資料卷套用遷移後執行此套件。測試驗證 Alembic
 ### 本機模型重排序
 
 在含兩種官方文件版本且啟用本機分析模型的環境，以 `PATENTSCOPE_E2E_TIPO=versions` 執行 `search-rerank.spec.ts`。案例比較關閉與開啟重排時的文件 ID 集合，驗證模型版本、候選數及雜湊，並逐筆核對 API 重排名次和畫面順序。小語料中兩種排序可以一致，這項測試驗證重排流程與候選完整性。
+
+### CPU 離線向量索引
+
+CPU 環境可以縮小嵌入批量，避免單一推論超過等待上限：
+
+```bash
+python -m services.retrieval.index_semantic --batch-size 2 --request-timeout 180
+python -m scripts.seed_tipo_e2e <cache> --embedding-batch-size 2 --embedding-timeout 180
+```
+
+批量範圍 1–24，等待範圍 1–1800 秒；預設仍是 24／90。不合法的 CLI 參數會在連線或下載前拒絕。這些旗標只影響離線索引，不改模型識別、向量內容、線上查詢預設或 SQL schema。已有完整文件索引會略過；一組文件的全部推論成功才進入寫入交易，推論中途失敗不會將該組部分向量公開。
+
+`tests/test_semantic_index.py` 驗證分批、等待傳遞、參數範圍與第二批失敗時零寫入；`tests/test_embeddings.py` 驗證傳輸等待傳遞。2026-11-25 全套 57 passed、3 skipped；獨立 PostgreSQL 套件另 3 passed。第一次全套測試因 Windows 共用 pytest 暫存目錄存取遭拒，48 passed、3 skipped、4 errors；指定新的唯一 `--basetemp` 後重跑通過。保留一則既有 Starlette 棄用警告。
+
+本機隔離模型使用固定 Ollama 映像、既有唯讀模型卷、2 CPU 與 4 GiB，未配置 GPU。兩段長 DEMO 文本（1000／960 字）產生 2 個 1024 維向量耗時 21.45 秒。官方 `202639611` XML 雜湊 `0537aedd633f9c63e7fe06790732cb0bf06e240e0bebf360c725abf9bc98d70a` 核對後解析為 19 請求項／122 段；取前兩段請求項（163／78 字）耗時 2.01 秒。此處未執行全量 CPU 索引、遠端 GitHub 官方 E2E 或新增瀏覽器回歸，不能外推為完整驗收。

@@ -37,7 +37,7 @@ jobs:
           docker exec patentscope-tipo-ollama ollama pull "$EMBEDDING_MODEL"
           docker exec patentscope-tipo-ollama ollama pull "$ANALYSIS_MODEL"
       - run: docker compose --env-file .env.example up -d --build --wait --wait-timeout 180
-      - run: python -m scripts.seed_tipo_e2e "$RUNNER_TEMP/tipo-fixture"
+      - run: python -m scripts.seed_tipo_e2e "$RUNNER_TEMP/tipo-fixture" --embedding-batch-size 2 --embedding-timeout 180
       - name: Official full text, evidence, history and PDF
         run: npm run test:e2e --prefix apps/web
         env:

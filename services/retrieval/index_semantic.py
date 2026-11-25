@@ -1,5 +1,7 @@
 """Embed missing indexed document versions with the configured local model."""
 
+import argparse
+
 from services.api.db import engine
 from services.retrieval.embeddings import (
     DIMENSIONS,
@@ -36,7 +38,13 @@ def windows(body):
             break
 
 
-def index_missing(model: LocalEmbeddingModel) -> tuple[int, int]:
+def index_missing(
+    model: LocalEmbeddingModel, *, batch_size: int = 24, request_timeout: int = 90
+) -> tuple[int, int]:
+    if not 1 <= batch_size <= 24 or not 1 <= request_timeout <= 1800:
+        raise ValueError(
+            "Batch size must be 1..24 and request timeout must be 1..1800 seconds"
+        )
     model.verify_digest()
     with engine.begin() as conn:
         conn.exec_driver_sql(
@@ -62,9 +70,12 @@ def index_missing(model: LocalEmbeddingModel) -> tuple[int, int]:
                 for start, end, text in windows(body)
             ]
         embeddings = []
-        for offset in range(0, len(chunks), 24):
+        for offset in range(0, len(chunks), batch_size):
             embeddings.extend(
-                model.embed([row[-1] for row in chunks[offset : offset + 24]])
+                model.embed(
+                    [row[-1] for row in chunks[offset : offset + batch_size]],
+                    timeout=request_timeout,
+                )
             )
         with engine.begin() as conn:
             conn.exec_driver_sql(
@@ -83,5 +94,17 @@ def index_missing(model: LocalEmbeddingModel) -> tuple[int, int]:
 
 
 if __name__ == "__main__":
-    documents, vectors = index_missing(LocalEmbeddingModel.from_env())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--batch-size", type=int, default=24)
+    parser.add_argument("--request-timeout", type=int, default=90)
+    args = parser.parse_args()
+    if not 1 <= args.batch_size <= 24 or not 1 <= args.request_timeout <= 1800:
+        parser.error(
+            "Batch size must be 1..24 and request timeout must be 1..1800 seconds"
+        )
+    documents, vectors = index_missing(
+        LocalEmbeddingModel.from_env(),
+        batch_size=args.batch_size,
+        request_timeout=args.request_timeout,
+    )
     print(f"Semantic index update complete: {documents} versions and {vectors} vectors")

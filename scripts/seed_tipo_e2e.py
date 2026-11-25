@@ -116,7 +116,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("cache", type=Path)
     parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--embedding-batch-size", type=int, default=24)
+    parser.add_argument("--embedding-timeout", type=int, default=90)
     args = parser.parse_args()
+    if (
+        not 1 <= args.embedding_batch_size <= 24
+        or not 1 <= args.embedding_timeout <= 1800
+    ):
+        parser.error(
+            "Embedding batch size must be 1..24 and timeout must be 1..1800 seconds"
+        )
     cache = args.cache.resolve()
     # import_issue reads manifest downloads from this cache, keyed by source URL.
     downloads = cache / "objects" / "download-cache" / MANIFEST_SHA256
@@ -189,7 +198,17 @@ def main() -> None:
         [*RUN, *read_only, *VERIFY, "202640162", *OBJECTS],
         [*RUN, *read_only, *VERIFY, "I941082", "--grant-issue", "053028", *OBJECTS],
         [*RUN, "migrate", "python", "-m", "services.retrieval.index_lexical"],
-        [*RUN, "migrate", "python", "-m", "services.retrieval.index_semantic"],
+        [
+            *RUN,
+            "migrate",
+            "python",
+            "-m",
+            "services.retrieval.index_semantic",
+            "--batch-size",
+            str(args.embedding_batch_size),
+            "--request-timeout",
+            str(args.embedding_timeout),
+        ],
     ]
     for command in commands:
         subprocess.run(command, check=True)

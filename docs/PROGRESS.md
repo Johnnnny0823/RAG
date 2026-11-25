@@ -97,5 +97,14 @@
 ## 2026-11-10 首次遠端 CI
 
 - [x] `main` 推送到 [Johnnnny0823/RAG](https://github.com/Johnnnny0823/RAG) 的 `12340ce`，一般 CI 的 [執行 42833320981](https://github.com/Johnnnny0823/RAG/actions/runs/42833320981) 通過。步驟含 Ruff 格式檢查、前端 lint 與建置、空白卷遷移後的 PostgreSQL 整合測試、HTTP 冒煙及 Chromium Playwright。
-- [ ] 手動 `Official patent E2E` 尚未在 GitHub runner 執行。官方 FTPS、CPU 推論時間、Firefox 與 WebKit 仍待驗證。
+- [ ] 更正：手動 `Official patent E2E` 已執行但失敗，見下方 CPU 索引修復紀錄。完整遠端瀏覽器驗收尚未通過。
 - [ ] CI 有兩則警告待處理：`actions/checkout@v4`、`setup-node@v4`、`setup-python@v5` 使用已棄用的 Node.js 20；`ubuntu-latest` 將遷移至 Ubuntu 26。
+
+## 2026-11-25 實況稽核與 CPU 向量索引修復
+
+- [x] 完成 [M0–M5 稽核](AUDIT-2026-11-25.md)，基準 `28a8c0c`，驗收估計 22/30（73.3%）；不是完整目標完成率。紀錄真實語料、Mock、未驗收項目與資安風險。
+- [x] 查明 [官方工作 42837679581](https://github.com/Johnnnny0823/RAG/actions/runs/42837679581) 的 FTPS 及詞彙索引成功，CPU embedding 在預設 90 秒內未完成；瀏覽器步驟未到達。先前「尚未執行」的紀錄不正確。
+- [x] 離線向量索引支援批量 1–24、請求等待 1–1800 秒，保留預設 24／90；官方工作指定 2／180。線上查詢預設未變更，模型與索引版本不變。整組推論成功才寫入向量，失敗不寫入部分索引。
+- [x] 新測試修復前 2 failed，修復後全套 57 passed、3 skipped；另執行 PostgreSQL 整合 3 passed。Ruff 格式及 lint 通過。細節與初次暫存目錄錯誤見 [交接](HANDOFF.md)。
+- [x] 隔離 Ollama（2 CPU、4 GiB、無 GPU）測試兩段 1000／960 字 DEMO 文本 21.45 秒；官方 `202639611` 兩段請求項 2.01 秒，各產生 1024 維向量。僅為小批量實測，不代表 1624 向量全量建置或 GitHub runner 效能。
+- [ ] 修復尚未在 GitHub 完整官方 E2E 重跑；原有遠端失敗仍有效，不能宣告 CI 修好或整體 Goal 完成。原始物件持久化、最小權限、資源配額與人工標註等仍待完成。

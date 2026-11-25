@@ -22,11 +22,12 @@ def test_embed_checks_model_digest_and_rejects_invalid_vectors(monkeypatch):
     model = LocalEmbeddingModel("http://127.0.0.1:11434", "model:tag", "a" * 64)
     calls = []
 
-    def request(self, path, payload=None):
+    def request(self, path, payload=None, **kwargs):
         calls.append(path)
         if path == "/api/tags":
             return {"models": [{"name": model.name, "digest": model.digest}]}
         assert payload["input"] == ["public corpus text"]
+        assert kwargs == {"timeout": 90}
         return {"model": model.name, "embeddings": [[0.0] * DIMENSIONS]}
 
     monkeypatch.setattr(LocalEmbeddingModel, "request_json", request)
@@ -46,6 +47,19 @@ def test_semantic_windows_retain_exact_character_offsets():
     assert [(start, end) for start, end, _ in parts] == [(0, 1000), (900, 1001)]
     assert all(text == body[start:end] for start, end, text in parts)
     assert list(windows(" ")) == []
+
+
+def test_embed_forwards_offline_timeout(monkeypatch):
+    model = LocalEmbeddingModel("http://127.0.0.1:11434", "model:tag", "a" * 64)
+    monkeypatch.setattr(LocalEmbeddingModel, "verify_digest", lambda self: None)
+
+    def request(self, path, payload=None, *, timeout):
+        assert path == "/api/embed"
+        assert timeout == 180
+        return {"model": model.name, "embeddings": [[0.01] * DIMENSIONS]}
+
+    monkeypatch.setattr(LocalEmbeddingModel, "request_json", request)
+    assert len(model.embed(["DEMO text"], timeout=180)[0]) == DIMENSIONS
 
 
 def test_semantic_endpoint_reports_disabled_provider(monkeypatch):

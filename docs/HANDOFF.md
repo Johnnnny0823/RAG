@@ -940,3 +940,30 @@
 - Uncommitted changes / file ownership warnings: 無。
 - Next 1–3 concrete actions: 手動執行 `Official patent E2E` 並依實測調整逾時。處理 CI 的兩則警告。人工複核 35 組候選後重跑評估。
 - Exact reproduction steps: `gh run list --repo Johnnnny0823/RAG`。
+## 2026-11-25 CPU 向量索引逾時修復工作範圍
+
+- Codex 負責 embeddings.py、index_semantic.py、seed_tipo_e2e.py、對應測試、官方 E2E 工作與驗收文件。目標為讓離線建索引可指定較小批量及有上限的推論等待，並保留逐文件群組的交易一致性。
+
+## M6 CPU 離線索引可設定批量與等待上限
+
+- Date/time (timezone): 2026-11-25 12:58（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `28a8c0c`；本紀錄隨修復提交。
+- Current milestone and status: M6 IN_PROGRESS（完整目標檔定義）；M0–M5 稽核估計 22/30，整體 Goal 尚未完成。
+- Goal of this session: 承接稽核確認的遠端 CPU embedding 逾時，提供受限批量／等待設定與失敗一致性測試。
+- Files changed (with purpose): `services/retrieval/embeddings.py` 傳遞離線等待；`index_semantic.py` 提供受限參數與 CLI；`scripts/seed_tipo_e2e.py` 傳遞設定；`.github/workflows/tipo-e2e.yml` 指定 2／180；`tests/test_embeddings.py`、`tests/test_semantic_index.py` 驗證傳輸、範圍與部分失敗；`docs/AUDIT-2026-11-25.md` 保存修復前唯讀稽核；PROGRESS、TESTING、本文件更新實際狀態。
+- Database migrations added/applied: 無新增／變更。使用既有隔離 `patentscope_test`，head `0010_login_failures`；沒有修改真實研究資料。
+- API/Schema changes: 無。線上預設等待 90 秒未變；模型 digest、pipeline、向量維度不變。
+- Commands actually run and results:
+  - 修復前 `pytest -q tests/test_semantic_index.py`：2 failed，尚不支援批量參數；修復後目標套件 6 passed，之後補參數及傳輸案例。
+  - `pytest -q --basetemp <unique-temp>`：57 passed、3 skipped、1 既有 Starlette 警告。首次未指定暫存目錄為 48 passed、3 skipped、4 errors，原因 WinError 5，並非通過。
+  - 設定隔離 PG 環境後 `pytest -q tests/integration --basetemp <unique-temp>`：3 passed，驗證 migration head、pgvector、API readiness、帳號／專案隔離與節流。
+  - `ruff format --check .`：73 files already formatted；`ruff check .`：All checks passed。CLI `--batch-size 0` 在啟動模型前拒絕。
+  - 隔離 `patentscope-cpu-index-proof`：2 CPU、4 GiB、DeviceRequests=null，使用唯讀既有模型卷；長 DEMO 兩段 21.45 秒；已核對官方原文兩段 2.01 秒，均 2 個 1024 維向量。這不是全量 CPU 索引或 GitHub runner 驗收。
+- Tests NOT run and reason: 本修復尚未重跑 GitHub 官方 E2E，需推送修復分支後觸發。未重跑 Playwright／前端建置，本輪只改離線索引與設定；修復前稽核已有 37 項瀏覽器測試通過，完整結果見 AUDIT。未執行 1624 向量 CPU 全量重建／模型品質人工評估。
+- Data sources checked (exact URL/date) and license/access notes: 本輪使用稽核重新取得的 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639611/113133932-A0304.xml`（2026-11-25 取得），核對 SHA-256 `0537aedd633f9c63e7fe06790732cb0bf06e240e0bebf360c725abf9bc98d70a`。未新增資料集或改變既有授權判斷。
+- Known bugs / risks / blockers: 遠端官方工作 42837679581 已失敗，尚無修復後成功證據；CPU 小批量成功不可證明全量能在 90 分鐘完成。人工標註、持久 raw store／復原、DB 最小權限、高成本端點資源上限仍未完成。既有煙霧腳本與種子期別不符。見 AUDIT 詳細分類。
+- Decisions made (ADR links): 無架構變更，不新增依賴；離線選項維持既有預設，官方 CI 明確選擇 CPU 設定。
+- Uncommitted changes / file ownership warnings: 修復檔案由 Codex 單獨修改；本機 `main` 起點較 origin/main 超前 1 個既有文件提交，未重寫歷史。測試容器完成後停止，資料卷保留。
+- Next 1–3 concrete actions: 1. 推送修復分支並觸發官方 E2E，按 runner 全量時間調整並記錄。2. 統一煙霧腳本語料契約、持久保存官方原始物件並驗證備份復原。3. 優先處理資源上限與 DB 最小權限，再由人員標註候選並執行品質評估。
+- Exact reproduction steps: 見 [TESTING CPU 離線向量索引](TESTING.md#cpu-離線向量索引)。一般單元測試用唯一 `--basetemp`；PG 使用專用 `patentscope_test`、回環連線與 `PATENTSCOPE_PG_INTEGRATION=1`，切勿改成真實資料庫。
