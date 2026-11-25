@@ -1,6 +1,6 @@
 # 資料庫設計
 
-PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，目前 head 為 `0012_search_jobs`。
+PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，目前 head 為 `0013_generated_reports`。
 
 主鍵多為 UUID（`gen_random_uuid()`），時間欄位為 `timestamptz`，只知道日期時用 `date`。
 
@@ -24,6 +24,7 @@ erDiagram
     users ||--o{ auth_sessions : "user_id"
     users ||--o{ search_jobs : "user_id"
     search_runs o|--o{ search_jobs : "run_id"
+    search_runs ||--o{ generated_reports : "run_id"
     users ||--o{ projects : "owner_user_id"
     users ||--o{ search_runs : "user_id"
     projects ||--o{ search_runs : "user_id, project_id"
@@ -113,3 +114,5 @@ erDiagram
 `search_jobs` 保存狀態與活動期間的搜尋請求。部分唯一索引限制每個帳號一次只有一項等待中或執行中工作。工作程序以 `FOR UPDATE SKIP LOCKED` 認領佇列，提交交易後執行模型推論，避免長時間持有資料庫鎖。成功保存時，同一交易建立搜尋快照與候選並將工作標記為成功；取消後無法進入保存交易。
 
 完成、失敗及取消會移除工作上的原始請求。刪除帳號或已保存搜尋，相關工作狀態也會一併清理。
+
+`generated_reports` 透過搜尋紀錄外鍵繼承所有權。工作成功時才寫入最多 8 MiB 的 PDF，完成一小時後由工作程序清理。刪除搜尋紀錄會連帶刪除報告工作與檔案。若在暫存期間建立資料庫備份，備份可能也包含這些私人 PDF。

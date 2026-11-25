@@ -240,7 +240,19 @@ export function Research() {
   }
 
   async function downloadReport(runId: string, token: string) {
-    const response = await fetchWithDeadline(`/api/v1/search-runs/${runId}/report.pdf`, {
+    type ReportJob = { id: string; status: "queued" | "running" | "succeeded" | "failed" };
+    const reports = `/search-runs/${runId}/reports`;
+    let report = await request<ReportJob>(reports, {}, token);
+    const path = `${reports}/${report.id}`;
+    const deadline = Date.now() + 10 * 60_000;
+    while (report.status === "queued" || report.status === "running") {
+      setBusy(report.status === "queued" ? "PDF 等待產生…" : "正在產生私人 PDF…");
+      if (Date.now() >= deadline) throw new Error("報告仍在等待或處理，請稍後重新開啟匯出。");
+      await new Promise((resolve) => window.setTimeout(resolve, 1000));
+      report = await request<ReportJob>(path, undefined, token);
+    }
+    if (report.status !== "succeeded") throw new Error("目前無法產生 PDF，請稍後重試。");
+    const response = await fetchWithDeadline(`/api/v1${path}/pdf`, {
       headers: { Authorization: "Bearer " + token },
       cache: "no-store",
     });

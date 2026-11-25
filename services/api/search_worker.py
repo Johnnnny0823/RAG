@@ -10,6 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from services.api.db import engine
 from services.api.model_limits import ModelBusy
 from services.api.patents import HybridSearchRequest, run_hybrid
+from services.api.report_jobs import process_one_report
 from services.api.search_runs import persist_search
 
 logger = logging.getLogger(__name__)
@@ -80,7 +81,9 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     while True:
         try:
-            if process_one():
+            searched = process_one()
+            reported = process_one_report()
+            if searched or reported:
                 continue
         except SQLAlchemyError as exc:
             logger.warning("Search worker database error type=%s", type(exc).__name__)

@@ -1149,3 +1149,25 @@
 - Uncommitted changes / file ownership warnings: 隔離工作程序、Web、API 與 DB 驗證後停止，保留測試卷。
 - Next 1–3 concrete actions: 驗收遠端官方流程；補報告及匯入任務狀態；進行相關性評估。
 - Exact reproduction steps: 在 worker 停止時跑 PostgreSQL 整合 pytest。以 `docker compose up -d --build search-worker` 啟動後，依 TESTING 執行官方 Playwright。
+
+## 私人 PDF 背景匯出工作範圍
+
+- Codex 負責 PDF 工作狀態、暫存及授權，整合既有資料庫工作程序、研究介面及端到端驗收。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `f8b6f47`。
+- Current milestone and status: M5 私人報告背景生成；完整 Goal IN_PROGRESS。
+- Goal of this session: 讓 PDF 生成脫離 HTTP 請求，並維持授權與原文驗證。
+- Files changed (with purpose): `0013_generated_reports.py`、`report_jobs.py` 提供工作與暫存；現有工作程序取件，PDF 共用原產生器與授權查詢。研究介面改為排隊、輪詢、下載；新增 PostgreSQL 測試，擴充官方 E2E。
+- Database migrations added/applied: `0013_generated_reports`，已在空白與既有隔離庫驗證。報告與搜尋紀錄級聯刪除，下載有效期一小時。
+- API/Schema changes: `/api/v1/search-runs/{run_id}/reports` 為 HTTP 202 入口，另有狀態與 PDF 端點；同步端點保留。
+- Commands actually run and results: PostgreSQL 整合開啟後 pytest 72 passed、1 則既有 Starlette 警告。Ruff 格式與 lint、前端 lint 與 TypeScript 通過。隔離 DB 測試涵蓋重複送出、未完成回傳 409、跨帳號 404、PDF 欄位與禁止快取、過期遮蔽和級聯刪除。
+- Commands actually run and results（續）: 真實官方資料的 Chromium 桌面案例 1 passed，驗證排入報告工作回傳 HTTP 202，工作完成後下載私人 PDF，核對繁中構想、原文引證、雜湊及官方連結。上一提交 `f8b6f47` 的一般遠端 CI [45624748266](https://github.com/Johnnnny0823/RAG/actions/runs/45624748266) 通過。
+- Tests NOT run and reason: 本提交尚未完成遠端官方與其他瀏覽器套件；本機以小語料和桌面 Chromium 驗收報告流程。
+- Data sources checked (exact URL/date) and license/access notes: 沿用早前已校驗的第 024019 期官方小語料，未下載新資料。
+- Known bugs / risks / blockers: 報告和搜尋共用單工作程序，長搜尋可能推遲報告。尚未完成匯入與嵌入的任務管控、人工品質評估及正式部署。
+- Decisions made (ADR links): 暫存 PDF 以 PostgreSQL 保存，每份上限 8 MiB。直接在來源搜尋紀錄上檢查所有權及刪除關係。
+- Uncommitted changes / file ownership warnings: 專用 Compose 專案驗收後停止，測試資料卷保留。
+- Next 1–3 concrete actions: 補匯入任務的管理及狀態；查核最新版遠端官方驗收；執行 RAG 人工評估。
+- Exact reproduction steps: 依 TESTING 在 worker 停止時執行 PostgreSQL 整合測試；啟動 worker 後執行 `PATENTSCOPE_E2E_TIPO=1` 的官方案例。

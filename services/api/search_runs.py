@@ -179,6 +179,11 @@ def assign_project(
 
 @router.get("/{run_id}", response_model=RunDetails)
 def load_search(run_id: UUID, account: Owner, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return read_saved_search(run_id, account.id)
+
+
+def read_saved_search(run_id: UUID, user_id: UUID) -> RunDetails | JSONResponse:
     try:
         with engine.connect().execution_options(
             isolation_level="REPEATABLE READ"
@@ -187,7 +192,7 @@ def load_search(run_id: UUID, account: Owner, response: Response):
                 conn.exec_driver_sql(
                     """SELECT id, created_at, project_id, request, settings
                        FROM search_runs WHERE id=%s AND user_id=%s""",
-                    (run_id, account.id),
+                    (run_id, user_id),
                 )
                 .mappings()
                 .one_or_none()
@@ -198,7 +203,7 @@ def load_search(run_id: UUID, account: Owner, response: Response):
                 conn.exec_driver_sql(
                     """SELECT c.result FROM search_run_candidates c JOIN search_runs r ON r.id=c.run_id
                    WHERE r.id=%s AND r.user_id=%s ORDER BY c.position""",
-                    (run_id, account.id),
+                    (run_id, user_id),
                 )
                 .scalars()
                 .all()
@@ -207,14 +212,13 @@ def load_search(run_id: UUID, account: Owner, response: Response):
                 conn.exec_driver_sql(
                     """SELECT c.result FROM search_run_comparisons c JOIN search_runs r ON r.id=c.run_id
                    WHERE r.id=%s AND r.user_id=%s ORDER BY c.document_id""",
-                    (run_id, account.id),
+                    (run_id, user_id),
                 )
                 .scalars()
                 .all()
             )
     except SQLAlchemyError:
         return unavailable()
-    response.headers["Cache-Control"] = "no-store"
     return RunDetails.model_validate(
         {**run, "items": results, "comparisons": comparisons}
     )

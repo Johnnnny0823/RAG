@@ -29,6 +29,7 @@ RESEARCH_GRANTS = {
     "projects": "SELECT, INSERT, UPDATE, DELETE",
     "search_runs": "SELECT, INSERT, UPDATE, DELETE",
     "search_jobs": "SELECT, INSERT, UPDATE, DELETE",
+    "generated_reports": "SELECT, INSERT, UPDATE, DELETE",
     "search_run_candidates": "SELECT, INSERT",
     "search_run_comparisons": "SELECT, INSERT",
     "saved_patents": "SELECT, INSERT, UPDATE, DELETE",

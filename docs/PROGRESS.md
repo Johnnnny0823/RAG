@@ -120,3 +120,4 @@
 - [x] 構想描述、混合搜尋及 Session 上限擴為 1,200 字元，長篇按句段展開並保留原文及查詢策略版本。70 項 pytest 含 PostgreSQL 整合通過。官方 Chromium 流程驗證 202 字構想的 AI 拆解、保存、歷史及 PDF。另以 1,200 字透過真實模型驗證 Session 保存及混合搜尋命中官方 `202639611`。[API](API.md)
 - [x] 前一提交 `f8323e4` 的一般遠端 CI [45621413069](https://github.com/Johnnnny0823/RAG/actions/runs/45621413069) 通過。
 - [x] 已登入的「搜尋並保存」改用 PostgreSQL 背景工作，可查詢進度及取消。71 項 pytest 含 PostgreSQL 整合通過，驗證帳號隔離與取消不保存。官方 Chromium 桌面 1 項通過，包含 202 排隊、真實模型、保存快照、引文及 PDF。跨瀏覽器官方驗收與報告／匯入任務仍待完成。[API](API.md)
+- [x] 私人 PDF 已由背景工作生成，完成後以本人權限下載。72 項 pytest 含 PostgreSQL 整合通過，桌面官方 Chromium 1 項通過，核對回傳 202、報告中繁中內容、原文引證及官方連結。匯入與嵌入任務仍待整合。[API](API.md)

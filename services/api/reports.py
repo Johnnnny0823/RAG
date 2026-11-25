@@ -25,7 +25,7 @@ from services.api.patents import (
     document_sources_by_id,
     unavailable,
 )
-from services.api.search_runs import Owner, RunDetails, load_search
+from services.api.search_runs import Owner, RunDetails, read_saved_search
 
 router = APIRouter(
     prefix="/api/v1/search-runs", tags=["research"], route_class=PatentRoute
@@ -237,7 +237,14 @@ def build_report(run: RunDetails, sources: dict[UUID, list[SourceArtifact]]) -> 
     },
 )
 def export_report(run_id: UUID, account: Owner):
-    run = load_search(run_id, account, Response())
+    pdf = render_saved_report(run_id, account.id)
+    if isinstance(pdf, JSONResponse):
+        return pdf
+    return pdf_attachment(run_id, pdf)
+
+
+def render_saved_report(run_id: UUID, user_id: UUID) -> bytes | JSONResponse:
+    run = read_saved_search(run_id, user_id)
     if isinstance(run, JSONResponse):
         return run
     try:
@@ -248,11 +255,14 @@ def export_report(run_id: UUID, account: Owner):
     except SQLAlchemyError:
         return unavailable()
     try:
-        pdf = build_report(run, sources)
+        return build_report(run, sources)
     except (OSError, TTFError, ValueError):
         return api_error(
             503, "REPORT_UNAVAILABLE", "目前無法產生 PDF，請確認報告字型設定。"
         )
+
+
+def pdf_attachment(run_id: UUID, pdf: bytes) -> Response:
     return Response(
         pdf,
         media_type="application/pdf",

@@ -185,11 +185,23 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     await savedEvidence.getByText("原文證據與定位", { exact: true }).click();
     await expect(savedEvidence.getByText(citation.xpath, { exact: true })).toBeVisible();
 
-    const reportResponse = page.waitForResponse((response) => response.url().endsWith(`/api/v1/search-runs/${id}/report.pdf`));
+    const reportsPath = `/api/v1/search-runs/${id}/reports`;
+    const acceptedReport = page.waitForResponse((response) =>
+      response.request().method() === "POST" && new URL(response.url()).pathname === reportsPath,
+    );
+    const reportResponse = page.waitForResponse((response) => {
+      const path = new URL(response.url()).pathname;
+      return path.startsWith(`${reportsPath}/`) && path.endsWith("/pdf");
+    });
     const downloaded = page.waitForEvent("download");
     await button("匯出 PDF 報告").click();
+    const accepted = await acceptedReport;
+    expect(accepted.status()).toBe(202);
+    const queuedReport = await accepted.json();
+    expect(queuedReport.status).toBe("queued");
     const report = await reportResponse;
     expect(report.ok()).toBe(true);
+    expect(new URL(report.url()).pathname).toBe(`${reportsPath}/${queuedReport.id}/pdf`);
     expect(report.headers()["content-type"]).toBe("application/pdf");
     expect(report.headers()["cache-control"]).toBe("private, no-store");
     const download = await downloaded;

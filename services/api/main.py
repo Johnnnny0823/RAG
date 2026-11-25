@@ -17,6 +17,7 @@ from services.api.projects import router as projects_router
 from services.api.bookmarks import router as bookmarks_router
 from services.api.sessions import router as sessions_router
 from services.api.reports import router as reports_router
+from services.api.report_jobs import router as report_jobs_router
 from services.api.queries import router as queries_router
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ app.include_router(projects_router)
 app.include_router(bookmarks_router)
 app.include_router(sessions_router)
 app.include_router(reports_router)
+app.include_router(report_jobs_router)
 
 
 class HealthResponse(BaseModel):

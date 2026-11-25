@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError, ProgrammingError
 
 from services.api.db import engine
 from services.api.main import app
-from services.api import search_worker
+from services.api import report_jobs, search_worker
 from services.api.patents import HybridSearchResults
 
 pytestmark = pytest.mark.skipif(
@@ -239,3 +239,51 @@ def test_background_search_saves_snapshot_only_for_completed_owner_job(
     assert search_worker.process_one()
     assert client.get(path, headers=owner).json()["run_id"] is None
     assert len(client.get("/api/v1/search-runs", headers=owner).json()) == 1
+
+
+def test_background_report_is_private_ephemeral_and_deleted_with_run(
+    accounts, monkeypatch
+):
+    client, ((owner_id, owner, _), (_, other, _)) = accounts
+    with engine.begin() as conn:
+        run_id = conn.exec_driver_sql(
+            """INSERT INTO search_runs (user_id, request, settings)
+               VALUES (%s, '{"query":"DEMO"}', '{}') RETURNING id""",
+            (owner_id,),
+        ).scalar_one()
+    reports = f"/api/v1/search-runs/{run_id}/reports"
+    assert client.post(reports, headers=other).status_code == 404
+    queued = client.post(reports, headers=owner)
+    assert queued.status_code == 202
+    path = queued.headers["Location"]
+    assert client.post(reports, headers=owner).headers["Location"] == path
+    assert client.get(path + "/pdf", headers=owner).status_code == 409
+    assert client.get(path, headers=other).status_code == 404
+    assert client.get(path + "/pdf", headers=other).status_code == 404
+
+    def render(run, user):
+        assert (run, user) == (run_id, owner_id)
+        return b"%PDF-1.4\nDEMO"
+
+    monkeypatch.setattr(report_jobs, "render_saved_report", render)
+    assert report_jobs.process_one_report()
+    assert client.get(path, headers=owner).json()["status"] == "succeeded"
+    download = client.get(path + "/pdf", headers=owner)
+    assert download.content == b"%PDF-1.4\nDEMO"
+    assert download.headers["Cache-Control"] == "private, no-store"
+    assert download.headers["Content-Type"] == "application/pdf"
+    assert client.get(path + "/pdf", headers=other).status_code == 404
+
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "UPDATE generated_reports SET finished_at = now() - interval '2 hours' WHERE run_id=%s",
+            (run_id,),
+        )
+    assert client.get(path + "/pdf", headers=owner).status_code == 404
+    assert (
+        client.delete(f"/api/v1/search-runs/{run_id}", headers=owner).status_code == 204
+    )
+    with engine.connect() as conn:
+        assert not conn.exec_driver_sql(
+            "SELECT EXISTS (SELECT 1 FROM generated_reports WHERE run_id=%s)", (run_id,)
+        ).scalar_one()
