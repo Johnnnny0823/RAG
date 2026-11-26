@@ -1,10 +1,52 @@
 from datetime import date
+from contextlib import nullcontext
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 from pytest import mark, raises
 
 from services.ingestion import legal_refresh
+from services.ingestion import legal_events
 from services.ingestion.artifacts import LocalObjectStore
 from services.ingestion.legal_events import parse_events
+
+
+def test_replay_checks_local_integrity_and_continues_other_issues(
+    monkeypatch, tmp_path
+):
+    store = LocalObjectStore(tmp_path)
+    valid = store.put(b"verified DEMO fixture")
+    rows = [
+        SimpleNamespace(
+            batch_key="053032",
+            source_locator=legal_events.archive_url("115", "053032", "sud08"),
+            checksum=valid.checksum,
+            object_key=valid.object_key,
+            size_bytes=valid.size_bytes + 1,
+        ),
+        SimpleNamespace(
+            batch_key="053033",
+            source_locator=legal_events.archive_url("115", "053033", "sud24"),
+            checksum=valid.checksum,
+            object_key=valid.object_key,
+            size_bytes=valid.size_bytes,
+        ),
+    ]
+    connection = Mock()
+    connection.exec_driver_sql.return_value.all.return_value = rows
+    monkeypatch.setattr(legal_events.engine, "connect", lambda: nullcontext(connection))
+    importer = Mock(return_value={"new_events": 2})
+    monkeypatch.setattr(legal_events, "import_events", importer)
+
+    assert legal_events.replay_stored_events(store) == {
+        "replayed_artifacts": 1,
+        "failed_artifacts": 1,
+        "new_events": 2,
+    }
+    importer.assert_called_once_with(
+        b"verified DEMO fixture", store, "115", "053033", "sud24"
+    )
+
 
 # Synthetic event for parser regression coverage.
 EXTINGUISHMENT = b"""<!DOCTYPE Sud08Dataset SYSTEM "sud08.dtd"[]>

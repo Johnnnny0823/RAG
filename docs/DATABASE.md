@@ -1,8 +1,10 @@
 # 資料庫設計
 
-PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，此整合分支 head 為 `0018_audit_logs`。
+PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，此整合分支 head 為 `0019_legal_event_catalog`。
 
 `audit_logs` 保存帳號 UUID、操作、結果、資源類型、可選的資源 UUID 及時間。API 角色可讀取與新增，無更新或刪除權限。刪除帳號時由外鍵清理歷程。
+
+`legal_event_catalog` 保留已驗證發明異動的申請號、證書號、日期、原始檔及記錄位置。專利匯入時以申請號索引配對，已連結的詳情仍從 `patent_legal_events` 讀取。API 角色無異動暫存表的讀寫權限。
 
 主鍵多為 UUID（`gen_random_uuid()`），時間欄位為 `timestamptz`，只知道日期時用 `date`。
 

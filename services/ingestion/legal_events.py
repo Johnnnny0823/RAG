@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import logging
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
@@ -10,15 +11,21 @@ from datetime import date
 from psycopg.types.json import Jsonb
 
 from services.api.db import engine
-from services.ingestion.artifacts import LocalObjectStore, add_objects_argument
+from services.ingestion.artifacts import (
+    LocalObjectStore,
+    RawArtifact,
+    add_objects_argument,
+)
 from services.ingestion.download import download_ftps_xml
 from services.ingestion.gazette_dates import roc_date
 from services.ingestion.import_issue import LICENSE_URL
+from services.ingestion.legal_linking import link_events
 from services.ingestion.patentpub import parse_xml, patent_number
 
 DATASET_URL = "https://data.gov.tw/dataset/15974"
 PARSER_VERSION = "tipo-sundry-events-1"
 TYPES = {"sud08": "extinguishment", "sud24": "gazette_correction"}
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -119,17 +126,12 @@ def import_events(
                RETURNING id""",
             (batch_id, url, raw.checksum, raw.object_key, raw.size_bytes),
         ).scalar_one()
-        inserted = conn.exec_driver_sql(
-            """INSERT INTO patent_legal_events
-                   (application_id,artifact_id,kind,certificate_no,effective_on,detail,record_locator)
-               SELECT a.id,%s,%s,p.certificate_no,p.effective_on,p.detail,p.record_locator
+        conn.exec_driver_sql(
+            """INSERT INTO legal_event_catalog
+                   (artifact_id,kind,application_no,certificate_no,effective_on,detail,record_locator)
+               SELECT %s,%s,p.application_no,p.certificate_no,p.effective_on,p.detail,p.record_locator
                FROM jsonb_to_recordset(%s) AS p(application_no text, certificate_no text,
                    effective_on date, detail text, record_locator text)
-               JOIN patent_applications a ON a.jurisdiction = 'TW' AND a.application_no = p.application_no
-               WHERE NOT EXISTS (
-                   SELECT 1 FROM patent_documents d WHERE d.application_id = a.id
-                     AND d.document_stage = 'grant' AND d.publication_no <> p.certificate_no
-               )
                ON CONFLICT (artifact_id,record_locator) DO NOTHING""",
             (
                 artifact_id,
@@ -139,12 +141,17 @@ def import_events(
                     dumps=lambda payload: json.dumps(payload, default=date.isoformat),
                 ),
             ),
-        ).rowcount
+        )
+        inserted = link_events(conn, artifact_id=artifact_id)
         matched = conn.exec_driver_sql(
             "SELECT count(*) FROM patent_legal_events WHERE artifact_id=%s",
             (artifact_id,),
         ).scalar_one()
-        counts = {"invention_events": len(events), "matched_events": matched}
+        counts = {
+            "invention_events": len(events),
+            "matched_events": matched,
+            "cataloged_events": len(events),
+        }
         conn.exec_driver_sql(
             "UPDATE ingestion_batches SET counts_jsonb=%s WHERE id=%s",
             (Jsonb(counts), batch_id),
@@ -152,25 +159,70 @@ def import_events(
     return {**counts, "new_events": inserted, "sha256": raw.checksum}
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--year", required=True)
-    parser.add_argument("--issue", required=True)
-    parser.add_argument("--type", choices=TYPES, required=True)
-    add_objects_argument(parser)
-    args = parser.parse_args()
-    try:
-        url = archive_url(args.year, args.issue, args.type)
-        result = import_events(
-            download_ftps_xml(url),
-            LocalObjectStore(args.objects),
-            args.year,
-            args.issue,
-            args.type,
+def replay_stored_events(store: LocalObjectStore) -> dict:
+    with engine.connect() as conn:
+        pending = conn.exec_driver_sql(
+            """SELECT b.batch_key, ia.source_locator, ia.checksum, ia.object_key, ia.size_bytes
+               FROM ingestion_artifacts ia
+               JOIN ingestion_batches b ON b.id = ia.batch_id
+               JOIN source_datasets s ON s.id = b.dataset_id
+               WHERE s.dataset_key = 'TIPO-15974' AND NOT s.is_demo
+                 AND ia.status = 'parsed' AND b.status = 'complete'
+                 AND b.parser_version = %s AND NOT (b.counts_jsonb ? 'cataloged_events')
+               ORDER BY b.batch_key, ia.source_locator""",
+            (PARSER_VERSION,),
+        ).all()
+    inserted = failed = 0
+    for row in pending:
+        match = re.fullmatch(
+            r"ftps://ftp\.tipo\.gov\.tw/PatentIsuModXML/([0-9]{3})/PatentIsuModXML_([0-9]{6})/(sud08|sud24)\.xml",
+            row.source_locator,
         )
+        try:
+            if not match or match[2] != row.batch_key:
+                raise ValueError("Stored TIPO event source does not match its batch")
+            data = store.read(RawArtifact(row.checksum, row.object_key, row.size_bytes))
+            inserted += import_events(data, store, *match.groups())["new_events"]
+        except (OSError, ValueError, ET.ParseError) as error:
+            failed += 1
+            logger.warning(
+                "TIPO event replay failed for %s (%s)", row.source_locator, error
+            )
+    return {
+        "replayed_artifacts": len(pending) - failed,
+        "failed_artifacts": failed,
+        "new_events": inserted,
+    }
+
+
+def main(argv=None) -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--year")
+    parser.add_argument("--issue")
+    parser.add_argument("--type", choices=TYPES)
+    parser.add_argument("--replay-stored", action="store_true")
+    add_objects_argument(parser)
+    args = parser.parse_args(argv)
+    selection = (args.year, args.issue, args.type)
+    if (args.replay_stored and any(selection)) or (
+        not args.replay_stored and not all(selection)
+    ):
+        parser.error(
+            "Specify --replay-stored or a complete --year, --issue, --type selection"
+        )
+    store = LocalObjectStore(args.objects)
+    try:
+        if args.replay_stored:
+            result = replay_stored_events(store)
+        else:
+            result = import_events(
+                download_ftps_xml(archive_url(*selection)), store, *selection
+            )
     except (OSError, ValueError, ET.ParseError) as error:
         parser.exit(1, f"{error}\n")
     print(json.dumps(result))
+    if result.get("failed_artifacts"):
+        parser.exit(1)
 
 
 if __name__ == "__main__":

@@ -55,6 +55,7 @@ def test_legal_refresh_still_runs_after_publication_failure(monkeypatch):
 
     completed = []
     monkeypatch.setattr(refresh_publications, "refresh_once", fail)
+    monkeypatch.setattr(refresh_publications, "replay_legal", lambda _: None)
     monkeypatch.setattr(refresh_publications, "refresh_legal", completed.append)
     refresh_publications.serve(
         ["--apply"], 86400, 900, lambda: bool(completed), legal_year="115"
@@ -70,6 +71,7 @@ def test_legal_history_keeps_the_latest_gazette_refresh(monkeypatch):
         raise SystemExit(1)
 
     monkeypatch.setattr(refresh_publications, "refresh_once", lambda _: 0)
+    monkeypatch.setattr(refresh_publications, "replay_legal", lambda _: None)
     monkeypatch.setattr(refresh_publications, "refresh_archive", recover)
     monkeypatch.setattr(refresh_publications, "refresh_legal", completed.append)
     refresh_publications.serve(

@@ -1859,3 +1859,22 @@
 - Uncommitted changes / file ownership warnings: ZIP 未整批套用，原工作區的歷史異動配對變更維持現況。
 - Next 1–3 concrete actions: 核對此提交一般及官方 CI，接續保留的歷史異動配對並整合遷移鏈，完成人工檢索複核與正式環境驗收。
 - Exact reproduction steps: 依 TESTING 跑 PostgreSQL 整合、工作台 Playwright 及 `PATENTSCOPE_E2E_TIPO=1`。使用正式映像完成服務工作程序註冊後，將瀏覽器切為離線並重整，以確認離線頁及 API 快取隔離。
+
+## 晚入庫案件的歷史異動配對
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `057654a`。
+- Current milestone and status: 官方資料匯入與整合驗收 IN_PROGRESS。
+- Goal of this session: 將晚入庫案件的自動歷史異動配對接到 Gemini 整合分支。
+- Files changed (with purpose): 增加 `legal_linking.py`，串接 `import_issue.py`、`legal_events.py`、`run_pipeline.py` 及定期更新；異動重播測試覆蓋損壞物件及續跑。
+- Database migrations added/applied: `0019_legal_event_catalog` 接在 `0018_audit_logs`，Alembic 單一 head。空庫及既有隔離庫套用成功，空測試庫亦通過回復至 `0018_audit_logs` 再升級。API 角色無暫存表讀權限。
+- API/Schema changes: 保留專利詳情 `legal_events` 契約。
+- Commands actually run and results: 含 PostgreSQL 的 pytest 124 passed、1 則既有 Starlette 警告。Ruff lint 與格式通過。用 `legal_events --replay-stored` 讀取 4 個保存的官方異動原檔，加總 1,884 筆。先核對 `I874744` 尚未入庫，再匯入其官方 `052007` 公告，得到 1 筆 `053032` 更正。API 核對 `sud24` 第 2 筆原文位置、證書號及 SHA-256。同批重跑與再次重播後資料庫仍只有 1 筆。Gemini 程式提交 `daa86ac` 的 [一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45874611331) 已通過。
+- Tests NOT run and reason: 這次沒有改前端。Gemini 提交的完整官方 E2E 繼續運行，尚未得出結果。
+- Data sources checked (exact URL/date) and license/access notes: 使用先前保存的 `ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053032/sud24.xml` 及 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/114/PatentIsuRegSpecXMLA_052007/index.xml`，未從來源重新下載。
+- Known bugs / risks / blockers: 歷史配對涵蓋已保存且通過解析的事件。其他官方類別、任意案件即時權利狀態及人工檢索評估仍待處理。
+- Decisions made (ADR links): 保留原檔、以申請號查找、兩端匯入後以交易鎖同步連結。重播會驗證原檔完整性，錯誤不阻擋其他檔案。
+- Uncommitted changes / file ownership warnings: 原工作區的未提交版本仍保留。此分支已重新接續遷移，整合時直接沿用此版本以避免重複移植。
+- Next 1–3 concrete actions: 查核官方 E2E，接續正式目標主機驗收及人工相關性複核。
+- Exact reproduction steps: 先從有保留物件的測試庫執行 `legal_events --replay-stored`，再匯入公告 `I874744` 並查其 API 詳情。

@@ -27,6 +27,7 @@ from services.ingestion.download import (
 from services.ingestion.claim_references_v1 import INSERT_REFERENCES, reference_pairs
 from services.ingestion.issue_index import parse_issue_index
 from services.ingestion.issue_manifest import fetch_specifications, resolve_spec_urls
+from services.ingestion.legal_linking import link_events
 from services.ingestion.patentpub import PatentPublication
 from services.ingestion.specification import Claim, Section, parse_specification
 
@@ -413,6 +414,10 @@ def import_issue(args):
             ]
         if args.grant_number:
             counts["grants_with_claims"] = len(records)
+        if records and not args.demo:
+            counts["legal_events_linked"] = link_events(
+                conn, applications=sorted({record.application_no for record in records})
+            )
         conn.exec_driver_sql(
             """UPDATE ingestion_batches SET status = %s, counts_jsonb = %s, finished_at = now()
                WHERE id = %s""",

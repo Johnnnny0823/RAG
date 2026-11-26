@@ -13,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from services.ingestion.archive_refresh import refresh_archive
 from services.ingestion.latest_publication import main as refresh_once
+from services.ingestion.legal_events import main as replay_legal
 from services.ingestion.legal_refresh import main as refresh_legal
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ def serve(
     if include_grants:
         batches.append(("grant", [*options, "--grants"], grant_from))
     if legal_year:
+        batches.append(("legal-replay", ["--replay-stored"], None))
         if legal_from:
             batches.append(("legal", ["--apply"], legal_from))
         batches.append(("legal-latest", ["--year", legal_year, "--apply"], None))
@@ -46,7 +48,9 @@ def serve(
                 return
             try:
                 archive_year = legal_year if stage == "legal" else catch_up_year
-                if stage == "legal-latest":
+                if stage == "legal-replay":
+                    replay_legal(arguments)
+                elif stage == "legal-latest":
                     refresh_legal(arguments)
                 elif archive_year and first_issue:
                     needs_retry |= refresh_archive(

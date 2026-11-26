@@ -417,7 +417,9 @@ docker compose run --rm migrate python -m services.ingestion.legal_refresh --yea
 docker compose run --rm migrate python -m services.ingestion.legal_refresh --year 115 --archive-issue 053032 --apply
 ```
 
-若要定期補匯，另設 `TIPO_REFRESH_LEGAL_FROM=053032`。服務會從同年同卷的起始期依序核對封存，沿用 `TIPO_REFRESH_CATCH_UP_MAX_ISSUES` 限制每輪期數，並以 PostgreSQL 記錄成功期別。歷史補匯發生錯誤時，最新 P10 仍會繼續核對。歷史期別已完成後才匯入的案件，可用上列單期命令重新配對。
+若要定期補匯，另設 `TIPO_REFRESH_LEGAL_FROM=053032`。服務會從同年同卷的起始期依序核對封存，沿用 `TIPO_REFRESH_CATCH_UP_MAX_ISSUES` 限制每輪期數，並以 PostgreSQL 記錄成功期別。歷史補匯發生錯誤時，最新 P10 仍會繼續核對。已保存的歷史事件會在案件入庫時自動配對。
+
+升級前保存的原檔會由異動排程補建一次索引，也可在有相同原始物件資料卷的環境手動執行 `docker compose run --rm migrate python -m services.ingestion.legal_events --replay-stored`。重播會核對雜湊。個別原檔缺漏或損壞時，其他原檔仍可處理，命令以非零代碼回報。
 
 ### 追蹤匯入及建立索引
 

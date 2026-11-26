@@ -63,6 +63,7 @@ def run_pipeline(
                     "invalid_records",
                     "quarantined_specs",
                     "grants_with_claims",
+                    "legal_events_linked",
                     "reused",
                 )
                 if key in imported
