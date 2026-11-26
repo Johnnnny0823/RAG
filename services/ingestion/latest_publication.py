@@ -1,4 +1,4 @@
-"""Discover the latest TIPO invention publication issue and optionally import it."""
+"""Discover a latest TIPO publication or grant issue and optionally import it."""
 
 import argparse
 import hashlib
@@ -11,10 +11,13 @@ from tempfile import TemporaryDirectory
 from xml.etree.ElementTree import ParseError
 
 from services.ingestion.download import (
+    GRANT_INDEX_URL,
     INDEX_URL,
     download_ftps_xml,
+    download_grant_index,
     download_publication_index,
 )
+from services.ingestion.grant_index import discover_grant_issue, parse_selected_grants
 from services.ingestion.import_issue import parse_import_args
 from services.ingestion.issue_index import discover_issue, parse_issue_index
 from services.ingestion.issue_manifest import HOST, resolve_spec_urls
@@ -28,6 +31,10 @@ def main(argv=None) -> int:
     )
     parser.add_argument("--limit", type=int, default=100)
     parser.add_argument(
+        "--grants", action="store_true", help="Use the official S01 grant index"
+    )
+    parser.add_argument("--grant-number", action="append", default=[])
+    parser.add_argument(
         "--archive-year",
         help="Official three-digit ROC archive year for full specifications",
     )
@@ -38,6 +45,8 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     if not 1 <= args.limit <= 500:
         parser.error("--limit must be between 1 and 500")
+    if args.grant_number and (not args.grants or len(args.grant_number) > args.limit):
+        parser.error("--grant-number requires --grants and cannot exceed --limit")
     if args.apply and args.objects is None:
         parser.error("--apply requires --objects or PATENT_OBJECTS_DIR")
     if args.archive_year is not None and not re.fullmatch(
@@ -46,38 +55,56 @@ def main(argv=None) -> int:
         parser.error("--archive-year must be a three-digit ROC year")
 
     manifest = None
+    certificates = []
+    source = GRANT_INDEX_URL if args.grants else INDEX_URL
+    archive = "PatentIsuRegSpecXMLA" if args.grants else "InventionPubXML"
     try:
-        data = download_publication_index()
-        issue, total_records = discover_issue(data)
+        if args.grants:
+            data = download_grant_index()
+            issue, available = discover_grant_issue(data)
+            total_records = len(available)
+            certificates = args.grant_number or available[: args.limit]
+            # Verify claims and identities before any of the selected grants are imported.
+            records = [
+                record for record, _ in parse_selected_grants(data, issue, certificates)
+            ]
+        else:
+            data = download_publication_index()
+            issue, total_records = discover_issue(data)
         if args.archive_year is not None:
             manifest_url = (
-                f"{HOST}/InventionPubXML/{args.archive_year}"
-                f"/InventionPubXML_{issue}/index_all.xml"
+                f"{HOST}/{archive}/{args.archive_year}/{archive}_{issue}/index_all.xml"
             )
             manifest = download_ftps_xml(manifest_url)
-            records, invalid = parse_issue_index(data, args.limit, issue)
-            if invalid:
-                raise ValueError(
-                    "Invalid selected publication records in the latest index"
-                )
+            if not args.grants:
+                records, invalid = parse_issue_index(data, args.limit, issue)
+                if invalid:
+                    raise ValueError(
+                        "Invalid selected publication records in the latest index"
+                    )
             resolve_spec_urls(
                 manifest,
                 manifest_url,
                 issue,
                 {record.publication_no: record.application_no for record in records},
+                grant=args.grants,
             )
     except (*all_errors, ParseError, ValueError) as error:
-        parser.exit(1, f"TIPO latest publication could not be verified: {error}\n")
+        parser.exit(1, f"TIPO latest issue could not be verified: {error}\n")
 
     print(
         json.dumps(
             {
-                "source": INDEX_URL,
+                "source": source,
                 "issue": issue,
                 "sha256": hashlib.sha256(data).hexdigest(),
                 "available_records": total_records,
-                "selected_records": min(total_records, args.limit),
-                "requested_scope": "fulltext" if manifest else "metadata_and_abstract",
+                "selected_records": len(certificates)
+                if args.grants
+                else min(total_records, args.limit),
+                "requested_scope": "fulltext"
+                if manifest
+                else ("claims_only" if args.grants else "metadata_and_abstract"),
                 **(
                     {
                         "manifest_url": manifest_url,
@@ -102,7 +129,7 @@ def main(argv=None) -> int:
             "--index",
             str(index),
             "--index-source-url",
-            INDEX_URL,
+            source,
             "--batch",
             issue,
             "--limit",
@@ -110,6 +137,8 @@ def main(argv=None) -> int:
             "--objects",
             str(args.objects),
         ]
+        for certificate in certificates:
+            options.extend(["--grant-number", certificate])
         if manifest:
             manifest_path = Path(temporary) / "index_all.xml"
             manifest_path.write_bytes(manifest)

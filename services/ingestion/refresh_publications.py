@@ -20,18 +20,29 @@ def serve(
     interval: int,
     retry_interval: int,
     should_stop: Callable[[], bool],
+    *,
+    include_grants: bool = False,
 ) -> None:
+    batches = [("Publication", options)]
+    if include_grants:
+        batches.append(("Grant", [*options, "--grants"]))
     while not should_stop():
-        try:
-            status = refresh_once(options)
-        except SystemExit as error:
-            status = error.code
-            logger.warning("Publication refresh did not complete: %s", status)
-        except (OSError, SQLAlchemyError) as error:
-            status = 1
-            logger.warning("Publication refresh unavailable: %s", type(error).__name__)
-        delay = retry_interval if status else interval
-        logger.info("Publication refresh finished; next attempt in %s seconds", delay)
+        failed = False
+        for stage, arguments in batches:
+            if should_stop():
+                return
+            try:
+                failed |= bool(refresh_once(arguments))
+            except SystemExit as error:
+                failed |= bool(error.code)
+                logger.warning("%s refresh did not complete: %s", stage, error.code)
+            except (OSError, SQLAlchemyError) as error:
+                failed = True
+                logger.warning(
+                    "%s refresh unavailable: %s", stage, type(error).__name__
+                )
+        delay = retry_interval if failed else interval
+        logger.info("TIPO refresh finished; next attempt in %s seconds", delay)
         deadline = monotonic() + delay
         while not should_stop() and (remaining := deadline - monotonic()) > 0:
             sleep(min(1, remaining))
@@ -43,6 +54,7 @@ def main() -> None:
     parser.add_argument("--retry-interval", type=int, default=900)
     parser.add_argument("--limit", type=int, default=100)
     parser.add_argument("--archive-year")
+    parser.add_argument("--include-grants", choices=("yes", "no"), default="no")
     parser.add_argument(
         "--index-mode", choices=("none", "lexical", "hybrid"), default="lexical"
     )
@@ -67,7 +79,13 @@ def main() -> None:
 
     signal.signal(signal.SIGTERM, request_shutdown)
     signal.signal(signal.SIGINT, request_shutdown)
-    serve(options, args.interval, args.retry_interval, lambda: stopping)
+    serve(
+        options,
+        args.interval,
+        args.retry_interval,
+        lambda: stopping,
+        include_grants=args.include_grants == "yes",
+    )
 
 
 if __name__ == "__main__":

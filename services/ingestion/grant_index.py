@@ -15,6 +15,35 @@ def parse_grant(data: bytes, issue: str, certificate: str):
     return grant
 
 
+def grant_records(data: bytes) -> ET.Element:
+    root = parse_xml(data, size_limit=MAX_GAZETTE_XML_BYTES)
+    if root.tag != "tw-patent-grants" or root.get("total-count") != str(len(root)):
+        raise ValueError("Expected a complete TIPO grant issue index")
+    return root
+
+
+def discover_grant_issue(data: bytes) -> tuple[str, list[str]]:
+    certificates = []
+    issues = set()
+    for item in grant_records(data):
+        if item.tag != "tw-patent-grant":
+            raise ValueError("Unexpected element in the TIPO grant issue index")
+        certificate = item.get("certificate-number", "")
+        if not re.fullmatch(r"I[0-9]+", certificate):
+            continue
+        biblio = item.find("tw-bibliographic-data-grant")
+        if biblio is None:
+            raise ValueError("Missing grant bibliography")
+        issues.add(grant_issue(biblio))
+        certificates.append(certificate)
+    if len(issues) != 1 or len(set(certificates)) != len(certificates):
+        raise ValueError(
+            "Expected a single nonempty grant issue with distinct certificates"
+        )
+    [issue] = issues
+    return issue, certificates
+
+
 def parse_selected_grants(
     data: bytes, issue: str, certificates: list[str]
 ) -> list[tuple[PatentPublication, list[Claim]]]:
@@ -25,11 +54,8 @@ def parse_selected_grants(
         or any(not re.fullmatch(r"I[0-9]+", certificate) for certificate in selected)
     ):
         raise ValueError("Expected distinct invention grant numbers")
-    root = parse_xml(data, size_limit=MAX_GAZETTE_XML_BYTES)
-    if root.tag != "tw-patent-grants" or root.get("total-count") != str(len(root)):
-        raise ValueError("Expected a complete TIPO grant issue index")
     matches = {}
-    for position, item in enumerate(root, 1):
+    for position, item in enumerate(grant_records(data), 1):
         certificate = item.get("certificate-number")
         if item.tag != "tw-patent-grant" or certificate not in selected:
             continue
@@ -43,10 +69,7 @@ def parse_selected_grants(
     return [matches[certificate] for certificate in certificates]
 
 
-def _parse_grant(item: ET.Element, position: int, issue: str, certificate: str):
-    biblio = item.find("tw-bibliographic-data-grant")
-    if biblio is None:
-        raise ValueError("Missing grant bibliography")
+def grant_issue(biblio: ET.Element) -> str:
     volume = biblio.findtext("volno", "").strip()
     issue_number = biblio.findtext("isuno", "").strip()
     if (
@@ -54,9 +77,18 @@ def _parse_grant(item: ET.Element, position: int, issue: str, certificate: str):
         or not volume.isdecimal()
         or not issue_number.isascii()
         or not issue_number.isdecimal()
+        or len(volume) > 3
+        or len(issue_number) > 3
     ):
         raise ValueError("Invalid grant issue")
-    if volume.zfill(3) + issue_number.zfill(3) != issue:
+    return volume.zfill(3) + issue_number.zfill(3)
+
+
+def _parse_grant(item: ET.Element, position: int, issue: str, certificate: str):
+    biblio = item.find("tw-bibliographic-data-grant")
+    if biblio is None:
+        raise ValueError("Missing grant bibliography")
+    if grant_issue(biblio) != issue:
         raise ValueError("TIPO grant index does not match the requested issue")
     if (
         biblio.findtext("publication-reference/document-id/doc-number") != certificate

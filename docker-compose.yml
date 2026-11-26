@@ -63,6 +63,7 @@ services:
       - --index-mode
       - "${TIPO_REFRESH_INDEX_MODE:-lexical}"
       - "--archive-year=${TIPO_REFRESH_ARCHIVE_YEAR:-}"
+      - "--include-grants=${TIPO_REFRESH_INCLUDE_GRANTS:-no}"
     stop_grace_period: 2m
     restart: unless-stopped
     depends_on:

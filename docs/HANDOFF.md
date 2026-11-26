@@ -1725,3 +1725,22 @@
 - Uncommitted changes / file ownership warnings: 實際驗收使用兩個隔離資料庫。資料及 PDF 保留在未追蹤路徑。
 - Next 1–3 concrete actions: 驗收公告與異動的更新流程，核對最新完整官方 CI，完成相關性人工複核。
 - Exact reproduction steps: 依 TESTING 加入第 053030 期兩件公告的兩種版本並建向量，執行 `scripts/smoke_grant_versions.py`。以既有固定官方語料執行 `tipo-research.spec.ts` 驗證 UI 與 PDF。
+
+## 發明公告定期更新
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `fc05c7b`。
+- Current milestone and status: 官方資料定期更新 IN_PROGRESS。
+- Goal of this session: 將 S01 公告加入選用的更新服務，核對重跑去重，查核使用者收到的官方 E2E 失敗通知。
+- Files changed (with purpose): `services/ingestion/{download,grant_index,latest_publication,refresh_publications}.py` 新增最新公告下載、卷期驗證、CLI 與排程。`docker-compose.yml` 及 `.env.example` 提供選項。`tests/test_grant_index.py` 與 `tests/test_refresh_publications.py` 覆蓋公告發現及來源獨立性。本次同步更新操作、架構、進度與交接文件。
+- Database migrations added/applied: 無新增。隔離 Compose 的 migration 服務成功執行。
+- API/Schema changes: 無。
+- Commands actually run and results: 本機 pytest 98 passed、8 skipped、1 則既有 Starlette 警告。Ruff 與 Git diff 檢查通過。`latest_publication --grants --limit 2` 實際讀得 1,162 件發明公告。隔離 Compose 兩輪均選 S10、S01 各 3 筆。首輪新增 `I942699`，API 驗證 5 項請求項及來源雜湊。第二輪兩源均重用批次，新增詞彙索引版本均為 0，資料庫維持公開、公告各 7 版本。S10 書目批次依資料範圍標為 `partial`。排程容器退出碼 0。另重查舊 [45669425487](https://github.com/Johnnnny0823/RAG/actions/runs/45669425487) 日誌，TIPO FTPS 資料連線 425 先於 API／瀏覽器測試。後續 [45737654914](https://github.com/Johnnnny0823/RAG/actions/runs/45737654914) 完整通過。
+- Tests NOT run and reason: 此次本機 pytest 未啟用 8 項 PostgreSQL 整合案例。以隔離資料庫和 API 驗證排程，未重跑瀏覽器。S01 排程的封存全文與向量更新組合未在本輪驗證。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 查核官方 `https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01` 第 053030 期與 `https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10` 第 024020 期，沿用 DATA_SOURCES 記錄的來源條款與限制。
+- Known bugs / risks / blockers: 固定樣本快取失效時，TIPO FTPS 仍可能回傳 425。尚未自動補匯跳過的卷期或更新法律事件。
+- Decisions made (ADR links): S01 排程預設關閉，啟用後兩個來源各自執行。未指定封存年度時，S01 匯入請求項版。見 [定期更新](SETUP.md#定期更新)。
+- Uncommitted changes / file ownership warnings: 隔離驗收容器已停止，保留隔離資料卷。其他專案的執行環境未動。
+- Next 1–3 concrete actions: 核對正式建置官方 E2E、驗證跨期補匯規則，以及持續人工相關性複核。
+- Exact reproduction steps: 依 SETUP 啟用 `TIPO_REFRESH_INCLUDE_GRANTS=yes`，等待兩輪後查驗 `ingestion_jobs` 的 `counts.import.reused`、`counts.lexical.versions` 及公告詳情 API。

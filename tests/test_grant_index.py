@@ -1,7 +1,11 @@
 import pytest
 
 from services.ingestion.artifacts import MAX_XML_BYTES
-from services.ingestion.grant_index import parse_grant, parse_selected_grants
+from services.ingestion.grant_index import (
+    discover_grant_issue,
+    parse_grant,
+    parse_selected_grants,
+)
 from services.ingestion.patentpub import parse_xml
 
 GRANT = b"""<tw-patent-grants total-count="1">
@@ -19,6 +23,7 @@ GRANT = b"""<tw-patent-grants total-count="1">
 
 
 def test_grant_preserves_separate_certificate_and_application_identifiers():
+    assert discover_grant_issue(GRANT) == ("053028", ["I000001"])
     grant, [claim] = parse_grant(GRANT, "053028", "I000001")
     assert grant.publication_no == "I000001"
     assert grant.application_no == "000000001"

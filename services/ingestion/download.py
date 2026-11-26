@@ -125,6 +125,10 @@ def download_publication_index() -> bytes:
     return _download_https_index(INDEX_URL, MAX_XML_BYTES)
 
 
+def download_grant_index() -> bytes:
+    return _download_https_index(GRANT_INDEX_URL, MAX_GAZETTE_XML_BYTES)
+
+
 def _download_https_index(url: str, size_limit: int) -> bytes:
     with urlopen(url, timeout=60) as response:
         if response.geturl() != url:
@@ -158,7 +162,7 @@ def main():
         if args.index_url:
             payload = download_ftps_xml(args.index_url)
         elif args.latest_grants:
-            payload = _download_https_index(GRANT_INDEX_URL, MAX_GAZETTE_XML_BYTES)
+            payload = download_grant_index()
         else:
             payload = download_publication_index()
         with args.index_out.open("xb") as stream:

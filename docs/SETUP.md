@@ -370,6 +370,15 @@ docker compose --profile patent-refresh stop patent-refresh
 
 排程輪詢 S10 當次提供的卷期。停機期間可能錯過中間期別，請用既有封存匯入流程補齊。各次匯入可在管理員監控查閱，來源取得失敗也可在容器日誌查到。
 
+若要在同一服務內另外更新公告，設定 `TIPO_REFRESH_INCLUDE_GRANTS=yes` 並重新建立容器。S01 及 S10 會各自驗證卷期與來源，各取設定上限。任一來源失敗時，另一來源仍可執行，下一輪使用重試間隔。公告預設保存書目與請求項；如有設定該年官方封存目錄，亦可補建全文。
+
+公告也可單次預覽及執行。省略證書號時，依 S01 順序取前幾件發明公告；可重複指定 `--grant-number` 選取實際案例。
+
+```powershell
+docker compose run --rm migrate python -m services.ingestion.latest_publication --grants --limit 3
+docker compose run --rm migrate python -m services.ingestion.latest_publication --grants --apply --limit 3
+```
+
 ### 追蹤匯入及建立索引
 
 同一卷期的發明公告可以在一個工作中匯入多件。先以 `python -m services.ingestion.download --latest-grants --index-out <本機輸出路徑>` 下載 S01。核對原檔記載的卷期及欲匯入的證書號後，把檔案目錄唯讀掛到 `/inputs`。以下以第 053030 期為例。
