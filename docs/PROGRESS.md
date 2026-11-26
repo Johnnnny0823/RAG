@@ -168,3 +168,4 @@
 - [x] 用 117 個官方版本的隔離語料重建 34 組候選的互動式複核表，Chromium 驗證離線下載草稿、恢復、拒絕版本不符及阻止未完成送出。全不相關查詢可保留在評估中。人工標註仍待完成。[複核方式](EVALUATION.md#人工複核候選池)
 - [x] 2026-11-27 新增包裝版 PWA 斷線回歸。隔離 Nginx 正式映像的 5 個 Playwright 專案通過，核對離線提示、API 回應未進入 PWA 快取、斷線 API 無法讀取及恢復連線。官方 CI 新增此項關卡，對外主機驗收仍待執行。[測試方式](TESTING.md#部署版-pwa-離線驗收)
 - [x] `e73e09e` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45877742498) 與[官方來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45877757310) 均通過。來源模式核對 24 份原檔、匯入、詞彙 API、來源回溯、Chromium 號碼查詢、離線回歸與限流。[同版完整模型及瀏覽器流程](https://github.com/Johnnnny0823/RAG/actions/runs/45878789673)待訖。
+- [x] 評估報告保留標註資料集雜湊及官方語料狀態，並於狀態改變時中止。隔離 117 版本官方語料實跑詞彙、向量、混合加重排各 8 次，前後語料狀態一致。[評估文件](EVALUATION.md#檢索評估)

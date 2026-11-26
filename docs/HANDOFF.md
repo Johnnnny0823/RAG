@@ -1935,3 +1935,22 @@
 - Uncommitted changes / file ownership warnings: 僅修改整合工作樹。
 - Next 1–3 concrete actions: 觀察 `e73e09e` 完整官方 E2E，記錄模型及跨瀏覽器結果並核對引文。
 - Exact reproduction steps: 執行 `pytest -q tests/test_tipo_e2e_seed.py`，再以 `coverage=source` 觸發官方工作流程。
+
+## 檢索評估來源紀錄
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `4463d52`。
+- Current milestone and status: 檢索評估 IN_PROGRESS。
+- Goal of this session: 檢索評估輸出可以回查使用的標註與官方語料涵蓋。
+- Files changed (with purpose): `scripts/evaluate_search.py` 紀錄資料集 SHA-256 與官方語料狀態，發現狀態改變時拒絕輸出。`tests/test_evaluate_search.py` 驗證雜湊穩定性及索引涵蓋變動。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。離線評估 JSON 新增 `dataset_sha256` 與 `corpus_status`。
+- Commands actually run and results: Ruff format、lint 通過。pytest 117 passed、9 skipped。隔離 117 版本 corpus 以 `--repeats 2` 實跑 24 次，詞彙、向量、混合加重排各 8 次。模式 P50 為 43.31、256.00 與 12958.03 毫秒，報告保存在 `.patent-data/review/tipo-seed-provenance-eval.json`。
+- Tests NOT run and reason: 本輪不啟用 pytest PostgreSQL 的 9 個整合測試，另使用真實 PostgreSQL 與 Ollama 執行評估。人工標註仍待提交。
+- Data sources checked (exact URL/date) and license/access notes: 沿用第 024019／053028 期固定官方資料快照，網址與授權查 DATA_SOURCES。查詢前後以真實 API 核對 117 個詞彙與向量覆蓋版本。
+- Known bugs / risks / blockers: 若內容更新但狀態計數相同，報告的狀態比對無法辨識。完整還原仍需固定語料原檔、資料庫快照與模型版本。
+- Decisions made (ADR links): 共用既有公開語料端點，雜湊以排序鍵值的 UTF-8 JSON 內容為準。
+- Uncommitted changes / file ownership warnings: 評估 JSON 為本機忽略目錄產物。
+- Next 1–3 concrete actions: 核對完整官方工作流程、接收人工標註後對同語料重跑評估、確認實際部署主機。
+- Exact reproduction steps: 啟動已匯入官方種子的隔離 API 與既有 Ollama，執行 `python -m scripts.evaluate_search --api http://127.0.0.1:18168 --repeats 2`。

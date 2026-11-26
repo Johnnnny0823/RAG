@@ -34,7 +34,12 @@ def test_unjudged_and_missing_documents_do_not_earn_credit():
 def test_reviewed_case_with_no_relevant_documents_remains_in_evaluation(monkeypatch):
     monkeypatch.setattr(evaluate_search, "version_details", lambda *_: iter(()))
     monkeypatch.setattr(evaluate_search, "check_reviewed_version", lambda *_: None)
-    monkeypatch.setattr(evaluate_search, "request", lambda *_: {"items": []})
+    corpus = {"documents_total": 1, "semantic_indexed_documents": 1}
+
+    def request(_api, path, *_args):
+        return corpus if path == "/corpus/status" else {"items": []}
+
+    monkeypatch.setattr(evaluate_search, "request", request)
     dataset = {
         "label_status": "human_reviewed",
         "reviewer": "DEMO reviewer",
@@ -54,11 +59,41 @@ def test_reviewed_case_with_no_relevant_documents_remains_in_evaluation(monkeypa
         ],
     }
     result = evaluate("", dataset, 1)
+    assert result["corpus_status"] == corpus
+    assert len(result["dataset_sha256"]) == 64
+    reordered = dict(reversed(list(dataset.items())))
+    assert evaluate("", reordered, 1)["dataset_sha256"] == result["dataset_sha256"]
+    changed = {**dataset, "reviewer": "DEMO second reviewer"}
+    assert evaluate("", changed, 1)["dataset_sha256"] != result["dataset_sha256"]
     for summary in result["summary"].values():
         assert summary["precision_at_10_lower_bound"] == 0
         assert summary["recall_at_10_relative_to_pool"] is None
         assert summary["ndcg_at_10_relative_to_pool"] is None
         assert summary["runs_with_relevant_judgments"] == 0
+
+
+def test_evaluation_rejects_corpus_drift_between_searches(monkeypatch):
+    corpus_status = iter(
+        [{"semantic_indexed_documents": 1}, {"semantic_indexed_documents": 2}]
+    )
+
+    def request(_api, path, *_args):
+        return next(corpus_status) if path == "/corpus/status" else {"items": []}
+
+    monkeypatch.setattr(evaluate_search, "request", request)
+    monkeypatch.setattr(evaluate_search, "version_details", lambda *_: iter([{}]))
+    dataset = {
+        "label_status": "seed",
+        "cases": [
+            {
+                "id": "DEMO",
+                "query": "DEMO query",
+                "judgments": [{"stage": "grant", "number": "DEMO", "grade": 1}],
+            }
+        ],
+    }
+    with raises(ValueError, match="Corpus status changed"):
+        evaluate("", dataset, 1)
 
 
 def test_human_review_requires_reviewer_and_written_basis():

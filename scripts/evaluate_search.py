@@ -1,6 +1,7 @@
 """Measure retrieval modes against a versioned TIPO relevance pool."""
 
 import argparse
+import hashlib
 import json
 import math
 import re
@@ -102,7 +103,7 @@ def evaluate(api, dataset, repeats):
         raise ValueError("The review pool is still pending human review")
     if human_reviewed and not dataset.get("reviewer", "").strip():
         raise ValueError("Human-reviewed datasets require a reviewer")
-    modes = {mode: [] for mode in MODES}
+    case_labels = {}
     for case in dataset["cases"]:
         judgments = case["judgments"]
         if human_reviewed and any(
@@ -118,7 +119,13 @@ def evaluate(api, dataset, repeats):
             )
         ):
             raise ValueError(f"Invalid or duplicate judgments for {case['id']}")
-        for row in judgments:
+        case_labels[case["id"]] = labels
+
+    corpus = request(api, "/corpus/status")
+    modes = {mode: [] for mode in MODES}
+    for case in dataset["cases"]:
+        labels = case_labels[case["id"]]
+        for row in case["judgments"]:
             stage, number = row["stage"], row["number"]
             versions = version_details(api, stage, number)
             if human_reviewed:
@@ -154,6 +161,11 @@ def evaluate(api, dataset, repeats):
                         "search_metadata": data,
                     }
                 )
+    if request(api, "/corpus/status") != corpus:
+        raise ValueError(
+            "Corpus status changed during evaluation; run again on a stable corpus"
+        )
+
     summary = {}
     for mode, runs in modes.items():
         times = sorted(run["latency_ms"] for run in runs)
@@ -175,7 +187,16 @@ def evaluate(api, dataset, repeats):
                 metric_values["recall_at_10_relative_to_pool"]
             ),
         }
-    return {"label_status": dataset["label_status"], "summary": summary, "runs": modes}
+    dataset_bytes = json.dumps(
+        dataset, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    return {
+        "label_status": dataset["label_status"],
+        "dataset_sha256": hashlib.sha256(dataset_bytes).hexdigest(),
+        "corpus_status": corpus,
+        "summary": summary,
+        "runs": modes,
+    }
 
 
 def build_review_pool(api, dataset, evaluation):
@@ -259,6 +280,8 @@ if __name__ == "__main__":
     result = evaluate(args.api, dataset, args.repeats)
     if args.review_pool:
         pool = build_review_pool(args.api, dataset, result)
+        if request(args.api, "/corpus/status") != result["corpus_status"]:
+            parser.error("Corpus status changed while building the review pool")
         with args.review_pool.open("x", encoding="utf-8") as file:
             json.dump(pool, file, ensure_ascii=False, indent=2)
             file.write("\n")
