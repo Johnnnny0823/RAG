@@ -61,7 +61,7 @@ Remove-Item Env:PATENTSCOPE_E2E_TIPO
 
 2026-11-10 在已有官方樣本與本機 Qwen 的獨立部署驗證桌面及手機 Chromium，各通過一次。案例用公開的樹脂技術描述，確認混合檢索可保存、IPC／公開文件／申請人條件可用、詳情顯示官方資料集連結，且引文與同一文件版本的請求項、XPath、固定來源雜湊及 Unicode 字元區間吻合。PDF 驗證下載、檔名、媒體類型與私人快取標頭，並使用 pypdf 讀取下載檔，核對繁中標題、技術特徵、專利公開號、逐字引文、XPath、來源雜湊和官方連結註解。案例完成時刪除合成帳號及其資料。
 
-GitHub Actions 可手動啟動 `Official patent E2E`，在獨立 Compose 網路內啟動 CPU Ollama、下載模型及固定官方樣本，再執行案例。遠端工作尚待驗證。以 Poppler 渲染桌面案例的兩頁並目視核對，繁中可讀，長雜湊有換行，證據延續到第二頁。Windows 若無法寫入 HTML 報告目錄，可先將 `PLAYWRIGHT_HTML_OUTPUT_DIR` 設為本次專用的可寫目錄。既有 CLI 驗收保留跨版本、Session、收藏、歷史與跨帳號隔離流程。
+GitHub Actions 可手動啟動 `Official patent E2E`。預設 `coverage=full` 先驗收官方資料，再啟動獨立網路內的 CPU Ollama，執行向量、混合搜尋、比較證據與 PDF 瀏覽器測試。選擇 `coverage=source` 可單獨驗收靜態部署、來源雜湊、精確號碼、詞彙檢索及三種裝置的 Chromium 號碼查詢。這個模式不啟動 Ollama，也不驗證模型功能。以 Poppler 渲染桌面案例的兩頁並目視核對，繁中可讀，長雜湊有換行，證據延續到第二頁。Windows 若無法寫入 HTML 報告目錄，可先將 `PLAYWRIGHT_HTML_OUTPUT_DIR` 設為本次專用的可寫目錄。
 
 ### 自動建立固定官方樣本
 

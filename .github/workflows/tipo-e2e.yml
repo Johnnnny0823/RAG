@@ -1,6 +1,12 @@
 name: Official patent E2E
 on:
   workflow_dispatch:
+    inputs:
+      coverage:
+        description: "Choose source checks or the full model and browser suite"
+        type: choice
+        options: [full, source]
+        default: full
 
 permissions:
   contents: read
@@ -46,39 +52,54 @@ jobs:
             ${{ runner.temp }}/tipo-fixture/objects/download-cache
           key: ${{ steps.tipo-fixtures.outputs.cache-primary-key }}
       - run: npm ci --prefix apps/web
-      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npx playwright install --with-deps chromium
         working-directory: apps/web
-      - name: Start isolated database and CPU model server
+      - name: Start packaged web and private API
+        run: docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.deploy.yml up -d --build --wait --wait-timeout 180
+      - name: Verify packaged web deployment
+        run: python scripts/smoke.py --api http://127.0.0.1:5173 --web http://127.0.0.1:5173 --deployment
+      - name: Import and verify cached official corpus
+        run: python -m scripts.seed_tipo_e2e "$RUNNER_TEMP/tipo-fixture" --offline --skip-semantic
+      - name: Official identifiers, provenance and lexical search APIs
         run: |
-          docker compose --env-file .env.example up -d --wait db
+          python scripts/smoke_patents.py --official-e2e --api http://127.0.0.1:5173
+          python scripts/smoke_lexical.py --official-e2e --api http://127.0.0.1:5173
+      - name: Official identifier lookup in Chromium
+        run: npm run test:e2e --prefix apps/web -- patent-number.spec.ts
+        env:
+          PATENTSCOPE_E2E_TIPO: versions
+          PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
+      - name: Start isolated CPU model server
+        if: inputs.coverage == 'full'
+        run: |
           docker run -d --name patentscope-tipo-ollama --network patentscope-tipo-e2e_default --network-alias ollama ollama/ollama@sha256:2c9595c555fd70a28363489ac03bd5bf9e7c5bdf2890373c3a830ffd7252ce6d
           timeout 60 bash -c 'until docker exec patentscope-tipo-ollama ollama list; do sleep 2; done'
           docker exec patentscope-tipo-ollama ollama pull "$EMBEDDING_MODEL"
           docker exec patentscope-tipo-ollama ollama pull "$ANALYSIS_MODEL"
-      - name: Start packaged web and private API
-        run: docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.deploy.yml up -d --build --wait --wait-timeout 180
-      - name: Verify packaged web deployment
-        run: python scripts/smoke.py --api http://127.0.0.1:5173 --web http://127.0.0.1:5173 --deployment --deployment-rate-limit
-      - name: Import and verify cached official corpus
-        run: python -m scripts.seed_tipo_e2e "$RUNNER_TEMP/tipo-fixture" --offline --skip-semantic
       - name: Build official semantic index
+        if: inputs.coverage == 'full'
         run: docker compose --env-file .env.example run --rm --no-deps migrate python -m services.retrieval.index_semantic --batch-size 2 --request-timeout 180
-      - name: Official patent API smoke checks
-        run: |
-          python scripts/smoke_patents.py --official-e2e --api http://127.0.0.1:5173
-          python scripts/smoke_lexical.py --official-e2e --api http://127.0.0.1:5173
-          python scripts/smoke_semantic.py --official-e2e --api http://127.0.0.1:5173
+      - name: Official semantic search API
+        if: inputs.coverage == 'full'
+        run: python scripts/smoke_semantic.py --official-e2e --api http://127.0.0.1:5173
+      - run: npx playwright install --with-deps firefox webkit
+        if: inputs.coverage == 'full'
+        working-directory: apps/web
       - name: Official full text, evidence, history and PDF
+        if: inputs.coverage == 'full'
         run: npm run test:e2e --prefix apps/web
         env:
           PATENTSCOPE_E2E_TIPO: "1"
           PATENTSCOPE_E2E_CROSS_BROWSER: "1"
           PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
       - name: Publication and grant versions, pagination and reranking
-        run: npm run test:e2e --prefix apps/web
+        if: inputs.coverage == 'full'
+        run: npm run test:e2e --prefix apps/web -- patent-versions.spec.ts search-pagination.spec.ts search-rerank.spec.ts
         env:
           PATENTSCOPE_E2E_TIPO: versions
           PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
+      - name: Verify deployment rate limits
+        run: python scripts/smoke.py --api http://127.0.0.1:5173 --web http://127.0.0.1:5173 --deployment --deployment-rate-limit
       - uses: actions/upload-artifact@v5
         if: failure()
         with:

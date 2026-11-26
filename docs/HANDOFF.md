@@ -1526,3 +1526,23 @@
 - Uncommitted changes / file ownership warnings: 未提交私人帳號資料、下載檔或憑證。
 - Next 1–3 concrete actions: 核對新版 HTTPS CI 及官方 E2E，完成人工相關性複核與外部部署。
 - Exact reproduction steps: 啟動隔離測試庫，依 TESTING 執行 PostgreSQL 整合；以研究頁 `匯出我的研究資料（JSON）` 按鈕或帶本人 Bearer token 呼叫 `GET /api/v1/me/export`。
+
+## 官方資料先行驗收
+
+- Codex 負責官方 E2E 工作流程及測試文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `1169ddd`。
+- Current milestone and status: 已在本機驗收資料先行階段，完整 Goal IN_PROGRESS。
+- Goal of this session: 讓官方原檔、資料庫、詞彙檢索及號碼查詢先提供結果，並保留完整模型流程。
+- Files changed (with purpose): `.github/workflows/tipo-e2e.yml` 新增手動執行的 `coverage`、拆分來源與模型測試、將會消耗測試配額的限流冒煙放在尾端。更新 TESTING、PROGRESS 及交接。
+- Database migrations added/applied: 無新增。本機沿用 117 個版本的隔離資料庫。
+- API/Schema changes: 無。
+- Commands actually run and results: `scripts.seed_tipo_e2e --prepare-only --offline` 核對 24 檔 SHA-256。正式部署冒煙、官方專利資料與詞彙 API 以及桌面、平板與手機 Chromium 號碼查詢 3 passed。第一次把限流冒煙放前面，後續詞彙 API 遇到 429；將限流放在流程尾端後，來源階段與限流冒煙依序通過。
+- Tests NOT run and reason: 本輪無產品程式變更，未重跑 pytest。未用本機重新建空白庫或全量向量，前一輪 [正式官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469) 仍在建索引。新版來源模式須以遠端實跑驗收。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 使用固定第 024019、053028 期的本機雜湊快取，未下載新文件。
+- Known bugs / risks / blockers: 來源模式的成功只證明來源與純詞彙功能。完整模型測試、人工相關性複核和公開部署需分別驗收。
+- Decisions made (ADR links): `full` 保留為預設，要求同一組來源檢查全部通過後再啟動模型。各瀏覽器的號碼案例只在前段執行一次。
+- Uncommitted changes / file ownership warnings: 本機驗收使用隔離 Compose，保留資料卷。
+- Next 1–3 concrete actions: 核對新版來源模式、舊版尚在執行的完整官方工作及 HTTPS CI。
+- Exact reproduction steps: 在 GitHub Actions 手動執行 `Official patent E2E`，選擇 `coverage=source`。完整模型驗收選擇 `coverage=full`。
