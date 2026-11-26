@@ -345,7 +345,16 @@ docker compose run --rm --build migrate python -m services.ingestion.latest_publ
 docker compose run --rm migrate python -m services.ingestion.latest_publication --apply --limit 5
 ```
 
-同一份來源和相同匯入上限可重跑，既有批次與索引會重用。追蹤工作會把只有書目摘要的批次列為部分完成。需要全文時，依資料來源文件核對該期封存清單並另行匯入個案 XML。若已設定嵌入模型，可用 `--index-mode hybrid` 同時補建向量。
+同一份來源和相同匯入上限可重跑，既有批次與索引會重用。追蹤工作會把只有書目摘要的批次列為部分完成。若已設定嵌入模型，可用 `--index-mode hybrid` 同時補建向量。
+
+要匯入全文，按已查證的封存目錄指定三位數民國年。命令會取得同一卷期的 `index_all.xml`，核對所選公開號、申請號及個案路徑。以下是第 024020 期驗收用的民國年。使用前先確認 S10 當下的卷期仍在該年目錄。
+
+```powershell
+docker compose run --rm migrate python -m services.ingestion.latest_publication --archive-year 115 --limit 2
+docker compose run --rm migrate python -m services.ingestion.latest_publication --archive-year 115 --apply --limit 2
+```
+
+預覽只確認清單與所選書目的對應。套用時才下載個案全文並建立索引。部分個案取得或解析失敗時，已驗證資料會保留並顯示部分完成，命令以非零代碼回報。若部署容器無法連到官方 FTPS，可先依 [以官方清單補入全文](#以官方清單補入全文) 在可連線的主機下載，再由既有匯入命令處理。
 
 ### 追蹤匯入及建立索引
 

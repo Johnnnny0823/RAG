@@ -1,5 +1,6 @@
 import pytest
 
+from services.ingestion import latest_publication
 from services.ingestion.issue_index import discover_issue, parse_issue_index
 from services.ingestion.specification import DOCTYPE, parse_specification
 
@@ -59,6 +60,58 @@ def test_latest_issue_rejects_mixed_versions_and_incomplete_index():
         discover_issue(mixed)
     with pytest.raises(ValueError, match="complete TIPO issue index"):
         discover_issue(INDEX.replace(b'total-count="1"', b'total-count="2"'))
+
+
+def test_latest_fulltext_requires_valid_manifest_and_reports_partial_exit(
+    monkeypatch, tmp_path
+):
+    manifest = b"""<tw-patent-applications total-count="1">
+      <tw-patent-application publication-number="000000002">
+        <specification-files xml-file="/InventionPubXML_024019/2419000000002/000000001-DEMO.xml"/>
+      </tw-patent-application>
+    </tw-patent-applications>"""
+    sources = []
+    applied = []
+    monkeypatch.setattr(latest_publication, "download_publication_index", lambda: INDEX)
+
+    def download(url):
+        sources.append(url)
+        return manifest
+
+    def pipeline(args, mode, **options):
+        assert args.index.read_bytes() == INDEX
+        assert args.manifest.read_bytes() == manifest
+        assert args.manifest_url == sources[-1]
+        assert args.batch == "024019" and mode == "lexical"
+        assert options["require_complete"] is True
+        applied.append(True)
+        return 1
+
+    monkeypatch.setattr(latest_publication, "download_ftps_xml", download)
+    monkeypatch.setattr(latest_publication, "run_pipeline", pipeline)
+    monkeypatch.setattr("sys.argv", ["latest_publication", "--archive-year", "115"])
+    assert latest_publication.main() == 0
+    assert not applied
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "latest_publication",
+            "--archive-year",
+            "115",
+            "--apply",
+            "--objects",
+            str(tmp_path),
+        ],
+    )
+    assert latest_publication.main() == 1
+    assert applied == [True]
+    assert (
+        sources
+        == [
+            "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index_all.xml"
+        ]
+        * 2
+    )
 
 
 def test_specification_keeps_exact_text_and_locator():

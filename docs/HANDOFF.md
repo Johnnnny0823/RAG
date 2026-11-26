@@ -1606,3 +1606,23 @@
 - Uncommitted changes / file ownership warnings: 最新期樣本留在隔離資料庫和物件卷，未提交原始資料。
 - Next 1–3 concrete actions: 驗證最新期官方個案封存清單、自動更新及模型索引；持續核對遠端結果。
 - Exact reproduction steps: 依 SETUP 的最新發明公開書目段落執行預覽及 `--apply --limit 5`。來源更新後當期號碼及雜湊會不同。
+
+## 最新發明公開全文更新
+
+- Codex 負責最新卷期的官方全文清單核對、更新指令與驗收文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `edbf653`。
+- Current milestone and status: 最新期選取全文已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 從官方封存清單取得同一卷期的個案全文，保留原書目版和可回溯引文。
+- Files changed (with purpose): `latest_publication.py` 新增三位數民國年參數，驗證封存清單與 S10 選取書目的一致性。`run_pipeline.py` 提供要求全數完成的離開狀態。補新增路徑的測試及資料、操作、進度與交接文件。
+- Database migrations added/applied: 無新增。沿用隔離驗收資料庫。
+- API/Schema changes: 無。使用既有公開號、詳情及請求項 API 驗收。
+- Commands actually run and results: 在主機核對官方封存清單與兩份個案 XML，在隔離容器執行兩次 `latest_publication --archive-year 115 --apply --limit 2`，均回傳成功。首次新增 2 個全文版本及 143 個詞彙片段，保留原本 5 個書目版。重跑重用相同批次、索引新增 0。`verify_document 202642194` 從封存原文核對 9 項請求項與 62 段，API 檢查兩案同時保有書目與全文，請求項分別為 9、10 項。pytest 93 passed、8 skipped，Ruff 檢查通過。
+- Tests NOT run and reason: 未重跑完整 PostgreSQL pytest 或瀏覽器套件。使用實際 PostgreSQL 與 API 驗收匯入；本輪只建立詞彙索引，未重建向量。一般 CI [45743650472](https://github.com/Johnnnny0823/RAG/actions/runs/45743650472) 在前一提交已通過。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 核對 S10 與 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024020/index_all.xml`，兩份公開說明書、原檔雜湊及來源授權見 DATA_SOURCES。
+- Known bugs / risks / blockers: 只驗收本期所選兩案。資料更新排程、跨期容錯、最新公告及最新異動仍待驗收。
+- Decisions made (ADR links): 封存年由已核對的目錄提供，個案下載沿用既有來源校驗、快取及隔離流程。
+- Uncommitted changes / file ownership warnings: 新原檔與驗收資料保留在隔離資料卷，未提交原始資料。
+- Next 1–3 concrete actions: 驗證自動排程及跨期切換，追蹤官方模型驗收。
+- Exact reproduction steps: 依 SETUP 的最新發明公開書目段落預覽並執行全文命令，再查閱 API 與 `verify_document`。

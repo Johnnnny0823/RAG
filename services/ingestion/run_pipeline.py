@@ -28,7 +28,12 @@ def checkpoint(job_id: UUID, stage: str, counts: dict, status: str = "running") 
 
 
 def run_pipeline(
-    args: Namespace, index_mode: str, batch_size: int, timeout: int
+    args: Namespace,
+    index_mode: str,
+    batch_size: int,
+    timeout: int,
+    *,
+    require_complete: bool = False,
 ) -> int:
     with engine.connect() as lock:
         if not lock.exec_driver_sql(
@@ -95,7 +100,7 @@ def run_pipeline(
         ]
         checkpoint(job_id, stage, counts, status)
         print(f"Ingestion job {job_id}: {status}", flush=True)
-        return int(status == "failed")
+        return int(status == "failed" or (require_complete and status == "partial"))
 
 
 if __name__ == "__main__":

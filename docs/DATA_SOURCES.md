@@ -49,6 +49,8 @@
 
 2026-11-26 透過 [TIPO S10 最新期索引](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10) 實際取得第 24 卷第 20 期，10,551,304 bytes、1,639 筆，SHA-256 `2f9a9744eb52eb8be24a79af4f106623e36432470f20afea45c3e0bff3cc70f0`。新版更新指令從所有書目核對 `volno` 及 `isuno`，拒絕卷期混合、筆數不符及空清單。實測匯入前 5 筆，在來源快照記錄原檔位置及雜湊。此次內容範圍為書目及摘要，公開全文另依個案來源處理。[政府目錄 15996](https://data.gov.tw/dataset/15996)
 
+同日經匿名 FTPS 取得[民國 115 年第 024020 期全文封存清單](ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024020/index_all.xml)，11,388,480 bytes，SHA-256 `82982e0f31582bc8cfc17916aa0d3acb68d601e0fd8802389aaa9e4825e51283`。以 S10 送出順序前兩案核對公開號、申請號與個案路徑，匯入 `202642194`（申請號 `114108947`，9 項請求項、62 段）及 `202642585`（申請號 `114112229`，10 項請求項、54 段）。保留原有書目版，另存全文版。此結果只驗證選取的兩案。兩份原檔雜湊分別為 `bfa7ea9f7b45b69b7bb6cb2d7d80420f317db5c3e37f3f4e82cf4bdb41f564c1`、`4e9822c0fca6678c634e54998f4f08b353f37539911ff9b0ae0452ce3aec51fe`。
+
 ## 專利權異動公報
 
 2026-11-26 查核[專利權異動公報（15974）](https://data.gov.tw/dataset/15974)。提供者經濟部智慧財產局，目錄列每月更新、免費及政府資料開放授權條款第 1 版。[最新期索引 P10](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/P10) 實得 1,662 筆、214,092 bytes，SHA-256 `3945c07fd8f2b286e00dac8d46c67faf849c998f3c89009b3eec75ebc2226299`。索引列申請號、證書號及異動種類，日期及更正欄位須讀該卷期的類別 XML。FTPS 速率限制未確認。
