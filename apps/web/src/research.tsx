@@ -139,6 +139,24 @@ async function request<T>(path: string, payload?: object, token?: string, method
   return response.json();
 }
 
+async function downloadPrivate(path: string, filename: string, token: string, failure: string) {
+  const response = await fetchWithDeadline(`/api/v1${path}`, {
+    headers: { Authorization: "Bearer " + token },
+    cache: "no-store",
+  });
+  if (response.status === 401) throw new SessionExpired("登入已失效，請重新登入。");
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error?.message || failure);
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 type SearchJob = {
   id: string;
   status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
@@ -291,21 +309,7 @@ export function Research() {
       report = await request<ReportJob>(path, undefined, token);
     }
     if (report.status !== "succeeded") throw new Error("目前無法產生 PDF，請稍後重試。");
-    const response = await fetchWithDeadline(`/api/v1${path}/pdf`, {
-      headers: { Authorization: "Bearer " + token },
-      cache: "no-store",
-    });
-    if (response.status === 401) throw new SessionExpired("登入已失效，請重新登入。");
-    if (!response.ok) {
-      const body = await response.json().catch(() => null);
-      throw new Error(body?.error?.message || "目前無法匯出 PDF。");
-    }
-    const url = URL.createObjectURL(await response.blob());
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `patentscope-${runId}.pdf`;
-    anchor.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    await downloadPrivate(`${path}/pdf`, `patentscope-${runId}.pdf`, token, "目前無法匯出 PDF。");
   }
 
   async function deleteSearch(runId: string, token: string) {
@@ -656,6 +660,9 @@ export function Research() {
           </section>}
           <div className="flex flex-wrap gap-2">
             <button disabled={!!busy} onClick={() => void run("正在讀取歷史…", () => loadHistory(session.token))}>載入搜尋歷史</button>
+            <button disabled={!!busy} onClick={() => void run("正在匯出私人研究資料…",
+              () => downloadPrivate("/me/export", "patentscope-research.json", session.token, "目前無法匯出研究資料。"),
+            )}>匯出我的研究資料（JSON）</button>
             <button disabled={!!busy} onClick={() => void run("正在登出…", async () => {
               await request<void>("/auth/logout", {}, session.token);
               leaveAccount();

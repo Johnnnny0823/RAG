@@ -1506,3 +1506,23 @@
 - Uncommitted changes / file ownership warnings: 測試憑證及私鑰位於作業系統暫存目錄，均未進入 repository。隔離測試服務已停止。
 - Next 1–3 concrete actions: 驗證 HTTPS 遠端冒煙與官方 E2E，完成人工相關性複核，取得實際主機及憑證後驗收公開部署。
 - Exact reproduction steps: 依 [HTTPS 部署操作](SETUP.md#使用自備憑證啟用-https) 啟動隔離 Compose，以 `scripts/smoke.py --deployment --deployment-rate-limit --ca-file` 驗證同源 HTTPS。
+
+## 私人研究資料匯出
+
+- Codex 負責帳號匯出 API、研究工作台入口、隔離測試及操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `a01fcd0`。
+- Current milestone and status: 私人研究資料匯出已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 讓登入者可在研究工作台下載已保存的個人研究成果。
+- Files changed (with purpose): `services/api/research_export.py` 查詢明確欄位及帳號範圍，`services/api/accounts.py` 提供受權限保護的下載。研究頁沿用私人下載處理並新增入口。Nginx 將匯出納入研究配額。新增 PostgreSQL 隔離測試及工作台下載斷言。另修正遠端 HTTPS 憑證生成指令。
+- Database migrations added/applied: 無新增。匯出以 PostgreSQL 可重複讀取的快照取得資料。
+- API/Schema changes: 新增 `GET /api/v1/me/export`，匯出 JSON 格式版本 1，附件回應為 `private, no-store`，未登入回傳 401。
+- Commands actually run and results: 首次 pytest 收集發現測試段落插入位置錯誤，修正後包含隔離 PostgreSQL 共 98 passed、1 則既有警告。前端 lint、TypeScript、Vite build 及 Ruff 通過。正式建置在 Chromium 桌面、平板、手機各一項通過，核對檔名、帳號、已編輯專案及無密碼欄位。一般 CI [45741238355](https://github.com/Johnnnny0823/RAG/actions/runs/45741238355) 的舊 HTTPS 步驟因 OpenSSL 指令含額外加號失敗。修正成單行並從工作流程讀取同一命令，在 Linux 容器生成憑證且核對 IP SAN。
+- Tests NOT run and reason: 未重跑完整模型與官方瀏覽器工作流程，尚待確認新版遠端 HTTPS 完整結果。
+- Data sources checked (exact URL/date) and license/access notes: 本次使用隔離測試帳號，無新下載官方資料。
+- Known bugs / risks / blockers: 大量私人資料匯出的資源用量尚未壓測。外部部署與人工相關性複核仍待驗收。
+- Decisions made (ADR links): 匯出以獨立的 JSON 版本保存已持久化的研究資料。PDF 繼續由各研究結果下載。
+- Uncommitted changes / file ownership warnings: 未提交私人帳號資料、下載檔或憑證。
+- Next 1–3 concrete actions: 核對新版 HTTPS CI 及官方 E2E，完成人工相關性複核與外部部署。
+- Exact reproduction steps: 啟動隔離測試庫，依 TESTING 執行 PostgreSQL 整合；以研究頁 `匯出我的研究資料（JSON）` 按鈕或帶本人 Bearer token 呼叫 `GET /api/v1/me/export`。

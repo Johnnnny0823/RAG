@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 
 test("repeated failed logins are throttled with a visible message", async ({ page }) => {
@@ -59,6 +60,17 @@ test("workspace uses the live API and persists project changes", async ({ page, 
     await page.getByLabel("修改專案名稱").fill("已更新的測試專案");
     await button("保存專案資料").click();
     await expect(page.getByText("專案資料已更新。")).toBeVisible();
+
+    const downloadStarted = page.waitForEvent("download");
+    await button("匯出我的研究資料（JSON）").click();
+    const download = await downloadStarted;
+    expect(download.suggestedFilename()).toBe("patentscope-research.json");
+    const exportPath = await download.path();
+    const bundle = JSON.parse(await readFile(exportPath, "utf8"));
+    expect(bundle.format_version).toBe(1);
+    expect(bundle.account.email).toBe(email);
+    expect(bundle.projects.map((row: { name: string }) => row.name)).toEqual(["已更新的測試專案"]);
+    expect(bundle.account).not.toHaveProperty("password_hash");
 
     await button("登出此頁").click();
     await page.getByLabel("電子郵件").fill(email);

@@ -173,6 +173,53 @@ def test_projects_isolated_in_api_and_foreign_key(accounts):
         assert error.value.orig.diag.constraint_name == "fk_search_runs_owner_project"
 
 
+def test_private_research_export_has_only_the_authenticated_accounts_data(accounts):
+    client, ((owner_id, owner, _), (other_id, other, _)) = accounts
+    for user_id, headers, text in (
+        (owner_id, owner, "owned synthetic content"),
+        (other_id, other, "unrelated synthetic content"),
+    ):
+        project = client.post("/api/v1/projects", headers=headers, json={"name": text})
+        assert project.status_code == 201
+        project_id = UUID(project.json()["id"])
+        session = client.post(
+            "/api/v1/sessions",
+            headers=headers,
+            json={"project_id": str(project_id), "title": text},
+        )
+        assert session.status_code == 201
+        with engine.begin() as conn:
+            conn.exec_driver_sql(
+                """INSERT INTO search_runs (user_id, project_id, request, settings)
+                   VALUES (%s, %s, jsonb_build_object('query', %s::text), '{}'::jsonb)""",
+                (user_id, project_id, text),
+            )
+            conn.exec_driver_sql(
+                """INSERT INTO messages (session_id, role, content)
+                   VALUES (%s, 'user', to_jsonb(%s::text))""",
+                (UUID(session.json()["id"]), text),
+            )
+
+    assert client.get("/api/v1/me/export").status_code == 401
+    response = client.get("/api/v1/me/export", headers=owner)
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "private, no-store"
+    assert response.headers["Content-Disposition"].startswith("attachment;")
+    bundle = response.json()
+    assert bundle["format_version"] == 1
+    assert bundle["account"]["id"] == str(owner_id)
+    assert set(bundle["account"]) == {"id", "email", "created_at"}
+    assert [row["name"] for row in bundle["projects"]] == ["owned synthetic content"]
+    assert [row["request"]["query"] for row in bundle["search_runs"]] == [
+        "owned synthetic content"
+    ]
+    assert [row["title"] for row in bundle["sessions"]] == ["owned synthetic content"]
+    assert [row["content"] for row in bundle["messages"]] == ["owned synthetic content"]
+    assert str(other_id) not in response.text
+    assert "unrelated synthetic content" not in response.text
+    assert "password" not in response.text and "token_hash" not in response.text
+
+
 def test_background_search_saves_snapshot_only_for_completed_owner_job(
     accounts, monkeypatch
 ):

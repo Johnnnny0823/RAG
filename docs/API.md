@@ -89,6 +89,8 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 `/me` 與紀錄端點使用 `Authorization: Bearer <token>`。無效憑證為 401，跨帳號或未知紀錄及候選為 404，未保存特徵的比對為 422。保存端點存下有上限的完整候選集合，詳情可讀取原始分支、融合與重排順位。範圍涵蓋該次返回的結果，尚無完整語料快照及重跑機制。比對與檢索預覽仍可獨立使用。
 ## 研究專案與歸檔
 
+`GET /api/v1/me/export` 需要 Bearer token。它會以 `patentscope-research.json` 附件下載同一時間點的帳號資料、專案、收藏及筆記、已保存搜尋與候選、技術比對、Session 及訊息。回應含 `format_version: 1`、`exported_at` 和 `Cache-Control: private, no-store`。登入 Token、密碼雜湊、暫存工作及 PDF 檔案不在匯出範圍內。PDF 可從原研究結果個別下載。
+
 - `POST /api/v1/projects` 接受 `name`（1–120 字）及選填 `description`（最多 2,000 字），建立私人研究專案並回傳 201。
 - `GET /api/v1/projects` 分頁列出目前帳號的專案，接受 `limit`、`offset`。
 - `GET /api/v1/projects/{project_id}` 回傳自己的專案詳情。

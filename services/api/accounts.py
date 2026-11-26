@@ -24,6 +24,7 @@ from services.api.patents import (
     api_error,
     unavailable,
 )
+from services.api.research_export import ResearchExport, export_research
 
 router = APIRouter(
     prefix="/api/v1",
@@ -78,6 +79,23 @@ def me(account: Annotated[Account, Depends(require_account)], response: Response
     return AccountProfile(
         **account.model_dump(), can_monitor_ingestion=is_ingestion_admin(account.id)
     )
+
+
+@router.get("/me/export", response_model=ResearchExport)
+def download_research(
+    account: Annotated[Account, Depends(require_account)], response: Response
+):
+    try:
+        export = export_research(account.id)
+    except SQLAlchemyError:
+        return unavailable()
+    if export is None:
+        return api_error(401, "AUTH_REQUIRED", "請登入或確認登入資訊。")
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["Content-Disposition"] = (
+        'attachment; filename="patentscope-research.json"'
+    )
+    return export
 
 
 @router.delete("/me", status_code=204, responses={403: {"model": PatentErrorEnvelope}})
