@@ -99,3 +99,19 @@ def test_latest_legal_refresh_requires_index_and_category_agreement(
             "sud24": {"new_events": 1},
         }
         assert calls == ["sud08", "sud24"]
+
+
+def test_archived_legal_refresh_requires_category_records_from_the_selected_issue(
+    monkeypatch, tmp_path
+):
+    index = b'<SundryData total-count="1"><Sundry aplno="000000001" cerno="I999999" sudtype="sud08"/></SundryData>'
+    sources = {
+        "ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053032/index.xml": index,
+        "ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053032/sud08.xml": EXTINGUISHMENT,
+    }
+    monkeypatch.setattr(legal_refresh, "download_ftps_xml", sources.__getitem__)
+    with raises(ValueError, match="different gazette issue"):
+        legal_refresh.refresh(
+            "115", LocalObjectStore(tmp_path), apply=True, issue="053032"
+        )
+    assert not list(tmp_path.iterdir())

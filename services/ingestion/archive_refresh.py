@@ -10,6 +10,8 @@ from services.api.db import engine
 from services.ingestion.download import list_archive_issues
 from services.ingestion.import_issue import PARSER_VERSION
 from services.ingestion.latest_publication import main as import_one
+from services.ingestion.legal_events import PARSER_VERSION as LEGAL_PARSER_VERSION
+from services.ingestion.legal_refresh import main as import_legal_issue
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,7 @@ def refresh_archive(
         logger.warning("%s archive has not reached %s", stage, first_issue)
         return True
 
-    identity = [PARSER_VERSION, *options]
+    identity = [LEGAL_PARSER_VERSION if stage == "legal" else PARSER_VERSION, *options]
     if "hybrid" in options:
         identity.extend(
             getenv(name, "") for name in ("EMBEDDING_MODEL", "EMBEDDING_DIGEST")
@@ -47,6 +49,8 @@ def refresh_archive(
             ).scalars()
         )
 
+    import_issue = import_legal_issue if stage == "legal" else import_one
+    year_option = "--year" if stage == "legal" else "--issue-year"
     imported = 0
     for number in range(int(first_issue), int(end) + 1):
         issue = f"{number:06d}"
@@ -57,8 +61,7 @@ def refresh_archive(
             return True
         if should_stop() or imported == max_issues:
             return True
-        arguments = [*options, "--issue-year", year, "--archive-issue", issue]
-        if import_one(arguments):
+        if import_issue([*options, year_option, year, "--archive-issue", issue]):
             return True
         with engine.begin() as conn:
             conn.exec_driver_sql(

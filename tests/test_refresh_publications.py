@@ -62,6 +62,30 @@ def test_legal_refresh_still_runs_after_publication_failure(monkeypatch):
     assert completed == [["--year", "115", "--apply"]]
 
 
+def test_legal_history_keeps_the_latest_gazette_refresh(monkeypatch):
+    completed = []
+
+    def recover(stage, year, first, options, max_issues, should_stop):
+        completed.append((stage, year, first, options, max_issues))
+        raise SystemExit(1)
+
+    monkeypatch.setattr(refresh_publications, "refresh_once", lambda _: 0)
+    monkeypatch.setattr(refresh_publications, "refresh_archive", recover)
+    monkeypatch.setattr(refresh_publications, "refresh_legal", completed.append)
+    refresh_publications.serve(
+        ["--apply"],
+        86400,
+        900,
+        lambda: len(completed) == 2,
+        legal_year="115",
+        legal_from="053032",
+    )
+    assert completed == [
+        ("legal", "115", "053032", ["--apply"], 2),
+        ["--year", "115", "--apply"],
+    ]
+
+
 def test_archive_resumes_only_successful_issues_for_the_same_configuration(monkeypatch):
     checkpoint_rows = set()
     conn = Mock()

@@ -30,24 +30,28 @@ def serve(
     grant_from: str | None = None,
     catch_up_max_issues: int = 2,
     legal_year: str | None = None,
+    legal_from: str | None = None,
 ) -> None:
     batches = [("publication", options, publication_from)]
     if include_grants:
         batches.append(("grant", [*options, "--grants"], grant_from))
     if legal_year:
-        batches.append(("legal", ["--year", legal_year, "--apply"], None))
+        if legal_from:
+            batches.append(("legal", ["--apply"], legal_from))
+        batches.append(("legal-latest", ["--year", legal_year, "--apply"], None))
     while not should_stop():
         needs_retry = False
         for stage, arguments, first_issue in batches:
             if should_stop():
                 return
             try:
-                if stage == "legal":
+                archive_year = legal_year if stage == "legal" else catch_up_year
+                if stage == "legal-latest":
                     refresh_legal(arguments)
-                elif catch_up_year and first_issue:
+                elif archive_year and first_issue:
                     needs_retry |= refresh_archive(
                         stage,
-                        catch_up_year,
+                        archive_year,
                         first_issue,
                         arguments,
                         catch_up_max_issues,
@@ -83,6 +87,7 @@ def main() -> None:
     parser.add_argument("--grant-from")
     parser.add_argument("--catch-up-max-issues", type=int, default=2)
     parser.add_argument("--legal-year")
+    parser.add_argument("--legal-from")
     parser.add_argument(
         "--index-mode", choices=("none", "lexical", "hybrid"), default="lexical"
     )
@@ -93,6 +98,12 @@ def main() -> None:
         parser.error("Set PATENT_OBJECTS_DIR to a persistent object directory")
     if args.legal_year and not re.fullmatch(r"[0-9]{3}", args.legal_year):
         parser.error("--legal-year must be a three-digit ROC archive year")
+    if args.legal_from and (
+        not args.legal_year or not re.fullmatch(r"[0-9]{6}", args.legal_from)
+    ):
+        parser.error(
+            "--legal-from requires --legal-year and a six-digit starting issue"
+        )
     starts = [issue for issue in (args.publication_from, args.grant_from) if issue]
     if (
         bool(args.catch_up_year) != bool(starts)
@@ -137,6 +148,7 @@ def main() -> None:
         grant_from=args.grant_from,
         catch_up_max_issues=args.catch_up_max_issues,
         legal_year=args.legal_year,
+        legal_from=args.legal_from,
     )
 
 

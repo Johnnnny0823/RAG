@@ -409,6 +409,16 @@ docker compose run --rm migrate python -m services.ingestion.legal_refresh --yea
 
 服務將 P10 原檔與該年度最近 8 期的封存索引逐位元比對，再核對消滅公告及更正公報的發明案件清單和原文卷期。無法核對時以錯誤回報並按重試間隔重試。只有可對應既有申請案的事件會加入詳情，重跑可補上新匯入案件並避免重複。設定預設留空，跨年度須更新。歷史卷期仍可使用既有指定期別命令。來源只涵蓋這兩類公報及其已匯入案件，個案即時權利狀態須另外向官方查證。
 
+#### 歷史異動公報補匯
+
+可用封存索引與類別 XML 核對單一期別。同一指令拿掉 `--apply` 只預覽。
+
+```powershell
+docker compose run --rm migrate python -m services.ingestion.legal_refresh --year 115 --archive-issue 053032 --apply
+```
+
+若要定期補匯，另設 `TIPO_REFRESH_LEGAL_FROM=053032`。服務會從同年同卷的起始期依序核對封存，沿用 `TIPO_REFRESH_CATCH_UP_MAX_ISSUES` 限制每輪期數，並以 PostgreSQL 記錄成功期別。歷史補匯發生錯誤時，最新 P10 仍會繼續核對。歷史期別已完成後才匯入的案件，可用上列單期命令重新配對。
+
 ### 追蹤匯入及建立索引
 
 同一卷期的發明公告可以在一個工作中匯入多件。先以 `python -m services.ingestion.download --latest-grants --index-out <本機輸出路徑>` 下載 S01。核對原檔記載的卷期及欲匯入的證書號後，把檔案目錄唯讀掛到 `/inputs`。以下以第 053030 期為例。

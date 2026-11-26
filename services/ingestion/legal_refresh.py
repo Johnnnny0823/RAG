@@ -26,8 +26,16 @@ from services.ingestion.legal_events import (
 from services.ingestion.patentpub import parse_xml
 
 
-def refresh(year: str, store: LocalObjectStore, *, apply: bool) -> dict:
-    index = download_legal_index()
+def archived_index_url(year: str, issue: str) -> str:
+    folder = ARCHIVES["legal"]
+    return f"{HOST}/{folder}/{year}/{folder}_{issue}/index.xml"
+
+
+def refresh(
+    year: str, store: LocalObjectStore, *, apply: bool, issue: str | None = None
+) -> dict:
+    source = LEGAL_INDEX_URL if issue is None else archived_index_url(year, issue)
+    index = download_legal_index() if issue is None else download_ftps_xml(source)
     root = parse_xml(index)
     if (
         root.tag != "SundryData"
@@ -37,15 +45,15 @@ def refresh(year: str, store: LocalObjectStore, *, apply: bool) -> dict:
     ):
         raise ValueError("Expected a complete official TIPO event index")
 
-    folder = ARCHIVES["legal"]
-    for issue in reversed(list_archive_issues("legal", year)[-8:]):
-        index_url = f"{HOST}/{folder}/{year}/{folder}_{issue}/index.xml"
-        if download_ftps_xml(index_url) == index:
-            break
-    else:
-        raise ValueError(
-            "Official TIPO event index did not match a recent archive issue"
-        )
+    if issue is None:
+        for candidate in reversed(list_archive_issues("legal", year)[-8:]):
+            if download_ftps_xml(archived_index_url(year, candidate)) == index:
+                issue = candidate
+                break
+        else:
+            raise ValueError(
+                "Official TIPO event index did not match a recent archive issue"
+            )
 
     payloads = {}
     for event_type in TYPES:
@@ -68,8 +76,8 @@ def refresh(year: str, store: LocalObjectStore, *, apply: bool) -> dict:
     if apply:
         store.put(index)
     return {
-        "index_url": LEGAL_INDEX_URL,
-        "archive_index_url": index_url,
+        "index_url": source,
+        "archive_index_url": archived_index_url(year, issue),
         "issue": issue,
         "index_sha256": hashlib.sha256(index).hexdigest(),
         "apply": apply,
@@ -88,13 +96,21 @@ def refresh(year: str, store: LocalObjectStore, *, apply: bool) -> dict:
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--year", required=True)
+    parser.add_argument("--archive-issue", help="Refresh this six-digit archived issue")
     parser.add_argument("--apply", action="store_true")
     add_objects_argument(parser)
     args = parser.parse_args(argv)
     if not re.fullmatch(r"[0-9]{3}", args.year):
         parser.error("--year must be a three-digit ROC archive year")
+    if args.archive_issue and not re.fullmatch(r"[0-9]{6}", args.archive_issue):
+        parser.error("--archive-issue must be six digits")
     try:
-        result = refresh(args.year, LocalObjectStore(args.objects), apply=args.apply)
+        result = refresh(
+            args.year,
+            LocalObjectStore(args.objects),
+            apply=args.apply,
+            issue=args.archive_issue,
+        )
     except (*all_errors, ValueError, ParseError) as error:
         parser.exit(1, f"TIPO event refresh could not be verified: {error}\n")
     print(json.dumps(result), flush=True)

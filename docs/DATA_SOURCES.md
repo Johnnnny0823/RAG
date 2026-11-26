@@ -96,3 +96,7 @@
 2026-11-26 交叉核對 [第 52 卷第 6 期公告索引](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/114/PatentIsuRegSpecXMLA_052006/index.xml) 與第 53 卷第 33 期消滅公告。公告索引有 1,780 筆，16,989,536 bytes，SHA-256 `99cde994594aa622cf9469ecb6541403b3567b4597342a6915c35ce5dab526f8`。證書 `I874215` 和申請號 `113117471` 在兩個原檔一致。公告索引提供 9 項請求項，消滅公報的第 1447 筆記載消滅日 2026-02-21，原因為「未依限繳費」。公告索引屬官方卷期彙整 XML，匯入器允許 32 MiB 上限。個案說明書維持 16 MiB 上限。
 
 [專利權狀態異動資料（發明，30126）](https://data.gov.tw/dataset/30126) 是另一資料來源，官方 [OpenAPI 文件](https://cloud.tipo.gov.tw/S220/opdata/api/file/oas) 列 `/PatentRights` 及 `tk` 欄位。任意案件的最新狀態查詢與授權憑證仍待驗證。此階段使用匿名可取得、可保留原文的固定卷期事件。
+
+### 第 053032 期異動封存
+
+2026-11-26 實測民國 115 年第 053032 期的匿名 FTPS 封存。[索引](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053032/index.xml) 大小為 250,333 bytes，SHA-256 `864b6d1837000ba92354018bc6ea647e9e5050cbe86cdbfda0cb10475ba4575b`。[消滅公告 `sud08`](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053032/sud08.xml) 有 982 筆發明事件，SHA-256 `6b9ccbdcf7d4966247c5de51b5bc2c60371c3badb58f7b6ec93e64801a7cff1a`。[更正公報 `sud24`](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053032/sud24.xml) 有 33 筆發明事件，SHA-256 `624e09e1e2b820778f52722ba3589c9f653ae2423c6e181b0a4c033fb4eafa16`。兩類原檔的發明事件身分及次數均與封存索引一致。

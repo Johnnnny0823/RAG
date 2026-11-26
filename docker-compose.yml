@@ -70,6 +70,7 @@ services:
       - "--grant-from=${TIPO_REFRESH_GRANT_FROM:-}"
       - "--catch-up-max-issues=${TIPO_REFRESH_CATCH_UP_MAX_ISSUES:-2}"
       - "--legal-year=${TIPO_REFRESH_LEGAL_YEAR:-}"
+      - "--legal-from=${TIPO_REFRESH_LEGAL_FROM:-}"
     stop_grace_period: 2m
     restart: unless-stopped
     depends_on:

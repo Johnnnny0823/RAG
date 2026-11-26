@@ -1820,3 +1820,22 @@
 - Uncommitted changes / file ownership warnings: 保留隔離資料庫及原始檔供複驗。
 - Next 1–3 concrete actions: 核對完整的自動法律異動歷史匯入需求及授權條件，並追蹤人工相關性複核及正式目標主機驗收。
 - Exact reproduction steps: 匯入 SETUP 的 `I874215` 和 `202639186` 範例，將 `TIPO_REFRESH_LEGAL_YEAR` 設為 `115`，再使用 TESTING 的號碼查詢測試。
+
+## 歷史異動公報補匯
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `4d6bdb0`。
+- Current milestone and status: 官方資料更新 IN_PROGRESS。
+- Goal of this session: 歷史異動公報可先單期預覽，再由排程依序補匯且保留最新 P10 更新。
+- Files changed (with purpose): `services/ingestion/legal_refresh.py` 加入封存卷期選項，`archive_refresh.py` 與 `refresh_publications.py` 串接歷史進度，Compose 及環境範例增加起始設定，擴充異動及排程測試。
+- Database migrations added/applied: `0017_legal_archive_refresh` 擴充既有進度表的階段約束。既有隔離庫保留兩筆發明公告進度，試驗庫從空白遷移成功並通過 pgvector 運算。有法律異動進度時，舊約束不允許降版，遷移不會刪除進度。
+- API/Schema changes: 公開 API 契約維持原有 `legal_events` 欄位。
+- Commands actually run and results: pytest 含 PostgreSQL 117 passed、1 則既有 Starlette 警告，排程及異動 12 passed。`053032` 預覽核對 982 筆消滅及 33 筆更正發明事件。隔離排程成功記錄 `053032`、`053033`，新增 `I874722` 的更正事件。API 核對申請號、卷期、原始檔雜湊與 `sud24` 第 1 筆來源位置。重啟後歷史匯入 0 期，最新 P10 仍成功核對並新增 0 筆。上一筆的一般 [CI 45836596899](https://github.com/Johnnnny0823/RAG/actions/runs/45836596899) 通過。
+- Tests NOT run and reason: 重新啟動隔離 Web 並執行 Playwright 的命令被本機執行政策攔下。本輪以已啟動的隔離 API 核對歷史事件。前一筆的號碼查詢 Chromium 三裝置驗收有獨立紀錄。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 實際下載 [第 053032 期異動封存](DATA_SOURCES.md#第-053032-期異動封存)，沿用資料集 15974 政府資料開放授權條款第 1 版。公告 `I874722` 自官方 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/114/PatentIsuRegSpecXMLA_052007/index.xml` 取得。
+- Known bugs / risks / blockers: 歷史卷期完成後才收錄的新申請案，須手動重跑單期才會附上舊事件。跨年換卷、其餘事件種類與任意案件即時權利狀態仍待處理。
+- Decisions made (ADR links): 歷史完成紀錄與既有公告／公開共用同一架構，最新 P10 每輪仍會對照新案重新配對。[設定](SETUP.md#歷史異動公報補匯)
+- Uncommitted changes / file ownership warnings: 原始物件與隔離資料庫保留供複驗。
+- Next 1–3 concrete actions: 考量歷史事件與新收錄案件重新配對的負載和完整性，持續人工相關性複核與正式目標主機驗收。
+- Exact reproduction steps: 匯入官方 `I874722`，以 `TIPO_REFRESH_LEGAL_YEAR=115`、`TIPO_REFRESH_LEGAL_FROM=053032` 啟動隔離排程。在 `archive_refresh_checkpoints` 核對 `legal` 兩期，重啟後核對跳過紀錄與專利詳情 API。
