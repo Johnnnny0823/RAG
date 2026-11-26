@@ -224,6 +224,12 @@ def test_background_search_saves_snapshot_only_for_completed_owner_job(
     accounts, monkeypatch
 ):
     client, ((_, owner, _), (_, other, _)) = accounts
+    outcomes = []
+    monkeypatch.setattr(
+        search_worker,
+        "write_activity",
+        lambda event, _, **info: outcomes.append((event, info)),
+    )
     response = client.post("/api/v1/search-jobs", headers=owner, json={"query": "DEMO"})
     assert response.status_code == 202
     path = response.headers["Location"]
@@ -286,12 +292,19 @@ def test_background_search_saves_snapshot_only_for_completed_owner_job(
     assert search_worker.process_one()
     assert client.get(path, headers=owner).json()["run_id"] is None
     assert len(client.get("/api/v1/search-runs", headers=owner).json()) == 1
+    assert outcomes == [("search_job_finished", {"status": "succeeded"})]
 
 
 def test_background_report_is_private_ephemeral_and_deleted_with_run(
     accounts, monkeypatch
 ):
     client, ((owner_id, owner, _), (_, other, _)) = accounts
+    outcomes = []
+    monkeypatch.setattr(
+        report_jobs,
+        "write_activity",
+        lambda event, _, **info: outcomes.append((event, info)),
+    )
     with engine.begin() as conn:
         run_id = conn.exec_driver_sql(
             """INSERT INTO search_runs (user_id, request, settings)
@@ -314,6 +327,7 @@ def test_background_report_is_private_ephemeral_and_deleted_with_run(
 
     monkeypatch.setattr(report_jobs, "render_saved_report", render)
     assert report_jobs.process_one_report()
+    assert outcomes == [("report_job_finished", {"status": "succeeded"})]
     assert client.get(path, headers=owner).json()["status"] == "succeeded"
     download = client.get(path + "/pdf", headers=owner)
     assert download.content == b"%PDF-1.4\nDEMO"

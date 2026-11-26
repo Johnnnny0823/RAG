@@ -1566,3 +1566,23 @@
 - Uncommitted changes / file ownership warnings: 本機 PDF 為測試輸出，未放入 Git。隔離資料卷保留。
 - Next 1–3 concrete actions: 完整遠端模型驗收、人工相關性複核及目標主機部署。
 - Exact reproduction steps: 依 [展示指南](DEMO.md) 準備語料與模型，令 `PATENTSCOPE_E2E_TIPO=1` 並執行 `tipo-research.spec.ts`。
+
+## API 主要操作紀錄
+
+- Codex 負責 API 操作日誌、容器日誌設定、測試與操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `5d0a8ac`。
+- Current milestone and status: 主要操作結果本機驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 提供部署操作員可檢查的請求結果及工作完成紀錄，避開研究文字和識別資料。
+- Files changed (with purpose): `services/api/activity.py` 與 `patents.py` 記錄路由樣板、操作方法、狀態及耗時，`search_worker.py` 與 `report_jobs.py` 記錄已提交的工作結果。API Docker 命令移除原始存取日誌，Compose 設置日誌輪替。增加單元及整合斷言，更新 ARCHITECTURE、SETUP、PROGRESS 和交接。
+- Database migrations added/applied: 無新增，不建立帳號活動資料表。
+- API/Schema changes: 無。
+- Commands actually run and results: Ruff、Git diff 檢查及正式容器部署冒煙通過。完整 pytest 含 PostgreSQL 為 99 passed、1 則既有 Starlette 警告。兩項背景工作整合測試加入事件斷言後再跑，2 passed。實際送出帶合成標記的無效請求及測試帳號匯出，容器日誌含樣板與 422／200，未出現測試查詢、構想、文件 UUID、密碼或 Bearer token。測試帳號已清理。
+- Tests NOT run and reason: 未修改介面契約，本輪未重跑 Playwright。較早的完整官方遠端工作仍在向量索引階段。
+- Data sources checked (exact URL/date) and license/access notes: 本輪未下載官方資料。容器測試只使用隔離環境與合成隱私標記。
+- Known bugs / risks / blockers: 不提供依帳號查詢的活動歷程或外部稽核保存。代理及其他服務日誌需在目標環境另驗。人工相關性及公開部署尚待完成。
+- Decisions made (ADR links): 以固定欄位結構化日誌提供維運觀測，避免在日誌引入帳號及私人研究識別碼。
+- Uncommitted changes / file ownership warnings: 日誌與測試資料留在隔離容器，未放入 Git。
+- Next 1–3 concrete actions: 核對遠端完整官方驗收，完成人工評估與公開部署。
+- Exact reproduction steps: 於隔離環境使用 `docker compose logs api search-worker`。先跑 `tests/test_activity.py`，再依 TESTING 啟用 PostgreSQL 整合驗證背景工作。

@@ -4,6 +4,7 @@ import logging
 import re
 import unicodedata
 from datetime import date, datetime
+from time import perf_counter
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
@@ -16,6 +17,7 @@ from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import SQLAlchemyError
 
+from services.api.activity import record_activity
 from services.api.db import engine
 from services.api.identity import IdentityError, IdentityUnavailable
 from services.api.model_limits import ModelBusy, model_slot
@@ -91,7 +93,13 @@ class PatentRoute(APIRoute):
                 response.headers["Cache-Control"] = "no-store"
                 return response
 
-        return handle
+        async def track_activity(request):
+            started = perf_counter()
+            response = await handle(request)
+            record_activity(request.method, self.path, response.status_code, started)
+            return response
+
+        return track_activity
 
 
 class PatentError(BaseModel):

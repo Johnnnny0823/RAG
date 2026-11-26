@@ -312,6 +312,12 @@ docker compose run --rm --no-deps migrate python -m services.ingestion.verify_do
 最後一個指令適用於已匯入 `202639611` 全文的語料。校驗指令會依資料庫逐筆核對物件大小及 SHA-256，也包含已隔離、但留有原始檔記錄的物件。遇到遺失或損毀會以非零狀態退出，已成功複製的檔案可保留供重跑。舊物件目錄可按同樣方式掛在 `/backup:ro` 搬入；若缺少原始位元組，需從原來源找回與資料庫雜湊相符的檔案。未列入資料庫的下載快取不在備份範圍。
 
 範例使用預設資料庫名稱和帳號 `patentscope`。若已自訂，請調整 `-U` 與資料庫名稱。每次備份使用新目錄，並將備份視同私有資料庫管理，因為其中也包含研究紀錄。
+## 主要操作日誌
+
+在隔離或正式部署中可執行 `docker compose logs api search-worker` 查看操作紀錄。API 的 `api_activity` 事件列出方法、路由樣板、HTTP 狀態與耗時。背景工作送入資料庫的最終狀態後，會輸出 `search_job_finished` 或 `report_job_finished`。請求內容、實際路徑參數、帳號、令牌與報告內容不會寫入這些事件。
+
+API 容器已關閉原始 Uvicorn 存取日誌。Compose 的 API 日誌每檔最多 10 MiB，保留最多三檔。工作程序與代理的診斷日誌仍需由部署者配置留存、存取與傳輸。
+
 ## PostgreSQL 執行帳號
 
 Compose 在遷移完成後建立 `patentscope_api` 並授權。API 使用這個帳號讀取專利與索引，並依功能存取研究資料。遷移與離線匯入則使用 `POSTGRES_USER`。API 的容器環境只取得自己的資料庫密碼。

@@ -2,6 +2,7 @@
 
 import logging
 from datetime import datetime
+from time import perf_counter
 from typing import Literal
 from uuid import UUID
 
@@ -9,6 +10,7 @@ from fastapi import APIRouter, Response
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
+from services.api.activity import write_activity
 from services.api.db import engine
 from services.api.patents import (
     PatentErrorEnvelope,
@@ -150,6 +152,7 @@ def process_one_report() -> bool:
         ).one_or_none()
     if job is None:
         return False
+    started = perf_counter()
     pdf = None
     try:
         rendered = render_saved_report(job.run_id, job.user_id)
@@ -160,13 +163,14 @@ def process_one_report() -> bool:
         ):
             pdf = rendered
     except Exception as error:
-        logger.error(
-            "PDF report failed report_id=%s type=%s", job.id, type(error).__name__
-        )
+        logger.error("PDF report failed type=%s", type(error).__name__)
+    status = "succeeded" if pdf else "failed"
     with engine.begin() as conn:
-        conn.exec_driver_sql(
+        updated = conn.exec_driver_sql(
             """UPDATE generated_reports SET status = %s, pdf = %s, finished_at = now()
                WHERE id = %s AND status = 'running'""",
-            ("succeeded" if pdf else "failed", pdf, job.id),
-        )
+            (status, pdf, job.id),
+        ).rowcount
+    if updated:
+        write_activity("report_job_finished", started, status=status)
     return True

@@ -4,11 +4,12 @@ import json
 import logging
 import signal
 from collections.abc import Callable
-from time import sleep
+from time import perf_counter, sleep
 
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
+from services.api.activity import write_activity
 from services.api.db import engine
 from services.api.model_limits import ModelBusy
 from services.api.patents import HybridSearchRequest, run_hybrid
@@ -37,6 +38,7 @@ def process_one() -> bool:
         ).one_or_none()
     if job is None:
         return False
+    started = perf_counter()
     try:
         request = HybridSearchRequest.model_validate(job.request)
         result = run_hybrid(request, full_snapshot=True)
@@ -48,7 +50,7 @@ def process_one() -> bool:
     except ModelBusy:
         error = "MODEL_BUSY"
     except Exception as exc:
-        logger.error("Search job failed job_id=%s type=%s", job.id, type(exc).__name__)
+        logger.error("Search job failed type=%s", type(exc).__name__)
         error = "SEARCH_JOB_FAILED"
 
     with engine.begin() as conn:
@@ -76,6 +78,9 @@ def process_one() -> bool:
                           finished_at = now(), run_id = %s WHERE id = %s""",
                 (saved.id, job.id),
             )
+    write_activity(
+        "search_job_finished", started, status="failed" if error else "succeeded"
+    )
     return True
 
 
