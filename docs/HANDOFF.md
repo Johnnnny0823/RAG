@@ -1930,8 +1930,8 @@
 - Commands actually run and results: [一般 CI 45877176064](https://github.com/Johnnnny0823/RAG/actions/runs/45877176064) 通過。改用 Vite 測試配置重跑一般 Playwright，12 passed。官方來源模式 [45877188284](https://github.com/Johnnnny0823/RAG/actions/runs/45877188284) 的 PWA 驗收及 24 份固定原檔檢查均通過，第一批匯入結果新增欄位導致斷言失敗。本機重現一項失敗，修正後 pytest 116 passed、9 skipped，Ruff 格式與 lint 通過。
 - Tests NOT run and reason: 本機未重建整套官方模型；此輪的 PostgreSQL pytest 依環境設定略過 9 項。
 - Data sources checked (exact URL/date) and license/access notes: 遠端按固定樣本清單以 SHA-256 核對 24 份官方 XML，來源及限制以 DATA_SOURCES 為準。
-- Known bugs / risks / blockers: 完整官方模型工作流程及修正版來源模式仍待結果，公開主機及人工相關性複核仍待。
+- Known bugs / risks / blockers: 修正版 `e73e09e` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45877742498) 與[官方來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45877757310) 已通過。[同版完整官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45878789673)、公開主機及人工相關性複核仍待。
 - Decisions made (ADR links): 明確保留其他計數與錯誤欄位的比對，沒有相關事件的測試語料才允許計數為零。
 - Uncommitted changes / file ownership warnings: 僅修改整合工作樹。
-- Next 1–3 concrete actions: 觀察修正版來源模式及既有完整官方 E2E，記錄結果與查核引文。
+- Next 1–3 concrete actions: 觀察 `e73e09e` 完整官方 E2E，記錄模型及跨瀏覽器結果並核對引文。
 - Exact reproduction steps: 執行 `pytest -q tests/test_tipo_e2e_seed.py`，再以 `coverage=source` 觸發官方工作流程。

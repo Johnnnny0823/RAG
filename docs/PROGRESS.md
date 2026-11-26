@@ -167,4 +167,4 @@
 - [x] 整合分支加入 `0019_legal_event_catalog`。隔離重播 4 個既有官方原檔，共保存 1,884 筆發明異動。後續匯入 `I874744` 時自動附上先前保存的第 053032 期更正事件。重跑後仍為 1 筆，API 核對來源與雜湊。含 PostgreSQL 的 pytest 124 項通過。[交接](HANDOFF.md#晚入庫案件的歷史異動配對)
 - [x] 用 117 個官方版本的隔離語料重建 34 組候選的互動式複核表，Chromium 驗證離線下載草稿、恢復、拒絕版本不符及阻止未完成送出。全不相關查詢可保留在評估中。人工標註仍待完成。[複核方式](EVALUATION.md#人工複核候選池)
 - [x] 2026-11-27 新增包裝版 PWA 斷線回歸。隔離 Nginx 正式映像的 5 個 Playwright 專案通過，核對離線提示、API 回應未進入 PWA 快取、斷線 API 無法讀取及恢復連線。官方 CI 新增此項關卡，對外主機驗收仍待執行。[測試方式](TESTING.md#部署版-pwa-離線驗收)
-- [x] [一般 CI 45877176064](https://github.com/Johnnnny0823/RAG/actions/runs/45877176064) 與官方流程的包裝版 PWA 步驟通過。官方來源模式在後續匯入結果驗證發現新增欄位未處理，已依實際回傳修正並通過本機回歸，整組來源模式待重跑。[交接紀錄](HANDOFF.md#官方固定樣本匯入檢查)
+- [x] `e73e09e` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45877742498) 與[官方來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45877757310) 均通過。來源模式核對 24 份原檔、匯入、詞彙 API、來源回溯、Chromium 號碼查詢、離線回歸與限流。[同版完整模型及瀏覽器流程](https://github.com/Johnnnny0823/RAG/actions/runs/45878789673)待訖。
