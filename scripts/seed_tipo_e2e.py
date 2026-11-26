@@ -107,7 +107,9 @@ def check_import(output: str, expected: dict) -> dict:
     counts = {
         key: value for key, value in result.items() if key not in {"status", "reused"}
     }
-    if counts != expected:
+    # The isolated fixture has no legal events. Older saved batches omit this count.
+    linked_events = counts.pop("legal_events_linked", 0)
+    if linked_events != 0 or counts != expected:
         raise ValueError(f"Unexpected import result: {result}")
     return result
 

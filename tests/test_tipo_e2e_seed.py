@@ -25,6 +25,10 @@ def test_seed_checks_counts_of_new_and_reused_imports():
     output = "compose notice\n" + json.dumps(reused)
 
     assert check_import(output, counts) == reused
+    linked_count = {**reused, "reused": False, "legal_events_linked": 0}
+    assert check_import(json.dumps(linked_count), counts) == linked_count
+    with pytest.raises(ValueError, match="Unexpected import result"):
+        check_import(json.dumps({**linked_count, "legal_events_linked": 1}), counts)
     failed_download = {
         **reused,
         "fulltext": 16,
