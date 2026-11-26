@@ -71,6 +71,7 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     await expect(page.getByRole("alert")).toHaveCount(0);
     await ipc.fill("C08F");
     await page.getByLabel("文件種類").selectOption("publication");
+    await page.getByLabel("文件內容").selectOption("fulltext");
     await page.getByLabel("申請人（中英文名稱）").fill("九州大學");
 
     const savedResponse = page.waitForResponse((response) =>
@@ -87,7 +88,10 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     expect((await saved.json()).status).toBe("queued");
     const opened = await openedRun;
     expect(opened.ok()).toBe(true);
-    const { id, settings } = await opened.json();
+    const { id, request: savedRequest, settings, items: returnedHits } = await opened.json();
+    expect(savedRequest.content_scope).toBe("fulltext");
+    expect(returnedHits.length).toBeGreaterThan(0);
+    expect(returnedHits.every((item: { content_scope: string }) => item.content_scope === "fulltext")).toBe(true);
     const coverage = settings.corpus_coverage;
     expect(coverage.lexical_versions).toBeGreaterThanOrEqual(1);
     expect(coverage.semantic_versions).toBeGreaterThanOrEqual(1);
@@ -237,6 +241,7 @@ test("official publication supports saved evidence and PDF export @tipo", async 
       `詞彙索引 ${coverage.lexical_versions} 個文件版本`,
       `向量索引 ${coverage.semantic_versions} 個文件版本`,
       "構想與檢索策略",
+      "文件內容 全文",
       "光硬化性樹脂組成物",
       ...longIdea.split("\n"),
       "公開 202639611",

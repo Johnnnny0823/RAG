@@ -1705,3 +1705,23 @@
 - Uncommitted changes / file ownership warnings: 原檔留在隔離物件卷與暫存目錄、未提交至 Git。
 - Next 1–3 concrete actions: 驗證公告全文向量與更新排程，核對最新完整官方 CI。
 - Exact reproduction steps: 按 SETUP 的公告個案全文段落下載並匯入同一期來源，以 `verify_document --grant-issue 053030 --grant-fulltext` 逐件驗證。
+
+## 專利文件內容篩選
+
+- Codex 負責搜尋篩選、報告、研究頁與官方公告向量驗收。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `ed4ef6d`。
+- Current milestone and status: 文件內容篩選、公告向量與同版本引文已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 讓研究者可明確選擇全文、書目與請求項或書目與摘要，避免範圍不同的版本影響驗收。
+- Files changed (with purpose): `services/api/patents.py` 讓三種檢索與涵蓋筆數共用篩選，`services/api/reports.py` 納入報告策略，研究頁增加輸入與結果條件。新增官方公告驗收腳本及更新既有 PDF E2E。
+- Database migrations added/applied: 無新增。隔離語料的 6 個公告版本建立 340 筆向量，重跑新增 0。
+- API/Schema changes: 搜尋請求新增可選 `content_scope`，舊搜尋與呼叫端省略時沿用原有行為。
+- Commands actually run and results: 兩件第 053030 期公告逐一通過全文與請求項版的詞彙、語意、混合篩選及全文引文核對。正式建置桌面 Chromium 的模型拆解、全文篩選、搜尋保存、歷史與 PDF 測試 1 passed（45.8 秒），PDF 確認標示「文件內容 全文」。初次前端 lint 指出測試變數名稱重複，修正後 lint、型別及 Vite 建置通過。pytest 97 passed、8 skipped，Ruff 及 Git diff 通過。
+- Tests NOT run and reason: 本輪未執行其餘瀏覽器及 PostgreSQL pytest 整合測試。新公告以針對實際 PostgreSQL、Ollama 及 API 的驗收腳本核對。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 使用既有第 053030 期公告及第 024019 期瀏覽器樣本，無新檔案下載。
+- Known bugs / risks / blockers: 新篩選不改變未指定範圍時的版本排序策略。完整外部部署、人工相關性複核及跨期自動補匯尚待驗。
+- Decisions made (ADR links): 使用現成的版本內容範圍枚舉，不增加資料庫欄位。舊的找回或報告流程保持相容。
+- Uncommitted changes / file ownership warnings: 實際驗收使用兩個隔離資料庫。資料及 PDF 保留在未追蹤路徑。
+- Next 1–3 concrete actions: 驗收公告與異動的更新流程，核對最新完整官方 CI，完成相關性人工複核。
+- Exact reproduction steps: 依 TESTING 加入第 053030 期兩件公告的兩種版本並建向量，執行 `scripts/smoke_grant_versions.py`。以既有固定官方語料執行 `tipo-research.spec.ts` 驗證 UI 與 PDF。

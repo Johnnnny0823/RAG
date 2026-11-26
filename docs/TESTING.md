@@ -88,6 +88,8 @@ python scripts/smoke_semantic.py --issue-024020 --api http://127.0.0.1:18152
 python scripts/evaluate_citations.py --issue-024020 --api http://127.0.0.1:18152
 ```
 
+第 053030 期的公告內容篩選驗收需同時匯入 `I942741`、`I942850` 的 S01 請求項版及官方個案全文版，並建立兩種索引。執行 `python scripts/smoke_grant_versions.py --api http://127.0.0.1:18152`，檢查兩種文件內容各自的詞彙、語意、混合檢索，以及全文版引文是否回到該版本原文。
+
 ```powershell
 $env:PATENTSCOPE_E2E_URL = "http://127.0.0.1:18125"
 $env:PATENTSCOPE_E2E_TIPO = "dates"

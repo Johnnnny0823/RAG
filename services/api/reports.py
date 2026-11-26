@@ -141,6 +141,7 @@ def build_report(run: RunDetails, sources: dict[UUID, list[SourceArtifact]]) -> 
         ("日期迄日", run.request.published_to),
         ("申請人", run.request.applicant),
         ("文件類型", STAGES.get(run.request.document_stage or "")),
+        ("文件內容", SCOPES.get(run.request.content_scope or "")),
     ]
     paragraph(
         "篩選條件 · "

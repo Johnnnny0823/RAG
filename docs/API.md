@@ -27,6 +27,8 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 ## 詞彙檢索
 
+詞彙、語意與混合檢索可選填 `content_scope`。可用值為 `fulltext`（全文）、`claims_only`（書目與請求項）和 `metadata_and_abstract`（書目與摘要）。條件和 `document_stage` 可一同使用，例如查公告全文。混合結果的索引涵蓋筆數也使用同一篩選。已保存搜尋會記錄此欄位，PDF 將列出選用的內容範圍。
+
 詞彙、語意與混合檢索共用選填欄位 `published_from`、`published_to`、`document_stage`、`applicant` 及 `ipc`。日期以 ISO 日曆日期表示，含起迄日，指定任何日期界線時排除日期未知的版本。文件階段接受 `publication` 或 `grant`。申請人以已匯入中英文名稱做不分大小寫的文字子字串比對，萬用字元視為一般文字。混合檢索先套用條件再產生分支順位，保存搜尋會一起保存條件。
 
 `POST /api/v1/patents/search` 接受 JSON，例如 `{"query":"動態導通電阻","ipc":"G01R","limit":20,"offset":0}`。查詢為 1–160 字元。`ipc` 可省略，四碼子類採前綴比對，完整分類符號採精確比對，支援全半形正規化。回傳 `items`、`tokenizer_version`、`limit`、`offset`、`has_more`。

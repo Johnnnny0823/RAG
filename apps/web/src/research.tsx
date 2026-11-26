@@ -62,11 +62,12 @@ type SearchFilters = {
   published_from: string;
   published_to: string;
   document_stage: string;
+  content_scope: string;
   applicant: string;
 };
 type Search = { query: string; ipc: string | null; features: Feature[]; rerank: boolean; offset: number } &
   { [Key in keyof SearchFilters]?: string | null };
-const emptyFilters: SearchFilters = { published_from: "", published_to: "", document_stage: "", applicant: "" };
+const emptyFilters: SearchFilters = { published_from: "", published_to: "", document_stage: "", content_scope: "", applicant: "" };
 type CorpusCoverage = {
   observed_at: string;
   lexical_versions: number;
@@ -452,6 +453,7 @@ export function Research() {
       published_from: filters.published_from || null,
       published_to: filters.published_to || null,
       document_stage: filters.document_stage || null,
+      content_scope: filters.content_scope || null,
       applicant: filters.applicant.trim() || null,
     };
     if (save && session) {
@@ -780,6 +782,14 @@ export function Research() {
                   <option value="grant">公告</option>
                 </select>
               </label>
+              <label className="research-field">文件內容
+                <select value={filters.content_scope} onChange={(event) => setFilters({ ...filters, content_scope: event.target.value })}>
+                  <option value="">不限</option>
+                  <option value="fulltext">全文</option>
+                  <option value="claims_only">書目與請求項</option>
+                  <option value="metadata_and_abstract">書目與摘要</option>
+                </select>
+              </label>
               <label className="research-field">申請人（中英文名稱）
                 <input value={filters.applicant} maxLength={120} onChange={(event) => setFilters({ ...filters, applicant: event.target.value })} />
               </label>
@@ -798,11 +808,12 @@ export function Research() {
             {results.corpus_coverage ? <p className="mb-3 text-sm text-slate-700">
               搜尋涵蓋範圍（依篩選） · 詞彙索引 {results.corpus_coverage.lexical_versions} 個文件版本 · 向量索引 {results.corpus_coverage.semantic_versions} 個文件版本 · 最新文件日期 {results.corpus_coverage.latest_document_date ?? "未提供"} · <time dateTime={results.corpus_coverage.observed_at}>{new Date(results.corpus_coverage.observed_at).toLocaleString("zh-TW")}</time>
             </p> : saved && <p className="mb-3 text-sm text-slate-700">這筆搜尋未記錄當時的索引涵蓋範圍。</p>}
-            {(search.published_from || search.published_to || search.document_stage || search.applicant) && <p className="mb-3 break-words text-sm text-slate-700">
+            {(search.published_from || search.published_to || search.document_stage || search.applicant || search.content_scope) && <p className="mb-3 break-words text-sm text-slate-700">
               {[
                 search.published_from && `起日 ${search.published_from}`,
                 search.published_to && `迄日 ${search.published_to}`,
                 search.document_stage && `文件 ${stage[search.document_stage]}`,
+                search.content_scope && `內容 ${scope[search.content_scope]}`,
                 search.applicant && `申請人 ${search.applicant}`,
               ].filter(Boolean).join(" · ")}
             </p>}

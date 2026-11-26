@@ -161,6 +161,7 @@ class RankedSearchRequest(BaseModel):
     published_from: date | None = None
     published_to: date | None = None
     document_stage: DocumentStage | None = None
+    content_scope: ContentScope | None = None
     applicant: (
         Annotated[
             str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)
@@ -337,6 +338,7 @@ SEARCH_FILTERS = """
     AND (%s::date IS NULL OR d.publication_date >= %s)
     AND (%s::date IS NULL OR d.publication_date <= %s)
     AND (%s::text IS NULL OR d.document_stage = %s)
+    AND (%s::text IS NULL OR d.metadata_jsonb->>'content_scope' = %s)
     AND (%s::text IS NULL OR EXISTS (
         SELECT 1 FROM jsonb_array_elements(
             CASE WHEN jsonb_typeof(d.metadata_jsonb->'applicants') = 'array'
@@ -460,6 +462,7 @@ def search_filter_params(request: RankedSearchRequest) -> tuple:
         *((request.published_from,) * 2),
         *((request.published_to,) * 2),
         *((request.document_stage,) * 2),
+        *((request.content_scope,) * 2),
         *((request.applicant,) * 3),
     )
 
