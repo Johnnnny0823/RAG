@@ -185,6 +185,8 @@ docker compose run --rm migrate python -m services.retrieval.index_semantic
 
 上述命令請在已有 `.env` 的隔離 Compose 專案執行，依嵌入設定準備本機模型。原始 XML 應放在未追蹤的資料目錄。讀取前會依來源類別套用 XML 上限。
 
+同一資料庫和嵌入模型版本同時只接受一個向量索引程序。若指令回報 `This embedding model is already being indexed`，待既有工作結束後重跑。已完成的文件版本會被略過。
+
 ## M3 本機技術特徵驗收
 
 保留嵌入模型設定，另外配置本機 Ollama 分析模型。以 `ollama pull qwen2.5:1.5b` 取得模型，並從本機 `/api/tags` 核對 digest。分析請求使用 CPU。共用模型服務僅用公開測試查詢驗收。

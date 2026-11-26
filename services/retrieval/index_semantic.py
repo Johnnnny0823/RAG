@@ -28,6 +28,13 @@ INSERT = """
     ON CONFLICT DO NOTHING
 """
 
+# Positive bigint advisory keys are available to ingestion orchestration.
+LOCK_MODEL = "SELECT pg_try_advisory_lock(-%s::bigint)"
+
+
+class SemanticIndexBusy(RuntimeError):
+    pass
+
 
 def windows(body):
     for start in range(0, len(body), 900):
@@ -54,6 +61,17 @@ def index_missing(
         )
         identity = model_id(conn, model)
 
+    # The engine uses NullPool, so leaving this scope closes the session and its lock.
+    with engine.connect() as lock:
+        if not lock.exec_driver_sql(LOCK_MODEL, (identity,)).scalar_one():
+            raise SemanticIndexBusy("This embedding model is already being indexed")
+        lock.commit()
+        return _index_batches(model, identity, batch_size, request_timeout)
+
+
+def _index_batches(
+    model: LocalEmbeddingModel, identity: int, batch_size: int, request_timeout: int
+) -> tuple[int, int]:
     documents = vectors = 0
     while True:
         with engine.connect() as conn:
@@ -102,9 +120,12 @@ if __name__ == "__main__":
         parser.error(
             "Batch size must be 1..24 and request timeout must be 1..1800 seconds"
         )
-    documents, vectors = index_missing(
-        LocalEmbeddingModel.from_env(),
-        batch_size=args.batch_size,
-        request_timeout=args.request_timeout,
-    )
+    try:
+        documents, vectors = index_missing(
+            LocalEmbeddingModel.from_env(),
+            batch_size=args.batch_size,
+            request_timeout=args.request_timeout,
+        )
+    except SemanticIndexBusy as error:
+        parser.exit(1, f"{error}\n")
     print(f"Semantic index update complete: {documents} versions and {vectors} vectors")

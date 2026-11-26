@@ -36,6 +36,15 @@ def test_index_uses_bounded_requests_and_publishes_only_complete_group(
                 return [("DEMO-document", "claim", i, "DEMO text") for i in range(3)]
             if sql == index_semantic.INSERT:
                 inserted.extend(params)
+            if sql == index_semantic.LOCK_MODEL:
+                assert params == (1,)
+                return self
+
+        def scalar_one(self):
+            return True
+
+        def commit(self):
+            pass
 
         def scalars(self):
             return ["DEMO-document"] if self.reads == 1 else []

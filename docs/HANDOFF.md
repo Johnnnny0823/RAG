@@ -1446,3 +1446,23 @@
 - Uncommitted changes / file ownership warnings: 閱讀檔與測試資料卷留在本機，未提交原始專利資料。
 - Next 1–3 concrete actions: 人工複核 34 組候選並重算評估，追蹤官方 CI，驗收外部部署。
 - Exact reproduction steps: 依 EVALUATION 的人工複核段落執行 `python -m scripts.export_review_packet`，使用已匯入 117 版本的隔離 API 和固定候選池。
+
+## 向量索引並行控制
+
+- Codex 負責 `services/retrieval/index_semantic.py`、索引測試與操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `aed8e68`。
+- Current milestone and status: 向量索引並行控制本機驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 防止操作員匯入流程及獨立指令同時重建相同模型索引，避免重複推論。
+- Files changed (with purpose): `services/retrieval/index_semantic.py` 依模型資料列取得 PostgreSQL session advisory lock，`tests/test_semantic_index.py` 更新分批及回滾測試的連線行為。另更新 SETUP、PROGRESS 與交接。
+- Database migrations added/applied: 無。隔離庫既有 117 個文件版本與 1,624 筆向量。
+- API/Schema changes: 無。CLI 競爭同一模型時以退出碼 1 回報。
+- Commands actually run and results: Pytest 90 passed、7 skipped，索引測試重跑 6 passed。Ruff lint 及格式通過。以隔離 Docker PostgreSQL 驗證一條連線持鎖時，同模型的第二次索引立即拒絕，不同模型鍵可取得，放鎖後重跑新增 0 筆、原有 1,624 筆向量保留。測試替身在任何重新嵌入時會使驗收失敗。
+- Tests NOT run and reason: 本輪未跑全套 PostgreSQL pytest 或 Playwright，也未重新計算 1,624 筆向量。遠端正式部署 [45738965469](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469) 仍在建立索引。
+- Data sources checked (exact URL/date) and license/access notes: 無新增下載，沿用先前固定第 024019、053028 期。
+- Known bugs / risks / blockers: 本輪未量測建置時間改善。人工相關性與外部部署仍待驗收。
+- Decisions made (ADR links): 同模型使用負的 bigint 鎖鍵，與現有匯入流程的正值鎖鍵分開。沿用 NullPool，實體連線結束後 PostgreSQL 釋放鎖。
+- Uncommitted changes / file ownership warnings: 測試使用先前的隔離資料卷，未變更既有原文或向量。
+- Next 1–3 concrete actions: 追蹤正式建置遠端結果，完成人工相關性複核和外部部署驗收。
+- Exact reproduction steps: 在官方隔離資料庫以獨立連線對模型資料列 ID 的負值取得 `pg_try_advisory_lock`。使用該模型執行索引 CLI 應回報忙碌。關閉持鎖連線後重跑，原本完成的版本應保留並略過。
