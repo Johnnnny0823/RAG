@@ -220,3 +220,16 @@ python -m scripts.seed_tipo_e2e <cache> --embedding-batch-size 2 --embedding-tim
 `tests/test_semantic_index.py` 驗證分批、等待傳遞、參數範圍與第二批失敗時零寫入；`tests/test_embeddings.py` 驗證傳輸等待傳遞。2026-11-25 全套 57 passed、3 skipped；獨立 PostgreSQL 套件另 3 passed。第一次全套測試因 Windows 共用 pytest 暫存目錄存取遭拒，48 passed、3 skipped、4 errors；指定新的唯一 `--basetemp` 後重跑通過。保留一則既有 Starlette 棄用警告。
 
 本機隔離模型使用固定 Ollama 映像、既有唯讀模型卷、2 CPU 與 4 GiB，未配置 GPU。兩段長 DEMO 文本（1000／960 字）產生 2 個 1024 維向量耗時 21.45 秒。官方 `202639611` XML 雜湊 `0537aedd633f9c63e7fe06790732cb0bf06e240e0bebf360c725abf9bc98d70a` 核對後解析為 19 請求項／122 段；取前兩段請求項（163／78 字）耗時 2.01 秒。此處未執行全量 CPU 索引、遠端 GitHub 官方 E2E 或新增瀏覽器回歸，不能外推為完整驗收。
+
+### 部署版 PWA 離線驗收
+
+啟動隔離的正式 Nginx 前端與 API 後，在 `apps/web` 執行下列命令。連接埠依隔離環境調整，Firefox 與 WebKit 需先安裝對應 Playwright 瀏覽器。
+
+```powershell
+$env:PATENTSCOPE_E2E_URL = "http://127.0.0.1:18166"
+$env:PATENTSCOPE_E2E_DEPLOY = "1"
+$env:PATENTSCOPE_E2E_CROSS_BROWSER = "1"
+npx playwright test --reporter=list
+```
+
+2026-11-27 通過 5 項，涵蓋桌面、平板與手機 Chromium，以及桌面 Firefox 與 WebKit。測試連線時核對語料狀態 API 由網路回應，斷線時核對提示與 API 無法讀取，恢復後再次取得 200。官方來源工作流程在啟動正式映像後先跑桌面 Chromium，再匯入官方語料。

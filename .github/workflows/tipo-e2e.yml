@@ -58,6 +58,12 @@ jobs:
         run: docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.deploy.yml up -d --build --wait --wait-timeout 180
       - name: Verify packaged web deployment
         run: python scripts/smoke.py --api http://127.0.0.1:5173 --web http://127.0.0.1:5173 --deployment
+      - name: Verify packaged PWA offline isolation
+        run: npx playwright test --project=desktop-chromium
+        working-directory: apps/web
+        env:
+          PATENTSCOPE_E2E_DEPLOY: "1"
+          PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
       - name: Import and verify cached official corpus
         run: python -m scripts.seed_tipo_e2e "$RUNNER_TEMP/tipo-fixture" --offline --skip-semantic
       - name: Official identifiers, provenance and lexical search APIs

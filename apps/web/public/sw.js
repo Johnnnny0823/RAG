@@ -17,7 +17,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin || url.search) return;
   if (request.mode === "navigate" && url.pathname === "/") {
-    event.respondWith(fetch(request).catch(async () => (await (await caches.open(CACHE)).match("/offline.html")) ?? Response.error()));
+    event.respondWith(fetch(request, { cache: "no-store" }).catch(async () => (await (await caches.open(CACHE)).match("/offline.html")) ?? Response.error()));
     return;
   }
   if (!FIXED.includes(url.pathname) && !/^\/assets\/[\w.-]+\.(js|css)$/.test(url.pathname)) return;

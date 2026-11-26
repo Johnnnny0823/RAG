@@ -1897,3 +1897,22 @@
 - Uncommitted changes / file ownership warnings: 互動 HTML 為本機驗收產物，未加入 Git。
 - Next 1–3 concrete actions: 確認官方 E2E，待複核檔匯出後用原本固定語料重跑評估。
 - Exact reproduction steps: 依 EVALUATION 的 `export_review_packet` 命令產生 HTML，打開並填寫複核。以下載的完成檔傳入 `evaluate_search.py --dataset`。
+
+## PWA 部署回歸
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `08a627f`。
+- Current milestone and status: 部署整合與檢索評估 IN_PROGRESS。
+- Goal of this session: 將 PWA 斷線及 API 快取隔離納入正式前端映像的驗收。
+- Files changed (with purpose): `apps/web/public/sw.js` 的首頁請求明確繞過 HTTP 快取。`apps/web/e2e/pwa.spec.ts`、`apps/web/playwright.config.ts` 與 `.github/workflows/tipo-e2e.yml` 加入包裝版測試及官方 CI 關卡。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。
+- Commands actually run and results: 前端 lint、build、Docker deploy target build、`scripts/smoke.py --deployment` 通過。隔離 Nginx 的 PWA 回歸 5 passed，涵蓋三種 Chromium 裝置、桌面 Firefox 與 WebKit。Firefox 模擬離線時顯示應用程式的離線橫幅，其他四個專案在嚴格檢查中顯示專用離線頁。
+- Tests NOT run and reason: 本輪未重跑正式公開主機與實體手機驗收。一般瀏覽器套件曾誤指向含部署限流的服務，兩件因 429 失敗，另有一件因兩組測試共用 trace 目錄失敗。一般 CI 應使用開發配置，[起點 CI 45876335450](https://github.com/Johnnnny0823/RAG/actions/runs/45876335450) 已通過。完整官方 E2E [45874632186](https://github.com/Johnnnny0823/RAG/actions/runs/45874632186) 仍在建立 CPU 向量索引，對應先前整合提交。
+- Data sources checked (exact URL/date) and license/access notes: 本輪測試隔離語料狀態端點及網路行為，未重新下載官方資料。
+- Known bugs / risks / blockers: 公開主機、對外 TLS 信任及人工相關性標註仍待驗收。
+- Decisions made (ADR links): 共用 Playwright 斷言接受專用離線頁或應用程式的離線橫幅，兩種情形皆必須證明 API 無法離線讀取且可恢復連線。
+- Uncommitted changes / file ownership warnings: 實作限於整合工作樹，原工作樹及 `main` 未變動。
+- Next 1–3 concrete actions: 等待完整官方 E2E，驗證此提交的遠端來源模式，以及取得人工標註。
+- Exact reproduction steps: 啟動正式 Nginx 映像與隔離 API，依 TESTING「部署版 PWA 離線驗收」設定環境變數後執行 Playwright。
