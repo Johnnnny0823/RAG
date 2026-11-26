@@ -26,15 +26,13 @@ M0 的 Compose 設定用於本機開發，包含 Vite 開發伺服器、開發�
 ```powershell
 $env:WEB_PORT = '18123'
 $deployArgs = @('-f', 'docker-compose.yml', '-f', 'docker-compose.deploy.yml', '-p', 'patentscope-deploy')
-foreach ($service in 'migrate', 'api', 'web') {
-    docker compose @deployArgs build $service
-    if ($LASTEXITCODE) { throw "Build failed: $service" }
-}
-docker compose @deployArgs up -d --no-build --wait --wait-timeout 120
-python scripts/smoke.py --api http://127.0.0.1:18123 --web http://127.0.0.1:18123
+docker compose @deployArgs up -d --build --wait --wait-timeout 180
+python scripts/smoke.py --api http://127.0.0.1:18123 --web http://127.0.0.1:18123 --deployment
 ```
 
-瀏覽器使用 `http://127.0.0.1:18123`。前端為已編譯的靜態檔，API 透過同源 `/api/v1/` 代理。API 與 PostgreSQL 沒有主機連接埠。全新資料卷會先遷移。依下節使用同一 Compose 專案匯入官方資料，再建立詞彙與向量索引。部署覆蓋檔只改動 API 與 Web 的連接方式，匯入可沿用同一組 `$deployArgs` 呼叫 `run`。
+瀏覽器使用 `http://127.0.0.1:18123`。Nginx 提供已編譯的靜態檔，API 透過同源 `/api/v1/` 代理。API、背景工作與 PostgreSQL 沒有主機連接埠。全新資料卷會先遷移。依下節使用同一 Compose 專案匯入官方資料，再建立詞彙與向量索引。匯入可沿用同一組 `$deployArgs` 呼叫 `run`。
+
+部署冒煙驗收會核對網頁的安全標頭。內容安全政策限制前端資源來源、內嵌物件與框架載入。套件內容新增外部資源前需更新政策並重跑瀏覽器測試。
 
 匯入公開文件 `202639611` 的全文並索引後，建立測試帳號，輸入「光硬化性樹脂組成物」。執行 AI 拆解後保留該技術特徵，選擇「搜尋並保存」，再開啟該文件的全文版本執行「比對並保存證據」及「匯出 PDF 報告」。在瀏覽器網路面板可核對回應的 `application/pdf` 與 `Cache-Control: private, no-store`。
 

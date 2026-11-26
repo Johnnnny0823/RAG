@@ -1385,3 +1385,24 @@
 - Uncommitted changes / file ownership warnings: 使用隔離本機服務與測試帳號，資料卷保留。
 - Next 1–3 concrete actions: 查核最新官方案例與遠端驗收，完成人工相關性評估及部署驗收。
 - Exact reproduction steps: 依 TESTING 啟動官方隔離語料，令 `PATENTSCOPE_E2E_TIPO=versions` 並以 `--grep=official.identifier.lookup` 執行。
+
+## 靜態部署驗收
+
+- Codex 負責 Nginx 部署安全標頭、冒煙驗收及重建官方語料的研究流程測試。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `ef3c6fa`。
+- Current milestone and status: 正式建置的本機部署與核心研究流程驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 在全新隔離資料庫、Nginx 同源代理與背景工作程序上驗證官方語料的研究流程，讓遠端官方套件使用相同部署配置。
+- Files changed (with purpose): `apps/web/nginx.conf` 強制執行同源內容安全政策，`scripts/smoke.py` 加入正式頁面及標頭檢查，`.github/workflows/tipo-e2e.yml` 改用正式部署覆蓋檔及同源連接埠，並更新 SETUP、TESTING、PROGRESS 及交接文件。
+- Database migrations added/applied: 無新增，空白隔離資料庫遷移至 `0015_legal_events`。匯入 117 筆官方文件版本，建立 1,624 筆已驗證模型版本的向量。
+- API/Schema changes: 無。API、資料庫及工作程序維持在容器網路內，對外測試只透過 Nginx 的本機連接埠。
+- Commands actually run and results: 獨立 Compose 專案 `patentscope-release-check` 正式映像建置及啟動通過，部署冒煙與專利號碼、詞彙及語意 API 三項冒煙通過。Chromium 實際封鎖同源 iframe，通過官方全文與證據、儲存紀錄及私有 PDF 輸出一項流程。Firefox、WebKit 各通過一項官方號碼查詢。重啟 API 與工作程序後，部署及專利 API 冒煙再次通過，資料庫仍有 117 筆版本、1,624 筆向量，測試帳號已清理。Ruff 與 `git diff --check` 通過。
+- Tests NOT run and reason: 本地未完整跑全部瀏覽器套件，本次變更範圍是代理、部署冒煙及工作流程，未重跑後端 pytest。舊版 [45669425487](https://github.com/Johnnnny0823/RAG/actions/runs/45669425487) 因 TIPO FTPS 425 未進入測試，後續 [45677086302](https://github.com/Johnnnny0823/RAG/actions/runs/45677086302) 使用已核對的官方樣本通過 API 與 Playwright。採用正式覆蓋檔的遠端結果需獨立核對。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 重驗 DATA_SOURCES 所載第 024019、053028 期共 24 個固定官方原檔的 SHA-256，使用先前匿名 FTPS 取得的快取。
+- Known bugs / risks / blockers: 外部主機與 TLS、人工相關性標註、官方法律事件的完整覆蓋尚待驗收。快取失效後仍可能受到官方 FTPS 暫時限制。
+- Decisions made (ADR links): 保留既有 Compose 架構，由正式 Nginx 入口提供同源 API，並沿用已固定雜湊的官方樣本。
+- Uncommitted changes / file ownership warnings: 隔離資料卷保留供重驗，測試未接觸既有開發資料庫。
+- Next 1–3 concrete actions: 複驗正式覆蓋檔的 GitHub Actions、完成人工相關性複核、取得外部部署環境後驗證 TLS。
+- Exact reproduction steps: 依 SETUP 的靜態部署段落啟動 Compose，依 TESTING 準備官方樣本和模型，將預設測試入口改為該 Compose 的 Nginx 連接埠，執行部署與官方 API 冒煙及 Playwright 官方套件。

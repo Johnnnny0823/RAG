@@ -19,16 +19,43 @@ def smoke(api: str, web: str) -> None:
         raise ValueError("Unexpected web entry page")
 
 
+def verify_deployment(web: str) -> None:
+    expected_csp = {
+        "default-src 'self'",
+        "base-uri 'none'",
+        "object-src 'none'",
+        "frame-ancestors 'none'",
+        "form-action 'self'",
+    }
+    with urlopen(web, timeout=5) as response:
+        csp = {
+            part.strip()
+            for part in response.headers.get("Content-Security-Policy", "").split(";")
+        }
+        if csp != expected_csp:
+            raise ValueError("Unexpected deployment content security policy")
+        if (
+            response.headers.get("X-Content-Type-Options") != "nosniff"
+            or response.headers.get("Referrer-Policy") != "no-referrer"
+        ):
+            raise ValueError("Unexpected deployment browser security headers")
+        if "/@vite/client" in response.read().decode("utf-8"):
+            raise ValueError("Deployment uses the Vite development page")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--api", default="http://127.0.0.1:8000")
     parser.add_argument("--web", default="http://127.0.0.1:5173")
+    parser.add_argument("--deployment", action="store_true")
     args = parser.parse_args()
 
     deadline = time.monotonic() + 45
     while True:
         try:
             smoke(args.api, args.web)
+            if args.deployment:
+                verify_deployment(args.web)
         except (OSError, URLError, ValueError):
             if time.monotonic() >= deadline:
                 raise
@@ -37,4 +64,6 @@ if __name__ == "__main__":
             print(
                 "Smoke passed: API liveness, pgvector readiness via web proxy, web entry page"
             )
+            if args.deployment:
+                print("Deployment smoke passed: packaged frontend and security headers")
             break
