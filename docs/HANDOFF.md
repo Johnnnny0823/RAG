@@ -1646,3 +1646,23 @@
 - Uncommitted changes / file ownership warnings: 隔離語料與向量未提交。
 - Next 1–3 concrete actions: 核對完整官方遠端測試，複核人工評分，驗證更新排程與跨期切換。
 - Exact reproduction steps: 先依 SETUP 匯入第 024020 期兩份全文並建向量，依 TESTING 在該 API 執行兩支 `--issue-024020` 驗收指令。
+
+## 發明公開資料定期更新
+
+- Codex 負責定期更新程序、Compose 選用服務、測試及操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `25114c2`。
+- Current milestone and status: 發明公開定期更新已在隔離 Compose 驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 部署方可選擇在容器內定期輪詢官方 S10，並沿用原有匯入及索引記錄。
+- Files changed (with purpose): `refresh_publications.py` 提供更新、等待與失敗重試，Compose 增加預設停用的選用服務，環境範本與架構說明列出輪詢設定；新增測試驗證失敗及成功間隔。
+- Database migrations added/applied: 無新增。沿用隔離資料庫及物件卷。
+- API/Schema changes: 無。匯入繼續寫入既有操作員監控資料。
+- Commands actually run and results: 確認未啟用 profile 時 Compose 無更新服務，啟用後正式建置並啟動服務。以 60 秒間隔輪詢 S10 兩次，兩次均核對第 024020 期並重用既有批次，新增詞彙片段均為 0，資料庫仍有 7 個文件版本、166 筆向量和 2 個批次。停止時退出碼 0。驗證失敗到下一次重試的測試時鐘，pytest 94 passed、8 skipped，Ruff 與 Git diff 檢查通過。
+- Tests NOT run and reason: 本輪未重跑全部 PostgreSQL pytest 與瀏覽器套件。Compose 實測為書目輪詢，未在更新服務開啟全文年度參數或令官方服務刻意失敗。未等待下一個實際卷期發布。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 兩次請求 `https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10` 均取得第 024020 期同一來源雜湊。
+- Known bugs / risks / blockers: 只追蹤當次 S10 所提供卷期，停機或錯過的期別需從封存補入。全文模式跨年度需更新已核對的年目錄。公告、異動公報尚無定期更新。
+- Decisions made (ADR links): 定期更新只在顯式啟用 Compose 服務後執行。預設每日查一次，錯誤後等 15 分鐘，原有資料完整性與來源規則照常適用。
+- Uncommitted changes / file ownership warnings: 隔離排程測試已停止；本機既有專案未啟用排程。
+- Next 1–3 concrete actions: 驗收跨期過渡、後補期間與公告更新，持續追蹤完整官方 E2E。
+- Exact reproduction steps: 依 SETUP 的「定期更新」小節，在隔離專案用 `--profile patent-refresh` 啟動服務。使用日誌核對來源和週期間隔，從管理員監控或資料庫查詢工作狀態。

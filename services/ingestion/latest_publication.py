@@ -21,7 +21,7 @@ from services.ingestion.issue_manifest import HOST, resolve_spec_urls
 from services.ingestion.run_pipeline import run_pipeline
 
 
-def main() -> int:
+def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--apply", action="store_true", help="Import the discovered issue"
@@ -35,7 +35,7 @@ def main() -> int:
         "--index-mode", choices=("none", "lexical", "hybrid"), default="lexical"
     )
     parser.add_argument("--objects", type=Path, default=getenv("PATENT_OBJECTS_DIR"))
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if not 1 <= args.limit <= 500:
         parser.error("--limit must be between 1 and 500")
     if args.apply and args.objects is None:

@@ -356,6 +356,20 @@ docker compose run --rm migrate python -m services.ingestion.latest_publication 
 
 預覽只確認清單與所選書目的對應。套用時才下載個案全文並建立索引。部分個案取得或解析失敗時，已驗證資料會保留並顯示部分完成，命令以非零代碼回報。若部署容器無法連到官方 FTPS，可先依 [以官方清單補入全文](#以官方清單補入全文) 在可連線的主機下載，再由既有匯入命令處理。
 
+### 定期更新
+
+在已設定的 Compose 部署中，可選用 `patent-refresh` profile。下例用開發 Compose 執行。在正式部署環境中請沿用該專案的 `-p`、`--env-file` 和部署覆蓋檔。
+
+```powershell
+docker compose --profile patent-refresh up -d --build patent-refresh
+docker compose --profile patent-refresh logs --tail 30 patent-refresh
+docker compose --profile patent-refresh stop patent-refresh
+```
+
+服務啟動先執行一次。預設成功後等 24 小時，失敗後等 15 分鐘再試。可用 `TIPO_REFRESH_INTERVAL`、`TIPO_REFRESH_RETRY_INTERVAL`（秒）、`TIPO_REFRESH_LIMIT` 和 `TIPO_REFRESH_INDEX_MODE` 設定，預設取 100 筆並補詞彙索引。要定期補全文，另設定已核對的 `TIPO_REFRESH_ARCHIVE_YEAR`。跨民國年度時請重新核對封存目錄並更新該值；錯誤年份會使該次全文更新失敗。設定變更後需重新建立容器。
+
+排程輪詢 S10 當次提供的卷期。停機期間可能錯過中間期別，請用既有封存匯入流程補齊。各次匯入可在管理員監控查閱，來源取得失敗也可在容器日誌查到。
+
 ### 追蹤匯入及建立索引
 
 先依前述官方樣本流程取得檔案並核對來源與 SHA-256。以下 PowerShell 範例以 `$inputs` 指定已有 `index.xml` 與 `spec.xml` 的絕對路徑，用已配置模型的 Compose 專案在背景執行。
