@@ -43,6 +43,7 @@ def score(items, labels):
         seen.add(key)
     matched = sum(grade > 0 for grade in grades)
     ideal = sorted(labels.values(), reverse=True)[:K]
+    relevant = sum(grade > 0 for grade in labels.values())
 
     def dcg(values):
         return sum(
@@ -51,9 +52,8 @@ def score(items, labels):
 
     return {
         "precision_at_10_lower_bound": matched / K,
-        "recall_at_10_relative_to_pool": matched
-        / sum(grade > 0 for grade in labels.values()),
-        "ndcg_at_10_relative_to_pool": dcg(grades) / dcg(ideal),
+        "recall_at_10_relative_to_pool": matched / relevant if relevant else None,
+        "ndcg_at_10_relative_to_pool": dcg(grades) / dcg(ideal) if relevant else None,
         "reciprocal_rank": next(
             (1 / rank for rank, grade in enumerate(grades, 1) if grade), 0
         ),
@@ -112,7 +112,7 @@ def evaluate(api, dataset, repeats):
         labels = {(row["stage"], row["number"]): row["grade"] for row in judgments}
         if (
             len(labels) != len(judgments)
-            or not any(labels.values())
+            or not labels
             or not all(
                 type(grade) is int and 0 <= grade <= 2 for grade in labels.values()
             )
@@ -157,14 +157,23 @@ def evaluate(api, dataset, repeats):
     summary = {}
     for mode, runs in modes.items():
         times = sorted(run["latency_ms"] for run in runs)
+        metric_values = {
+            key: [
+                run["metrics"][key] for run in runs if run["metrics"][key] is not None
+            ]
+            for key in runs[0]["metrics"]
+        }
         summary[mode] = {
             "runs": len(times),
             "p50_ms": median(times),
             "p95_ms_nearest_rank": times[math.ceil(0.95 * len(times)) - 1],
             **{
-                key: mean(run["metrics"][key] for run in runs)
-                for key in runs[0]["metrics"]
+                key: mean(values) if values else None
+                for key, values in metric_values.items()
             },
+            "runs_with_relevant_judgments": len(
+                metric_values["recall_at_10_relative_to_pool"]
+            ),
         }
     return {"label_status": dataset["label_status"], "summary": summary, "runs": modes}
 

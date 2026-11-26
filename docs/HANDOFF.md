@@ -1878,3 +1878,22 @@
 - Uncommitted changes / file ownership warnings: 原工作區的未提交版本仍保留。此分支已重新接續遷移，整合時直接沿用此版本以避免重複移植。
 - Next 1–3 concrete actions: 查核官方 E2E，接續正式目標主機驗收及人工相關性複核。
 - Exact reproduction steps: 先從有保留物件的測試庫執行 `legal_events --replay-stored`，再匯入公告 `I874744` 並查其 API 詳情。
+
+## 人工相關性複核表
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `d29b891`。
+- Current milestone and status: 檢索評估 IN_PROGRESS。
+- Goal of this session: 讓複核者在離線頁面直接判讀、保存進度，並輸出評估器可讀的 JSON。
+- Files changed (with purpose): `scripts/export_review_packet.py`、`scripts/review_packet.js` 加入離線輸入及版本檢查，`scripts/evaluate_search.py` 接受全不相關案件，補上回歸測試。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。評估報告在沒有相關判定時以 `null` 表示未定義的召回率及 nDCG，彙總附可計算的執行次數。
+- Commands actually run and results: 在 117 版本隔離 API 重新核對 34 組文件並輸出 `.patent-data/review/patentscope-review.html`，SHA-256 `07cdfe26cc06c4b3a850b33b0ad91876e4b744cb8783582ac9caa87be7e158e7`。Chromium 驗證草稿、重新匯入、拒絕錯誤版本及阻止未完成檔案。DEMO 單件測試核對完成檔的 0 分可保留。pytest 116 passed、9 skipped，Ruff lint、格式通過。[整合 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45875599952) 首次因 Runner 套件來源 403 失敗，重跑已通過瀏覽器安裝。[官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45874632186) 仍在建向量。
+- Tests NOT run and reason: 人工標註尚未提交，未執行人工資料集的檢索評估。9 個資料庫測試本輪未啟用，上輪完整整合已執行。
+- Data sources checked (exact URL/date) and license/access notes: 使用 2026-11-27 隔離 API 對既有 117 版本官方語料重查，原始網址及雜湊隨文件顯示。
+- Known bugs / risks / blockers: 19 組只有書目與摘要，可保留空白並另行取得證據。正式目標主機及完整官方 E2E 尚待。
+- Decisions made (ADR links): 歷史 35 組候選與新版 34 組固定版本池分開。人工標註表維持既有池的文件身分與順序，沒有預填相關性。
+- Uncommitted changes / file ownership warnings: 互動 HTML 為本機驗收產物，未加入 Git。
+- Next 1–3 concrete actions: 確認官方 E2E，待複核檔匯出後用原本固定語料重跑評估。
+- Exact reproduction steps: 依 EVALUATION 的 `export_review_packet` 命令產生 HTML，打開並填寫複核。以下載的完成檔傳入 `evaluate_search.py --dataset`。

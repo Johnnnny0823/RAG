@@ -31,6 +31,36 @@ def test_unjudged_and_missing_documents_do_not_earn_credit():
     assert result["recall_at_10_relative_to_pool"] == 0
 
 
+def test_reviewed_case_with_no_relevant_documents_remains_in_evaluation(monkeypatch):
+    monkeypatch.setattr(evaluate_search, "version_details", lambda *_: iter(()))
+    monkeypatch.setattr(evaluate_search, "check_reviewed_version", lambda *_: None)
+    monkeypatch.setattr(evaluate_search, "request", lambda *_: {"items": []})
+    dataset = {
+        "label_status": "human_reviewed",
+        "reviewer": "DEMO reviewer",
+        "cases": [
+            {
+                "id": "all-unrelated",
+                "query": "DEMO query",
+                "judgments": [
+                    {
+                        "stage": "grant",
+                        "number": "DEMO",
+                        "grade": 0,
+                        "basis": "DEMO reason",
+                    }
+                ],
+            }
+        ],
+    }
+    result = evaluate("", dataset, 1)
+    for summary in result["summary"].values():
+        assert summary["precision_at_10_lower_bound"] == 0
+        assert summary["recall_at_10_relative_to_pool"] is None
+        assert summary["ndcg_at_10_relative_to_pool"] is None
+        assert summary["runs_with_relevant_judgments"] == 0
+
+
 def test_human_review_requires_reviewer_and_written_basis():
     dataset = {
         "label_status": "human_reviewed",
