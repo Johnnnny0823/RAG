@@ -1,8 +1,8 @@
 import argparse
 import json
 import time
-from urllib.error import URLError
-from urllib.request import urlopen
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 
 def read(url: str) -> str:
@@ -43,12 +43,56 @@ def verify_deployment(web: str) -> None:
             raise ValueError("Deployment uses the Vite development page")
 
 
+def verify_rate_limits(web: str) -> None:
+    for path, attempts in (("/auth/register", 10), ("/queries/analyze", 18)):
+        reached_backend = False
+        for _ in range(attempts):
+            request = Request(
+                f"{web}/api/v1{path}",
+                data=b"{}",
+                headers={"Content-Type": "application/json"},
+            )
+            try:
+                with urlopen(request, timeout=3):
+                    raise ValueError(f"{path} unexpectedly accepted the empty payload")
+            except HTTPError as error:
+                if error.code == 422:
+                    reached_backend = True
+                    continue
+                if (
+                    error.code != 429
+                    or not reached_backend
+                    or json.load(error)["error"]["code"] != "RATE_LIMITED"
+                    or error.headers.get("Retry-After") != "2"
+                    or error.headers.get("Cache-Control") != "no-store"
+                    or not error.headers.get("Content-Security-Policy")
+                ):
+                    raise ValueError(
+                        f"Unexpected rate-limit response for {path}"
+                    ) from error
+                break
+        else:
+            raise ValueError(f"No rate limit applied to {path}")
+
+    if json.loads(read(f"{web}/api/v1/ready")) != {"status": "ready"}:
+        raise ValueError("Readiness is unavailable during rate limiting")
+    try:
+        with urlopen(f"{web}/api/v1/search-jobs/active", timeout=3):
+            raise ValueError("Search job status accepted an unauthenticated request")
+    except HTTPError as error:
+        if error.code != 401:
+            raise ValueError("Search job status did not reach the API") from error
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--api", default="http://127.0.0.1:8000")
     parser.add_argument("--web", default="http://127.0.0.1:5173")
     parser.add_argument("--deployment", action="store_true")
+    parser.add_argument("--deployment-rate-limit", action="store_true")
     args = parser.parse_args()
+    if args.deployment_rate_limit and not args.deployment:
+        parser.error("--deployment-rate-limit requires --deployment")
 
     deadline = time.monotonic() + 45
     while True:
@@ -67,3 +111,6 @@ if __name__ == "__main__":
             if args.deployment:
                 print("Deployment smoke passed: packaged frontend and security headers")
             break
+    if args.deployment_rate_limit:
+        verify_rate_limits(args.web)
+        print("Rate limit smoke passed: API error contract and unaffected status reads")

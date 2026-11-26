@@ -41,6 +41,8 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 線上嵌入、特徵拆解、重排及技術比對共用推論名額，保存搜尋與 Session 等操作也適用。當模型工作已滿，新的推論立即回傳 HTTP 429 `MODEL_BUSY`、`Retry-After: 5` 與 `Cache-Control: no-store`。取得名額的操作結束或失敗後會釋出名額。純詞彙檢索及不需模型的比對不占名額。
 
+透過正式 Nginx 時，超過來源 IP 配額的帳號及研究請求另回傳 HTTP 429 `RATE_LIMITED`、`Retry-After: 2` 及 `Cache-Control: no-store`。API 原有的 `LOGIN_THROTTLED` 和 `MODEL_BUSY` 仍會透過代理回傳。
+
 ## 混合檢索
 
 `POST /api/v1/patents/search/hybrid` 沿用詞彙檢索的 JSON 欄位，構想描述上限為 1,200 字元。兩個檢索分支各取最多 100 個文件版本，在同一資料庫快照查詢。回傳 `rrf_k`、`candidate_limit`、`query_expansion_version`、分詞器與嵌入模型版本，以及每筆的 `lexical_rank`、`lexical_score`、`semantic_rank`、`semantic_score` 和 `rrf_score`。某版本未進入分支候選時，該分支欄位為 `null`。

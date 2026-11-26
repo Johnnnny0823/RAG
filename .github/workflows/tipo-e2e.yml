@@ -58,7 +58,7 @@ jobs:
       - name: Start packaged web and private API
         run: docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.deploy.yml up -d --build --wait --wait-timeout 180
       - name: Verify packaged web deployment
-        run: python scripts/smoke.py --api http://127.0.0.1:5173 --web http://127.0.0.1:5173 --deployment
+        run: python scripts/smoke.py --api http://127.0.0.1:5173 --web http://127.0.0.1:5173 --deployment --deployment-rate-limit
       - name: Import and verify cached official corpus
         run: python -m scripts.seed_tipo_e2e "$RUNNER_TEMP/tipo-fixture" --offline --skip-semantic
       - name: Build official semantic index

@@ -1466,3 +1466,23 @@
 - Uncommitted changes / file ownership warnings: 測試使用先前的隔離資料卷，未變更既有原文或向量。
 - Next 1–3 concrete actions: 追蹤正式建置遠端結果，完成人工相關性複核和外部部署驗收。
 - Exact reproduction steps: 在官方隔離資料庫以獨立連線對模型資料列 ID 的負值取得 `pg_try_advisory_lock`。使用該模型執行索引 CLI 應回報忙碌。關閉持鎖連線後重跑，原本完成的版本應保留並略過。
+
+## 正式入口速率限制
+
+- Codex 負責 Nginx 入口限制、部署冒煙與操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `802cfed`。
+- Current milestone and status: 本機正式入口驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 限制公開入口高成本請求，保留既有 API 各自的節流訊息與狀態查詢。
+- Files changed (with purpose): `apps/web/nginx.conf` 新增帳號與研究的來源 IP 配額，`scripts/smoke.py` 驗證兩組入口限制與狀態端點，官方 E2E 工作加入部署冒煙檢查，更新 API、SETUP、TESTING、PROGRESS 及交接。
+- Database migrations added/applied: 無新增。隔離正式部署沿用先前遷移與官方語料。
+- API/Schema changes: FastAPI 無修改。正式代理的 429 加入 `RATE_LIMITED`、`Retry-After: 2` 與 `Cache-Control: no-store`。
+- Commands actually run and results: Nginx 語法檢查、部署及兩組限流冒煙通過。429 保留安全標頭，健康與工作進度請求抵達 API。首次誤將三種裝置連續用同一來源跑，3 passed、3 failed，觸發共用入口配額。每組使用新的入口配額重跑後，桌面、平板和手機的登入節流及專案操作共 6 passed，三種裝置官方專利號碼共 3 passed。pytest 90 passed、7 skipped，Ruff 及 Git diff 檢查通過。
+- Tests NOT run and reason: 本輪未啟用後端 PostgreSQL pytest 整合、未重跑完整官方模型研究流程。既有的 [正式建置官方遠端工作](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469) 在較早提交，尚未涵蓋本輪新增的速率檢查。
+- Data sources checked (exact URL/date) and license/access notes: 無新下載，號碼查詢沿用固定官方語料。
+- Known bugs / risks / blockers: 同一來源 IP 共用配額。外部代理和 TLS、跨實例配額與人工評分待驗收。
+- Decisions made (ADR links): 僅於正式入口使用直連來源 IP。代理前方增加其他入口時須按已知代理網路重新設定來源識別。
+- Uncommitted changes / file ownership warnings: 隔離資料卷保留，未修改既有開發服務。
+- Next 1–3 concrete actions: 驗收正式入口的遠端冒煙、人工評分及外部部署。
+- Exact reproduction steps: 依 SETUP 啟動隔離靜態部署，以 `scripts/smoke.py --deployment --deployment-rate-limit` 驗證。在同一來源反覆測試裝置的登入節流前，需重設隔離入口或等待配額恢復。
