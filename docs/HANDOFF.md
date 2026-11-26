@@ -1342,3 +1342,25 @@
 - Uncommitted changes / file ownership warnings: 測試只使用獨立資料庫與公開原檔，資料卷保留。
 - Next 1–3 concrete actions: 找到可與消滅公報交叉驗證的既有案例，繼續追查官方遠端驗收，完成人工相關性複核。
 - Exact reproduction steps: 依 SETUP 建立擴充官方語料，執行 `legal_events` 的兩種固定卷期匯入，再以 `PATENTSCOPE_E2E_TIPO=events` 跑 Playwright。
+
+## 消滅公告端到端驗收工作範圍
+
+- Codex 負責官方公告原檔交叉核對、公告索引匯入大小限制與瀏覽器驗收。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `5da633d`。
+- Current milestone and status: M1／M4 消滅公告端到端驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 用兩份官方原檔確認同一證書的公告、請求項及消滅事件，並通過瀏覽器驗收。
+- Files changed (with purpose): 公告下載、讀取與解析的大小上限調整；詳情顯示公報記載消滅日；新增資料上限回歸測試及官方消滅案 E2E。
+- Database migrations added/applied: 無新增。隔離現存 `0015_legal_events` 資料庫匯入公告案 1 版本，補建 10 個詞彙片段及 10 個向量。
+- API/Schema changes: 無。既有 `legal_events` 回覆可顯示此次驗收的有日期事件。
+- Commands actually run and results: 用匿名 FTPS 下載第 52 卷第 6 期公告索引，驗證 1,780 筆、大小與雜湊。CLI 匯入 `I874215` 後 `verify_document` 逐項核對 9 項請求項。重跑第 53 卷第 33 期消滅事件匯入，第一次新增 1 筆，第二次新增 0 筆。API 驗證此案消滅日 2026-02-21、原檔雜湊、XPath 和其他案件無交叉關聯。
+- Commands actually run and results（續）: PostgreSQL 整合啟用後 pytest 96 passed、1 則既有 Starlette 警告。Ruff、前端 lint、TypeScript 和 Vite build 通過。桌面、平板、手機 Chromium 的官方更正與消滅案例 6 passed（37.5 秒）。一次重驗時 Docker Desktop 尚未啟動，啟動後重跑完成。
+- Tests NOT run and reason: 本機未跑完整跨瀏覽器官方套件。遠端 [45677086302](https://github.com/Johnnnny0823/RAG/actions/runs/45677086302) 在 `fb427f2` 通過三項 API 冒煙、5 項全文與 12 項版本 Playwright。前一提交的一般 [CI](https://github.com/Johnnnny0823/RAG/actions/runs/45679858852) 通過。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 核對公告原檔 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/114/PatentIsuRegSpecXMLA_052006/index.xml`、消滅原檔 `ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053033/sud08.xml`，雜湊及授權見 DATA_SOURCES。
+- Known bugs / risks / blockers: 事件限使用所匯入的官方公報，任意案件的最新狀態查詢與全歷程尚未驗證。
+- Decisions made (ADR links): 對已核對格式的官方公告卷期索引沿用 32 MiB 有界限制，個案說明書、其他非公報 XML 維持 16 MiB。
+- Uncommitted changes / file ownership warnings: 原始檔與測試資料卷保留於隔離環境。
+- Next 1–3 concrete actions: 核對遠端快取命中並複驗最新提交，補人工相關性判定與正式部署驗收。
+- Exact reproduction steps: 依 SETUP 的官方異動公報段落匯入固定證書，再以 `PATENTSCOPE_E2E_TIPO=events` 啟動異動公報測試套件。

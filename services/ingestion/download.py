@@ -22,7 +22,8 @@ EVENT_PATH = re.compile(
     r"/PatentIsuModXML/[0-9]{3}/PatentIsuModXML_[0-9]{6}/sud(?:08|24)\.xml"
 )
 GAZETTE_PATH = re.compile(
-    r"/(?:PatentPubRegXMLB/[0-9]{3}/PatentPubRegXMLB_[0-9]{6}/pubinvention"
+    r"/(?:PatentIsuRegSpecXMLA/[0-9]{3}/PatentIsuRegSpecXMLA_[0-9]{6}/index"
+    r"|PatentPubRegXMLB/[0-9]{3}/PatentPubRegXMLB_[0-9]{6}/pubinvention"
     r"|PatentIsuRegSpecXMLB/[0-9]{3}/PatentIsuRegSpecXMLB_[0-9]{6}/patent)\.xml"
 )
 
@@ -137,8 +138,8 @@ def main():
         else:
             with urlopen(INDEX_URL, timeout=60) as response:
                 payload = response.read(MAX_XML_BYTES + 1)
-        if len(payload) > MAX_XML_BYTES:
-            raise ValueError("TIPO index exceeds the XML size limit")
+            if len(payload) > MAX_XML_BYTES:
+                raise ValueError("TIPO index exceeds the XML size limit")
         with args.index_out.open("xb") as stream:
             stream.write(payload)
     if args.spec_out:

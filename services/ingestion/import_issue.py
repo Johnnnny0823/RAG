@@ -13,6 +13,7 @@ from sqlalchemy.engine import Connection
 
 from services.api.db import engine
 from services.ingestion.artifacts import (
+    MAX_GAZETTE_XML_BYTES,
     MAX_XML_BYTES,
     LocalObjectStore,
     RawArtifact,
@@ -51,10 +52,10 @@ class Specification:
     claims: list[Claim]
 
 
-def read_xml(path: Path) -> bytes:
+def read_xml(path: Path, *, size_limit: int = MAX_XML_BYTES) -> bytes:
     with path.open("rb") as stream:
-        payload = stream.read(MAX_XML_BYTES + 1)
-    if len(payload) > MAX_XML_BYTES:
+        payload = stream.read(size_limit + 1)
+    if len(payload) > size_limit:
         raise ValueError(f"{path.name} exceeds the XML size limit")
     return payload
 
@@ -198,7 +199,10 @@ def link_artifact(conn, document_id, artifact_id, locator):
 
 def import_issue(args):
     store = LocalObjectStore(args.objects)
-    data = read_xml(args.index)
+    data = read_xml(
+        args.index,
+        size_limit=MAX_GAZETTE_XML_BYTES if args.grant_number else MAX_XML_BYTES,
+    )
     index_raw = store.put(data)
     index_error = None
     grant_claims = []

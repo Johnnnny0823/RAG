@@ -878,7 +878,7 @@ export function Research() {
           {selected.detail.legal_events.length ? <ul className="mb-4">
             {selected.detail.legal_events.map((event) => <li key={event.artifact_sha256 + event.record_locator} className="my-2">
               <span>{event.kind === "extinguishment" ? "專利權消滅公告" : "公報更正"} · 證書號 {event.certificate_no} · 卷期 {event.batch_key}</span>
-              {event.effective_on && <span> · 生效日 {event.effective_on}</span>}
+              {event.effective_on && <span> · 公報記載消滅日 {event.effective_on}</span>}
               {event.detail && <span> · {event.detail}</span>}
               {event.dataset_url && <a className="ml-2" href={event.dataset_url} target="_blank" rel="noreferrer">異動公報資料集</a>}
               {event.source_url && <a className="ml-2" href={event.source_url} target="_blank" rel="noreferrer">異動公報原始檔</a>}

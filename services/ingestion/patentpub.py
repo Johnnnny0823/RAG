@@ -107,8 +107,8 @@ def parse_patentpub(data: bytes) -> tuple[list[PatentPublication], list[ParseIss
     return collect_records(records, "/API/tw-patent-pub/patentcontent", parse_record)
 
 
-def parse_xml(data: bytes) -> ET.Element:
-    if len(data) > MAX_XML_BYTES:
+def parse_xml(data: bytes, *, size_limit: int = MAX_XML_BYTES) -> ET.Element:
+    if len(data) > size_limit:
         raise ValueError("XML artifact exceeds the size limit")
     return ET.fromstring(data, parser=ET.XMLParser(target=SafeTreeBuilder()))
 

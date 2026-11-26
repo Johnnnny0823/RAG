@@ -168,6 +168,25 @@ docker compose run --rm migrate python -m services.ingestion.legal_events --year
 
 輸出含該公報發明事件數、配對數、新增數與原檔雜湊。舉例來說，對隔離索引前 500 筆公開書目執行第 53 卷第 33 期更正匯入，可核對公開案 `202639186` 和 `202639081`。 [原始資料](DATA_SOURCES.md#專利權異動公報)
 
+要驗證具日期的消滅紀錄，先從官方固定卷期下載並校驗第 52 卷第 6 期索引，再將公告案 `I874215` 匯入相同隔離環境。以 Windows PowerShell 為例，使用一個尚未存在的 `index-052006.xml` 檔名。
+
+```powershell
+$grantUrl = 'ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/114/PatentIsuRegSpecXMLA_052006/index.xml'
+$rawDir = Join-Path (Get-Location).Path '.patent-data/gazette-check'
+New-Item -ItemType Directory -Path $rawDir -Force | Out-Null
+$grantFile = Join-Path $rawDir 'index-052006.xml'
+python -m services.ingestion.download --index-url $grantUrl --index-out $grantFile
+if ((Get-FileHash -LiteralPath $grantFile).Hash.ToLowerInvariant() -ne '99cde994594aa622cf9469ecb6541403b3567b4597342a6915c35ce5dab526f8') {
+    throw 'Unexpected official grant index checksum'
+}
+docker compose run --rm -v "${rawDir}:/inputs:ro" migrate python -m services.ingestion.import_issue --verified-tipo --index /inputs/index-052006.xml --index-source-url $grantUrl --batch 052006 --grant-number I874215
+docker compose run --rm migrate python -m services.ingestion.legal_events --year 115 --issue 053033 --type sud08
+docker compose run --rm migrate python -m services.retrieval.index_lexical
+docker compose run --rm migrate python -m services.retrieval.index_semantic
+```
+
+上述命令請在已有 `.env` 的隔離 Compose 專案執行，依嵌入設定準備本機模型。原始 XML 應放在未追蹤的資料目錄。讀取前會依來源類別套用 XML 上限。
+
 ## M3 本機技術特徵驗收
 
 保留嵌入模型設定，另外配置本機 Ollama 分析模型。以 `ollama pull qwen2.5:1.5b` 取得模型，並從本機 `/api/tags` 核對 digest。分析請求使用 CPU。共用模型服務僅用公開測試查詢驗收。

@@ -4,13 +4,14 @@ import hashlib
 import re
 import xml.etree.ElementTree as ET
 
+from services.ingestion.artifacts import MAX_GAZETTE_XML_BYTES
 from services.ingestion.issue_index import party_names, text
 from services.ingestion.patentpub import PatentPublication, parse_xml, patent_number
 from services.ingestion.specification import Claim
 
 
 def parse_grant(data: bytes, issue: str, certificate: str):
-    root = parse_xml(data)
+    root = parse_xml(data, size_limit=MAX_GAZETTE_XML_BYTES)
     if root.tag != "tw-patent-grants" or root.get("total-count") != str(len(root)):
         raise ValueError("Expected a complete TIPO grant issue index")
     candidates = [
