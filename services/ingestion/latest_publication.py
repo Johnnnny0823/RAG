@@ -10,6 +10,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from xml.etree.ElementTree import ParseError
 
+from services.ingestion.artifacts import LocalObjectStore
 from services.ingestion.download import (
     GRANT_INDEX_URL,
     INDEX_URL,
@@ -17,6 +18,7 @@ from services.ingestion.download import (
     download_grant_index,
     download_publication_index,
 )
+from services.ingestion.gazette_dates import apply_dates, archive_url, parse_gazette
 from services.ingestion.grant_index import discover_grant_issue, parse_selected_grants
 from services.ingestion.import_issue import parse_import_args
 from services.ingestion.issue_index import discover_issue, parse_issue_index
@@ -39,6 +41,9 @@ def main(argv=None) -> int:
         help="Official three-digit ROC archive year for full specifications",
     )
     parser.add_argument(
+        "--gazette-year", help="Official three-digit ROC archive year for dates"
+    )
+    parser.add_argument(
         "--index-mode", choices=("none", "lexical", "hybrid"), default="lexical"
     )
     parser.add_argument("--objects", type=Path, default=getenv("PATENT_OBJECTS_DIR"))
@@ -49,13 +54,17 @@ def main(argv=None) -> int:
         parser.error("--grant-number requires --grants and cannot exceed --limit")
     if args.apply and args.objects is None:
         parser.error("--apply requires --objects or PATENT_OBJECTS_DIR")
-    if args.archive_year is not None and not re.fullmatch(
-        r"[0-9]{3}", args.archive_year
+    for option, year in (
+        ("--archive-year", args.archive_year),
+        ("--gazette-year", args.gazette_year),
     ):
-        parser.error("--archive-year must be a three-digit ROC year")
+        if year is not None and not re.fullmatch(r"[0-9]{3}", year):
+            parser.error(f"{option} must be a three-digit ROC year")
 
     manifest = None
+    gazette = None
     certificates = []
+    stage = "grant" if args.grants else "publication"
     source = GRANT_INDEX_URL if args.grants else INDEX_URL
     archive = "PatentIsuRegSpecXMLA" if args.grants else "InventionPubXML"
     try:
@@ -89,6 +98,10 @@ def main(argv=None) -> int:
                 {record.publication_no: record.application_no for record in records},
                 grant=args.grants,
             )
+        if args.gazette_year:
+            gazette_url = archive_url(stage, args.gazette_year, issue)
+            gazette = download_ftps_xml(gazette_url)
+            parse_gazette(gazette, stage, args.gazette_year, issue)
     except (*all_errors, ParseError, ValueError) as error:
         parser.exit(1, f"TIPO latest issue could not be verified: {error}\n")
 
@@ -111,6 +124,14 @@ def main(argv=None) -> int:
                         "manifest_sha256": hashlib.sha256(manifest).hexdigest(),
                     }
                     if manifest
+                    else {}
+                ),
+                **(
+                    {
+                        "gazette_url": gazette_url,
+                        "gazette_sha256": hashlib.sha256(gazette).hexdigest(),
+                    }
+                    if gazette
                     else {}
                 ),
                 "apply": args.apply,
@@ -145,13 +166,23 @@ def main(argv=None) -> int:
             options.extend(
                 ["--manifest", str(manifest_path), "--manifest-url", manifest_url]
             )
-        return run_pipeline(
+        status = run_pipeline(
             parse_import_args(options),
             args.index_mode,
             batch_size=24,
             timeout=90,
             require_complete=bool(manifest),
         )
+    if status or gazette is None:
+        return status
+    try:
+        date_result = apply_dates(
+            gazette, LocalObjectStore(args.objects), stage, args.gazette_year, issue
+        )
+    except (OSError, ParseError, ValueError) as error:
+        parser.exit(1, f"TIPO dates could not be applied: {error}\n")
+    print(json.dumps({"date_enrichment": date_result}), flush=True)
+    return 0
 
 
 if __name__ == "__main__":

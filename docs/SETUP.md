@@ -372,6 +372,8 @@ docker compose --profile patent-refresh stop patent-refresh
 
 若要在同一服務內另外更新公告，設定 `TIPO_REFRESH_INCLUDE_GRANTS=yes` 並重新建立容器。S01 及 S10 會各自驗證卷期與來源，各取設定上限。任一來源失敗時，另一來源仍可執行，下一輪使用重試間隔。公告預設保存書目與請求項；如有設定該年官方封存目錄，亦可補建全文。
 
+可另設 `TIPO_REFRESH_GAZETTE_YEAR=115`，讓每期匯入後以同卷期官方公報補上申請、公開或公告日期。此設定預設留空，可獨立於全文封存年度設定。單次操作以 `latest_publication --gazette-year 115` 預覽公報網址與雜湊，加上 `--apply` 才寫入。下載及卷期驗證在書目寫入前執行。若後續日期與已存資料衝突，該次日期寫入會回滾，先前成功匯入的書目版本仍可查閱。跨年度須更新設定。
+
 公告也可單次預覽及執行。省略證書號時，依 S01 順序取前幾件發明公告；可重複指定 `--grant-number` 選取實際案例。
 
 ```powershell

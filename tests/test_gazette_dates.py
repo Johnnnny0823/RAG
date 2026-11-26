@@ -1,7 +1,9 @@
 from datetime import date
+import json
 
 import pytest
 
+from services.ingestion import latest_publication
 from services.ingestion.gazette_dates import parse_gazette, roc_date
 
 # Synthetic excerpts model element structure only; these identifiers are fixtures.
@@ -53,3 +55,60 @@ def test_roc_date_uses_the_real_calendar():
     assert roc_date("113/02/29") == date(2024, 2, 29)
     with pytest.raises(ValueError):
         roc_date("114/02/29")
+
+
+def test_latest_issue_previews_verified_dates_and_applies_only_after_import(
+    monkeypatch, tmp_path, capsys
+):
+    monkeypatch.setattr(
+        latest_publication, "download_publication_index", lambda: b"index"
+    )
+    monkeypatch.setattr(
+        latest_publication, "discover_issue", lambda data: ("024019", 1)
+    )
+
+    def download(url):
+        assert url.endswith("/115/PatentPubRegXMLB_024019/pubinvention.xml")
+        return PUBLICATION
+
+    monkeypatch.setattr(latest_publication, "download_ftps_xml", download)
+    calls = []
+
+    def pipeline(*args, **kwargs):
+        calls.append("patents")
+        return pipeline_status
+
+    def apply(data, store, stage, year, issue):
+        assert (data, stage, year, issue) == (
+            PUBLICATION,
+            "publication",
+            "115",
+            "024019",
+        )
+        calls.append("dates")
+        return {"matched_versions": 1}
+
+    monkeypatch.setattr(latest_publication, "run_pipeline", pipeline)
+    monkeypatch.setattr(latest_publication, "apply_dates", apply)
+    options = ["--gazette-year", "115", "--objects", str(tmp_path)]
+    assert latest_publication.main(options) == 0
+    assert json.loads(capsys.readouterr().out)["gazette_sha256"]
+    assert not calls
+
+    pipeline_status = 1
+    assert latest_publication.main([*options, "--apply"]) == 1
+    assert calls == ["patents"]
+
+    pipeline_status = 0
+    assert latest_publication.main([*options, "--apply"]) == 0
+    assert calls == ["patents", "patents", "dates"]
+
+    monkeypatch.setattr(
+        latest_publication,
+        "download_ftps_xml",
+        lambda url: PUBLICATION.replace(b"<isuno>19", b"<isuno>18"),
+    )
+    with pytest.raises(SystemExit) as error:
+        latest_publication.main([*options, "--apply"])
+    assert error.value.code == 1
+    assert calls == ["patents", "patents", "dates"]

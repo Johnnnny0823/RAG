@@ -1744,3 +1744,22 @@
 - Uncommitted changes / file ownership warnings: 隔離驗收容器已停止，保留隔離資料卷。其他專案的執行環境未動。
 - Next 1–3 concrete actions: 核對正式建置官方 E2E、驗證跨期補匯規則，以及持續人工相關性複核。
 - Exact reproduction steps: 依 SETUP 啟用 `TIPO_REFRESH_INCLUDE_GRANTS=yes`，等待兩輪後查驗 `ingestion_jobs` 的 `counts.import.reused`、`counts.lexical.versions` 及公告詳情 API。
+
+## 最新卷期的官方日期
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `7f0b757`。
+- Current milestone and status: 官方資料定期更新 IN_PROGRESS。
+- Goal of this session: 補齊最新公開及公告版本日期，驗證不重複記錄來源，查核正式部署 E2E。
+- Files changed (with purpose): `services/ingestion/latest_publication.py` 加入公報預覽與日期匯入，`services/ingestion/refresh_publications.py`、`docker-compose.yml`、`.env.example` 串接設定，`tests/test_gazette_dates.py` 覆蓋預覽、失敗與寫入順序，`docs/{DATA_SOURCES,SETUP,PROGRESS,HANDOFF}.md` 記錄。
+- Database migrations added/applied: 無新增，沿用已遷移的隔離資料庫。
+- API/Schema changes: 無。使用既有日期與來源欄位。
+- Commands actually run and results: 啟用 PostgreSQL 的完整 pytest 107 passed、1 則既有 Starlette 警告。Ruff lint、format 及 Git diff 檢查通過。隔離排程容器成功跑一輪 S10 及 S01，補上各 7 個版本的日期。API 核對 `202642194` 的書目摘要及全文版、`I942697` 的請求項版，日期、來源雜湊及位置一致。以已保存原檔呼叫 `apply_dates` 重跑，兩來源各維持 1 筆批次、1 件原檔、7 筆連結。[正式部署官方 E2E 45738965469](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469) 在 `dfdc82c` 完成向量索引、API 冒煙與 20 項瀏覽器測試。
+- Tests NOT run and reason: 日期功能未在該次遠端 E2E 範圍內，也未本機重跑 Playwright。此次重跑驗證直接使用已保存公報，未等待第二次線上排程下載。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 取得民國 115 年第 024020、053030 期公報，網址、大小、SHA-256 及授權見 [來源](DATA_SOURCES.md#最新卷期的日期公報)。同日重抓 `https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/P10`，索引無卷期欄位。
+- Known bugs / risks / blockers: Docker 新網路位址池不足，初始 Compose 啟動失敗。改在既有隔離網路以同一建置映像、排程模組及資料卷完成驗收。跨期補匯及法律事件自動定位待完成。
+- Decisions made (ADR links): 日期年度為獨立選用設定，預設關閉。公報先驗證卷期及年份，再匯入文件與日期。見 [定期更新](SETUP.md#定期更新)。
+- Uncommitted changes / file ownership warnings: 保留隔離資料卷供複驗，未變更其他 Docker 專案。
+- Next 1–3 concrete actions: 驗證封存目錄能否支援可靠的跨期補匯及法律事件定位，持續人工相關性複核。
+- Exact reproduction steps: 依 SETUP 設定 `TIPO_REFRESH_GAZETTE_YEAR=115` 和 `TIPO_REFRESH_INCLUDE_GRANTS=yes`，比對排程日誌、兩期官方原檔 SHA-256 及兩筆號碼查詢的詳情日期。

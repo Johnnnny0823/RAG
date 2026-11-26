@@ -57,9 +57,20 @@
 
 同日核對 [第 053030 期公告全文清單](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index_all.xml)，17,429,839 bytes，共 1,680 筆，SHA-256 `d6814fd1679b4cc41ada290bad698b33d85498bcab815d7b2bc90c0cb43e4fea`。檔內的 `specification-files/@xml-file` 路徑可配合 `PatentPubXML/115` 取得個案。抽查 `PatentIsuRegSpecXMLA` 目錄自身以申請號命名的 XML，包含書目、附圖及請求項。以官方清單取得的 `PatentPubXML` 個案則含摘要、說明書與請求項。本次用 `I942741` 和 `I942850` 驗證，原檔雜湊分別為 `715c5d69af4386d4f2509c1a8d84176ede723dbffc2f1ea6023ee3a1dcc7fa65` 與 `5cfd8244f675f12a984c2f5a227700104ef833299cb245dda088ea5d42e3efee`。兩種來源的部分請求項文字有異，系統分版本保存並在全文版引用同一個個案來源。
 
+## 最新卷期的日期公報
+
+2026-11-26 以匿名 FTPS 取得以下同期書目，沿用[日期公報資料集](#公報書目的申請日公開日與公告日)所載政府資料開放授權。完整解析時逐筆核對卷期、申請號、文件號與民國日期。來源年份以公報所載的公開或公告日期驗證。
+
+| 來源 | 檔案資訊 | 首筆發明 |
+| --- | --- | --- |
+| [發明公開 024020](ftps://ftp.tipo.gov.tw/PatentPubRegXMLB/115/PatentPubRegXMLB_024020/pubinvention.xml) | 11,975,072 bytes，1,639 筆發明，SHA-256 `32fe19989646714d2dad592cf6344d237f6bab990792d1972bfdc854c1ee3682` | `202642194`，申請日 2025-03-11，公開日 2026-10-16。 |
+| [發明公告 053030](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053030/patent.xml) | 25,347,635 bytes，1,162 筆發明，SHA-256 `d2ac1042f7cbcf7917065009626b6eccd868c55410a3f055472ea3e3146ae2c8` | `I942697`，申請日 2019-04-10，公告日 2026-10-21。 |
+
 ## 專利權異動公報
 
 2026-11-26 查核[專利權異動公報（15974）](https://data.gov.tw/dataset/15974)。提供者經濟部智慧財產局，目錄列每月更新、免費及政府資料開放授權條款第 1 版。[最新期索引 P10](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/P10) 實得 1,662 筆、214,092 bytes，SHA-256 `3945c07fd8f2b286e00dac8d46c67faf849c998f3c89009b3eec75ebc2226299`。索引列申請號、證書號及異動種類，日期及更正欄位須讀該卷期的類別 XML。FTPS 速率限制未確認。
+
+同日重抓 P10 的雜湊一致。根元素 `SundryData` 與 `Sundry` 記錄缺少卷期欄位，無法直接從此回應定位封存檔。因此目前仍依人工核對的封存卷期匯入異動。
 
 第 53 卷第 33 期的匿名 FTPS 封存實測如下。
 

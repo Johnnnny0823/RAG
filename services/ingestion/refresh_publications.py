@@ -54,6 +54,7 @@ def main() -> None:
     parser.add_argument("--retry-interval", type=int, default=900)
     parser.add_argument("--limit", type=int, default=100)
     parser.add_argument("--archive-year")
+    parser.add_argument("--gazette-year")
     parser.add_argument("--include-grants", choices=("yes", "no"), default="no")
     parser.add_argument(
         "--index-mode", choices=("none", "lexical", "hybrid"), default="lexical"
@@ -61,14 +62,18 @@ def main() -> None:
     args = parser.parse_args()
     if not 1 <= args.limit <= 500 or not 60 <= args.retry_interval <= args.interval:
         parser.error("Expected a limit of 1..500 and 60 <= retry interval <= interval")
-    if args.archive_year and not re.fullmatch(r"[0-9]{3}", args.archive_year):
-        parser.error("--archive-year must be a three-digit ROC year")
     if not getenv("PATENT_OBJECTS_DIR"):
         parser.error("Set PATENT_OBJECTS_DIR to a persistent object directory")
 
     options = ["--apply", "--limit", str(args.limit), "--index-mode", args.index_mode]
-    if args.archive_year:
-        options.extend(["--archive-year", args.archive_year])
+    for option, year in (
+        ("--archive-year", args.archive_year),
+        ("--gazette-year", args.gazette_year),
+    ):
+        if year:
+            if not re.fullmatch(r"[0-9]{3}", year):
+                parser.error(f"{option} must be a three-digit ROC year")
+            options.extend([option, year])
 
     logging.basicConfig(level=logging.INFO)
     stopping = False
