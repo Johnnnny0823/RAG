@@ -18,12 +18,13 @@ INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10"
 GRANT_INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01"
 SPEC_PATH = re.compile(
     r"/(?:InventionPubXML|PatentIsuRegSpecXMLA)/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_-]+\.xml"
+    r"|/PatentPubXML/[0-9]{3}/PatentPubXML_[0-9]{6}/[0-9]+I[0-9]+/[0-9]{9}-[A-Za-z0-9_-]+\.xml"
 )
 EVENT_PATH = re.compile(
     r"/PatentIsuModXML/[0-9]{3}/PatentIsuModXML_[0-9]{6}/sud(?:08|24)\.xml"
 )
 GAZETTE_PATH = re.compile(
-    r"/(?:PatentIsuRegSpecXMLA/[0-9]{3}/PatentIsuRegSpecXMLA_[0-9]{6}/index"
+    r"/(?:PatentIsuRegSpecXMLA/[0-9]{3}/PatentIsuRegSpecXMLA_[0-9]{6}/index(?:_all)?"
     r"|PatentPubRegXMLB/[0-9]{3}/PatentPubRegXMLB_[0-9]{6}/pubinvention"
     r"|PatentIsuRegSpecXMLB/[0-9]{3}/PatentIsuRegSpecXMLB_[0-9]{6}/patent)\.xml"
 )

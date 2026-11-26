@@ -38,20 +38,22 @@ def test_tipo_download_retries_only_425(monkeypatch, attempts, delays, expected_
     assert wait.call_args_list == [call(seconds) for seconds in delays]
 
 
-def test_only_grant_archive_index_uses_the_larger_gazette_limit(monkeypatch):
+def test_grant_archive_indexes_use_the_larger_gazette_limit(monkeypatch):
     context = object()
     transfer = Mock(return_value=b"<index/>")
     monkeypatch.setattr(download, "tls_context", lambda: context)
     monkeypatch.setattr(download, "_transfer_xml", transfer)
     folder = "/PatentIsuRegSpecXMLA/114/PatentIsuRegSpecXMLA_052006"
     index = folder + "/index.xml"
+    manifest = folder + "/index_all.xml"
     individual = folder + "/example.xml"
 
-    for path in (index, individual):
+    for path in (index, manifest, individual):
         download.download_ftps_xml(f"ftps://ftp.tipo.gov.tw{path}")
 
     assert transfer.call_args_list == [
         call(index, context, download.MAX_GAZETTE_XML_BYTES),
+        call(manifest, context, download.MAX_GAZETTE_XML_BYTES),
         call(individual, context, download.MAX_XML_BYTES),
     ]
 

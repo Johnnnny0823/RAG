@@ -7,7 +7,7 @@ from ftplib import all_errors
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from services.ingestion.artifacts import MAX_XML_BYTES
+from services.ingestion.artifacts import MAX_GAZETTE_XML_BYTES, MAX_XML_BYTES
 from services.ingestion.download import download_ftps_xml
 from services.ingestion.patentpub import parse_xml
 
@@ -15,25 +15,36 @@ HOST = "ftps://ftp.tipo.gov.tw"
 MANIFEST_URL = re.compile(
     rf"{re.escape(HOST)}/InventionPubXML/([0-9]{{3}})/InventionPubXML_([0-9]{{6}})/index_all\.xml"
 )
+GRANT_MANIFEST_URL = re.compile(
+    rf"{re.escape(HOST)}/PatentIsuRegSpecXMLA/([0-9]{{3}})/PatentIsuRegSpecXMLA_([0-9]{{6}})/index_all\.xml"
+)
 
 
-def resolve_spec_urls(data, manifest_url, issue, publications):
-    match = MANIFEST_URL.fullmatch(manifest_url)
+def resolve_spec_urls(data, manifest_url, issue, publications, *, grant=False):
+    match = (GRANT_MANIFEST_URL if grant else MANIFEST_URL).fullmatch(manifest_url)
     if not match or match[2] != issue:
         raise ValueError("Manifest URL must point to the requested TIPO issue")
-    root = parse_xml(data)
-    if root.tag != "tw-patent-applications" or root.get("total-count") != str(
-        len(root)
-    ):
+    root = parse_xml(data, size_limit=MAX_GAZETTE_XML_BYTES if grant else MAX_XML_BYTES)
+    root_name, item_name, number_attribute, archive = (
+        ("tw-patent-grants", "tw-patent-grant", "certificate-number", "PatentPubXML")
+        if grant
+        else (
+            "tw-patent-applications",
+            "tw-patent-application",
+            "publication-number",
+            "InventionPubXML",
+        )
+    )
+    if root.tag != root_name or root.get("total-count") != str(len(root)):
         raise ValueError("Invalid TIPO issue manifest")
 
     urls = {}
     used_paths = set()
-    directory = f"/InventionPubXML_{issue}/"
+    directory = f"/{archive}_{issue}/"
     for record in root:
-        if record.tag != "tw-patent-application":
+        if record.tag != item_name:
             raise ValueError("Unexpected record in TIPO issue manifest")
-        number = record.get("publication-number")
+        number = record.get(number_attribute)
         if number not in publications:
             continue
         node = record.find("specification-files")
@@ -50,7 +61,7 @@ def resolve_spec_urls(data, manifest_url, issue, publications):
                 "Invalid or duplicate specification link in TIPO issue manifest"
             )
         used_paths.add(relative)
-        urls[number] = f"{HOST}/InventionPubXML/{match[1]}{relative}"
+        urls[number] = f"{HOST}/{archive}/{match[1]}{relative}"
     if urls.keys() != publications.keys():
         raise ValueError("TIPO issue manifest does not cover the selected publications")
     return urls

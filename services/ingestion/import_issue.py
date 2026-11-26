@@ -99,7 +99,8 @@ def store_document(
     ).scalar_one()
 
     source_hash = record.source_hash
-    if spec is not None and stage == "publication":
+    has_fulltext = spec is not None and bool(spec.sections)
+    if spec is not None and has_fulltext:
         source_hash = hashlib.sha256(
             f"{source_hash}:{spec.artifact.checksum}".encode()
         ).hexdigest()
@@ -124,9 +125,11 @@ def store_document(
                 {
                     "applicants": record.applicants,
                     "inventors": record.inventors,
-                    "content_scope": "claims_only"
-                    if stage == "grant"
-                    else ("fulltext" if spec else "metadata_and_abstract"),
+                    "content_scope": "fulltext"
+                    if has_fulltext
+                    else (
+                        "claims_only" if stage == "grant" else "metadata_and_abstract"
+                    ),
                 }
             ),
         ),
@@ -231,12 +234,16 @@ def import_issue(args):
             raise ValueError(
                 "A valid issue index is required before fetching specifications"
             )
-        manifest_data = read_xml(args.manifest)
+        manifest_data = read_xml(
+            args.manifest,
+            size_limit=MAX_GAZETTE_XML_BYTES if args.grant_number else MAX_XML_BYTES,
+        )
         sources = resolve_spec_urls(
             manifest_data,
             args.manifest_url,
             args.batch,
             {record.publication_no: record.application_no for record in records},
+            grant=bool(args.grant_number),
         )
         official_manifest = store.put(manifest_data)
         cache = args.objects / "download-cache" / official_manifest.checksum
@@ -331,21 +338,13 @@ def import_issue(args):
         pending_specs = specs_raw.copy()
         for record in records:
             spec = spec_id = None
-            if args.grant_number:
-                document_id = store_document(
-                    conn,
-                    record,
-                    jurisdiction,
-                    Specification(index_raw, [], grant_claims[record.publication_no]),
-                    stage="grant",
-                )
-                link_artifact(conn, document_id, index_id, record.locator)
-                continue
             if artifact := pending_specs.pop(record.publication_no, None):
                 error_log = None
                 try:
                     sections, claims = parse_specification(
-                        store.read(artifact), record.application_no
+                        store.read(artifact),
+                        record.application_no,
+                        grant=bool(args.grant_number),
                     )
                     spec = Specification(artifact, sections, claims)
                 except (ValueError, ET.ParseError) as error:
@@ -361,12 +360,20 @@ def import_issue(args):
                     "parsed" if spec else "quarantined",
                     error_log,
                 )
-            document_id = store_document(conn, record, jurisdiction, spec)
+            stage = "grant" if args.grant_number else "publication"
+            if args.grant_number and spec is None:
+                spec = Specification(index_raw, [], grant_claims[record.publication_no])
+            document_id = store_document(conn, record, jurisdiction, spec, stage=stage)
             link_artifact(conn, document_id, index_id, record.locator)
             if spec is None:
                 metadata += 1
-            else:
-                link_artifact(conn, document_id, spec_id, "/invention-specification")
+            elif spec.sections:
+                locator = (
+                    "/specification"
+                    if args.grant_number
+                    else "/invention-specification"
+                )
+                link_artifact(conn, document_id, spec_id, locator)
                 fulltext += 1
 
         for number, artifact in pending_specs.items():
@@ -383,7 +390,11 @@ def import_issue(args):
         status = (
             "failed"
             if index_error
-            else ("partial" if issues or metadata or quarantined_specs else "complete")
+            else (
+                "partial"
+                if issues or metadata or quarantined_specs or failures
+                else "complete"
+            )
         )
         counts = {
             "metadata": metadata,
@@ -469,9 +480,9 @@ def parse_import_args(argv=None):
         parser.error("--fetch-only and --cache-only require --manifest")
     if args.fetch_only and args.cache_only:
         parser.error("--fetch-only and --cache-only cannot be combined")
-    if args.grant_number and (args.demo or args.spec or args.manifest):
+    if args.grant_number and (args.demo or args.spec):
         parser.error(
-            "--grant-number requires --verified-tipo and a grant index without specifications"
+            "--grant-number requires --verified-tipo and an official manifest for specifications"
         )
     args.specs = {}
     for item in args.spec:

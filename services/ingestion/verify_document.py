@@ -14,9 +14,14 @@ from services.ingestion.specification import parse_specification
 
 
 def verify(
-    publication_no: str, root: Path, grant_issue: str | None = None
+    publication_no: str,
+    root: Path,
+    grant_issue: str | None = None,
+    *,
+    grant_fulltext: bool = False,
 ) -> tuple[int, int]:
     stage = "grant" if grant_issue else "publication"
+    scope = "claims_only" if grant_issue and not grant_fulltext else "fulltext"
     with engine.connect() as conn:
         document_id, application_no, checksum, key, size = conn.exec_driver_sql(
             """SELECT DISTINCT d.id, p.application_no, a.checksum, a.object_key, a.size_bytes
@@ -26,14 +31,15 @@ def verify(
                JOIN ingestion_artifacts a ON a.id = da.artifact_id
                WHERE d.jurisdiction = 'TW' AND d.document_stage = %s
                  AND d.publication_no = %s
-                 AND (da.record_locator = '/invention-specification'
-                      OR (d.document_stage = 'grant' AND
+                 AND d.metadata_jsonb->>'content_scope' = %s
+                 AND (da.record_locator IN ('/invention-specification','/specification')
+                      OR (d.document_stage = 'grant' AND %s = 'claims_only' AND
                           right(da.record_locator, 1) = ']' AND
                           starts_with(da.record_locator, '/tw-patent-grants/tw-patent-grant[')))""",
-            (stage, publication_no),
+            (stage, publication_no, scope, scope),
         ).one()
         payload = LocalObjectStore(root).read(RawArtifact(checksum, key, size))
-        if grant_issue:
+        if grant_issue and not grant_fulltext:
             grant, claims = parse_grant(payload, grant_issue, publication_no)
             if grant.application_no != application_no:
                 raise ValueError(
@@ -41,7 +47,9 @@ def verify(
                 )
             sections = []
         else:
-            sections, claims = parse_specification(payload, application_no)
+            sections, claims = parse_specification(
+                payload, application_no, grant=grant_fulltext
+            )
         stored_claims = (
             conn.exec_driver_sql(
                 """SELECT claim_number, text, independent_flag_nullable,
@@ -84,8 +92,16 @@ if __name__ == "__main__":
     parser.add_argument("publication_no")
     add_objects_argument(parser)
     parser.add_argument("--grant-issue")
+    parser.add_argument("--grant-fulltext", action="store_true")
     args = parser.parse_args()
-    claims, sections = verify(args.publication_no, args.objects, args.grant_issue)
+    if args.grant_fulltext and not args.grant_issue:
+        parser.error("--grant-fulltext requires --grant-issue")
+    claims, sections = verify(
+        args.publication_no,
+        args.objects,
+        args.grant_issue,
+        grant_fulltext=args.grant_fulltext,
+    )
     print(
         f"Verified {claims} claims and {sections} description paragraphs against archived XML"
     )

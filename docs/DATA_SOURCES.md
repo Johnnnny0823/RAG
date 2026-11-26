@@ -55,6 +55,8 @@
 
 2026-11-26 從 [TIPO S01 最新公告索引](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01) 實際取得第 53 卷第 30 期，16,606,166 bytes，共 1,680 筆，其中 1,162 筆證書號有發明前綴 `I`。SHA-256 為 `fbfc4c7903e0b08fefaed6bad94240b8e7f4e680c9be80ead5ae31a6782b1d28`。驗收所選公告 `I942697`（申請號 `108112538`）有 38 項請求項，`I942698`（申請號 `108125866`）有 24 項，均核對索引原文及位置。驗收的公告內容範圍為書目及請求項。[政府目錄 15987](https://data.gov.tw/dataset/15987)
 
+同日核對 [第 053030 期公告全文清單](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index_all.xml)，17,429,839 bytes，共 1,680 筆，SHA-256 `d6814fd1679b4cc41ada290bad698b33d85498bcab815d7b2bc90c0cb43e4fea`。檔內的 `specification-files/@xml-file` 路徑可配合 `PatentPubXML/115` 取得個案。抽查 `PatentIsuRegSpecXMLA` 目錄自身以申請號命名的 XML，包含書目、附圖及請求項。以官方清單取得的 `PatentPubXML` 個案則含摘要、說明書與請求項。本次用 `I942741` 和 `I942850` 驗證，原檔雜湊分別為 `715c5d69af4386d4f2509c1a8d84176ede723dbffc2f1ea6023ee3a1dcc7fa65` 與 `5cfd8244f675f12a984c2f5a227700104ef833299cb245dda088ea5d42e3efee`。兩種來源的部分請求項文字有異，系統分版本保存並在全文版引用同一個個案來源。
+
 ## 專利權異動公報
 
 2026-11-26 查核[專利權異動公報（15974）](https://data.gov.tw/dataset/15974)。提供者經濟部智慧財產局，目錄列每月更新、免費及政府資料開放授權條款第 1 版。[最新期索引 P10](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/P10) 實得 1,662 筆、214,092 bytes，SHA-256 `3945c07fd8f2b286e00dac8d46c67faf849c998f3c89009b3eec75ebc2226299`。索引列申請號、證書號及異動種類，日期及更正欄位須讀該卷期的類別 XML。FTPS 速率限制未確認。

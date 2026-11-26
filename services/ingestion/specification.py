@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from services.ingestion.patentpub import parse_xml
 
 DOCTYPE = b'<!DOCTYPE invention-specification SYSTEM "../invention-specification.dtd">'
+GRANT_DOCTYPE = b'<!DOCTYPE specification SYSTEM "../specification.dtd">'
 DTD_VERSION = "A103.1.0"
 
 
@@ -26,12 +27,13 @@ class Claim:
 
 
 def parse_specification(
-    data: bytes, application_no: str
+    data: bytes, application_no: str, *, grant: bool = False
 ) -> tuple[list[Section], list[Claim]]:
     # The publisher's known external DTD is inert. All other declarations fail in parse_xml.
-    root = parse_xml(data.replace(DOCTYPE, b"", 1))
+    root_name = "specification" if grant else "invention-specification"
+    root = parse_xml(data.replace(GRANT_DOCTYPE if grant else DOCTYPE, b"", 1))
     if (
-        root.tag != "invention-specification"
+        root.tag != root_name
         or root.get("dtd-version") != DTD_VERSION
         or root.get("application-num") != application_no
     ):
@@ -49,7 +51,7 @@ def parse_specification(
                         group.tag,
                         index,
                         text,
-                        f"/invention-specification/description/{group.tag}/p[{index}]",
+                        f"/{root_name}/description/{group.tag}/p[{index}]",
                     )
                 )
 
@@ -75,7 +77,7 @@ def parse_specification(
                 number,
                 text,
                 independent,
-                f"/invention-specification/claims/claim[{index}]",
+                f"/{root_name}/claims/claim[{index}]",
             )
         )
     if not sections or not claims:

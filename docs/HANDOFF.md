@@ -1686,3 +1686,22 @@
 - Uncommitted changes / file ownership warnings: 官方案例存於隔離資料庫及未追蹤物件卷。
 - Next 1–3 concrete actions: 驗收公告全文、公告排程及跨期補匯，持續查核完整模型遠端結果。
 - Exact reproduction steps: 依 SETUP 的追蹤匯入小節取得該期官方索引並重複傳入兩個 `--grant-number`。
+
+## 發明公告全文匯入
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `364165b`。
+- Current milestone and status: 官方公告全文兩案例已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 從官方封存清單取得公告個案全文，保持與 S01 請求項版的來源隔離。
+- Files changed (with purpose): `download.py` 驗證官方公告清單與個案路徑，`issue_manifest.py` 綁定證書號、申請號和期別，`specification.py` 解析公告個案根元素，`import_issue.py` 保存獨立全文版本，`verify_document.py` 支援核對公告全文。新增解析及來源回歸測試，更新 SETUP、DATA_SOURCES、PROGRESS、HANDOFF。
+- Database migrations added/applied: 無新增，沿用隔離受限角色與原始物件卷。
+- API/Schema changes: 無。兩個版本延用既有 `claims_only` 和 `fulltext` 欄位。
+- Commands actually run and results: 官方封存清單 17,429,839 bytes，放寬限額僅套用已驗證的公告卷期清單。隔離庫先匯入兩件 S01 書目加請求項，再以清單匯入兩份公告全文，新增 252 個詞彙片段。重跑重用批次且新增 0。從官方原檔核對 `I942741` 的 13 項請求項與 165 段、`I942850` 的 5 項與 66 段。API 確認兩案各兩版；全文版請求項與段落的來源 SHA-256 相同，且與 S01 版本來源不同。忽略空白後兩案分別有 4 與 5 項請求項措辭不同。pytest 97 passed、8 skipped，Ruff 與 Git diff 通過。
+- Tests NOT run and reason: 未跑完整 PostgreSQL pytest 和 Playwright，使用隔離真實 PostgreSQL、API 及官方原文驗收。公告全文向量未建立。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 核對政府目錄 15987、15983，S01、官方清單及 `PatentPubXML` 個案路徑。細節見 DATA_SOURCES。
+- Known bugs / risks / blockers: 不是每份官方全文都具完整請求項標記；缺號或內容無法核對時將保留已驗證的 S01 版本並回報部分完成。公告自動排程、跨期補齊、人工相關性與外部部署待驗。
+- Decisions made (ADR links): 公告個案內文與請求項取自同一份全文 XML，S01 文字獨立保留，避免版本內混用。
+- Uncommitted changes / file ownership warnings: 原檔留在隔離物件卷與暫存目錄、未提交至 Git。
+- Next 1–3 concrete actions: 驗證公告全文向量與更新排程，核對最新完整官方 CI。
+- Exact reproduction steps: 按 SETUP 的公告個案全文段落下載並匯入同一期來源，以 `verify_document --grant-issue 053030 --grant-fulltext` 逐件驗證。

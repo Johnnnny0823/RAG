@@ -123,6 +123,15 @@ def test_specification_keeps_exact_text_and_locator():
     assert claim.independent is True
 
 
+def test_grant_specification_requires_its_own_document_format():
+    grant = SPEC.replace(b"invention-specification", b"specification")
+    [section], [claim] = parse_specification(grant, "000000001", grant=True)
+    assert section.locator == "/specification/description/technical-field/p[1]"
+    assert claim.locator == "/specification/claims/claim[1]"
+    with pytest.raises(ValueError, match="DOCTYPE"):
+        parse_specification(SPEC, "000000001", grant=True)
+
+
 def test_specification_rejects_wrong_application_and_untrusted_doctype():
     with pytest.raises(ValueError, match="application number"):
         parse_specification(SPEC, "000000002")

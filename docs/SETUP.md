@@ -380,6 +380,16 @@ docker compose run --rm -v "${inputs}:/inputs:ro" migrate python -m services.ing
 
 每件保留獨立的公告版本和原文請求項定位。選取的證書號必須全部出現在同份索引。對同一原檔、同一批證書號重跑會重用批次，證書號順序不影響判定。
 
+若要補入公告個案全文，先下載同一期的官方 `index_all.xml` 並保留原檔。以下範例使用已核對的第 053030 期封存清單。
+
+```powershell
+python -m services.ingestion.download --index-out "${inputs}/grant-index_all.xml" --index-url ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index_all.xml
+docker compose run --rm -v "${inputs}:/inputs:ro" migrate python -m services.ingestion.run_pipeline --index-mode lexical -- --verified-tipo --index /inputs/s01.xml --index-source-url https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01 --batch 053030 --grant-number I942741 --grant-number I942850 --manifest /inputs/grant-index_all.xml --manifest-url ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index_all.xml
+docker compose run --rm migrate python -m services.ingestion.verify_document I942741 --grant-issue 053030 --grant-fulltext
+```
+
+全文版的請求項與說明書來自同一份個案原檔。已保存的 S01 請求項版仍可獨立查閱。個案檔取得或解析失敗時仍可保存可用的 S01 請求項，管理員監控會顯示部分完成。驗證 S01 請求項版時省略 `--grant-fulltext`。
+
 先依前述官方樣本流程取得檔案並核對來源與 SHA-256。以下 PowerShell 範例以 `$inputs` 指定已有 `index.xml` 與 `spec.xml` 的絕對路徑，用已配置模型的 Compose 專案在背景執行。
 
 ```powershell
