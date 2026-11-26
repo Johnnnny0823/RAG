@@ -2,6 +2,8 @@
 
 import json
 import logging
+import signal
+from collections.abc import Callable
 from time import sleep
 
 from fastapi.responses import JSONResponse
@@ -77,14 +79,33 @@ def process_one() -> bool:
     return True
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    while True:
+def run_worker(should_stop: Callable[[], bool]) -> None:
+    while not should_stop():
         try:
             searched = process_one()
+            if should_stop():
+                return
             reported = process_one_report()
             if searched or reported:
                 continue
         except SQLAlchemyError as exc:
             logger.warning("Search worker database error type=%s", type(exc).__name__)
-        sleep(2)
+        if not should_stop():
+            sleep(2)
+
+
+def main() -> None:
+    logging.basicConfig(level=logging.INFO)
+    stopping = False
+
+    def request_shutdown(_signum, _frame):
+        nonlocal stopping
+        stopping = True
+
+    signal.signal(signal.SIGTERM, request_shutdown)
+    signal.signal(signal.SIGINT, request_shutdown)
+    run_worker(lambda: stopping)
+
+
+if __name__ == "__main__":
+    main()

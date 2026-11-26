@@ -1406,3 +1406,23 @@
 - Uncommitted changes / file ownership warnings: 隔離資料卷保留供重驗，測試未接觸既有開發資料庫。
 - Next 1–3 concrete actions: 複驗正式覆蓋檔的 GitHub Actions、完成人工相關性複核、取得外部部署環境後驗證 TLS。
 - Exact reproduction steps: 依 SETUP 的靜態部署段落啟動 Compose，依 TESTING 準備官方樣本和模型，將預設測試入口改為該 Compose 的 Nginx 連接埠，執行部署與官方 API 冒煙及 Playwright 官方套件。
+
+## 背景工作程序的關閉行為
+
+- Codex 負責 `services/api/search_worker.py`、Compose、工作程序測試及操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `dfdc82c`。
+- Current milestone and status: 部署工作程序關閉行為已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 部署關閉時完成手上的背景工作，避免一般停止指令留下不必要的執行中紀錄。
+- Files changed (with purpose): `services/api/search_worker.py` 接收 SIGTERM／SIGINT 並在工作之間停止取件，`docker-compose.yml` 允許三分鐘關閉時間，`tests/test_search_worker.py` 驗證搜尋完成後停止取件，更新 SETUP、PROGRESS 與交接。
+- Database migrations added/applied: 無新增。沿用先前隔離部署和既有語料。
+- API/Schema changes: 無。
+- Commands actually run and results: 初次 pytest 碰到 Windows 共用暫存目錄權限，82 passed、7 skipped、8 errors。改用唯一 `--basetemp` 後 90 passed、7 skipped，既有 Starlette 棄用警告 1 則。Ruff 和 `git diff --check` 通過。本機 Docker 的預設建置器遇到工作區路徑編碼問題，改用 `COMPOSE_BAKE=false`；新隔離專案因 Docker IP 位址池已滿，沿用先前的隔離專案完成重建與部署冒煙。新版 Compose 的背景程序停止後為退出碼 0、非記憶體不足終止，生效的停止期限為 180 秒。另以同一工作映像執行替代搜尋，使用 `docker stop` 送出 SIGTERM，觀察搜尋完成、未開始報告、正常退出。
+- Tests NOT run and reason: 本輪未啟用 PostgreSQL pytest 整合（7 skipped），未透過 Playwright 重跑完整研究流程。Docker 訊號測試以受控工作驗證時序，未測真實模型推論中途關機及逾越三分鐘。
+- Data sources checked (exact URL/date) and license/access notes: 本輪未下載資料，沿用既有隔離環境。
+- Known bugs / risks / blockers: 主機斷電、強制終止及超過 Compose 關閉期限仍依賴既有工作逾時機制。外部部署及人工相關性複核仍待完成。
+- Decisions made (ADR links): 保留單一工作程序與既有資料庫狀態機，在搜尋與報告取件之間檢查關閉訊號。
+- Uncommitted changes / file ownership warnings: 隔離資料庫及資料卷保留。
+- Next 1–3 concrete actions: 核對 [正式建置官方遠端驗收](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469)，完成人工相關性複核及外部部署。
+- Exact reproduction steps: 執行 `pytest -q tests/test_search_worker.py`。以 SETUP 的 Compose 部署步驟啟動獨立環境，等 API 就緒後執行 `docker compose stop search-worker`，用 `docker inspect` 確認退出碼 0。
