@@ -1,0 +1,48 @@
+import { expect, test } from "@playwright/test";
+
+test("official identifier lookup opens the correct publication and grant versions @versions", async ({ page }) => {
+  await page.goto("/");
+  const lookup = page.getByRole("region", { name: "專利號碼查詢" });
+  const kind = lookup.getByLabel("號碼類型");
+  const number = lookup.getByLabel("專利號碼");
+  const submit = lookup.getByRole("button", { name: "查詢專利號碼" });
+  const application = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === "/api/v1/patents" && url.searchParams.get("number_type") === "application";
+  });
+  await number.fill("114106690");
+  await submit.click();
+  const response = await application;
+  expect(response.ok()).toBe(true);
+  await expect(lookup.getByRole("listitem")).toHaveCount(3);
+  await expect(lookup.getByText(/公開 202640162.*全文/)).toBeVisible();
+  await expect(lookup.getByText(/公開 202640162.*書目與摘要/)).toBeVisible();
+  const grant = lookup.getByRole("listitem").filter({ hasText: "公告 I941082" });
+  await grant.getByRole("button").click();
+  await expect(page.getByRole("heading", { name: "專利詳情" })).toBeVisible();
+  await expect(page.getByText("請求項（13）", { exact: true })).toBeVisible();
+
+  await kind.selectOption("publication");
+  await number.fill("２０２６４０１６２");
+  await submit.click();
+  await expect(lookup.getByRole("listitem")).toHaveCount(2);
+  await expect(lookup.getByText(/公告 I941082/)).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "專利詳情" })).toHaveCount(0);
+
+  await kind.selectOption("grant");
+  await number.fill("i941082");
+  await submit.click();
+  await expect(lookup.getByRole("listitem")).toHaveCount(1);
+  await expect(grant).toBeVisible();
+
+  await kind.selectOption("publication");
+  await number.fill("000000000");
+  await submit.click();
+  await expect(lookup.getByRole("status")).toHaveText("已索引的資料中沒有符合這個號碼的文件。");
+  await expect(lookup.getByRole("listitem")).toHaveCount(0);
+
+  await number.fill("invalid");
+  await submit.click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(lookup.getByRole("status")).toHaveCount(0);
+});

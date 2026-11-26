@@ -1364,3 +1364,24 @@
 - Uncommitted changes / file ownership warnings: 原始檔與測試資料卷保留於隔離環境。
 - Next 1–3 concrete actions: 核對遠端快取命中並複驗最新提交，補人工相關性判定與正式部署驗收。
 - Exact reproduction steps: 依 SETUP 的官方異動公報段落匯入固定證書，再以 `PATENTSCOPE_E2E_TIPO=events` 啟動異動公報測試套件。
+
+## 研究頁專利號碼查詢
+
+- Codex 負責研究頁號碼查詢、官方資料瀏覽器驗收與文件。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `12d9daf`。
+- Current milestone and status: M4 研究頁號碼查詢驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 讓已知申請號、公開號或公告號的使用者直接開啟正確版本的詳情。
+- Files changed (with purpose): `research.tsx` 新增號碼查詢、結果及分頁。沿用共同專利詳情。新增 `patent-number.spec.ts` 並更新 README、驗收、進度與交接。
+- Database migrations added/applied: 無新增。查詢使用已匯入官方語料的隔離資料庫。
+- API/Schema changes: 無。沿用 `GET /api/v1/patents` 的號碼類型、標準化與分頁契約。
+- Commands actually run and results: `npm run lint --prefix apps/web`、`npm run build --prefix apps/web` 通過。官方號碼查詢桌面、平板、手機 Chromium 3 passed（16.7 秒），核對同案三版本、公告 13 項請求項、全形公開號、小寫公告號、空結果與錯誤。桌面搜尋錯誤與研究工作台回歸 4 passed（15.8 秒）。API 未設定嵌入與分析模型。
+- Tests NOT run and reason: 本輪前端功能未改 API 實作或資料庫，未重跑 pytest。尚未對超過單頁版本的官方案例執行號碼查詢分頁。前一提交的遠端官方工作 [45737654914](https://github.com/Johnnnny0823/RAG/actions/runs/45737654914) 已精確命中公開快取並重新驗證 24 檔，其他步驟仍在執行。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 DATA_SOURCES 已核對的第 024019 與 053028 期，未下載新資料。
+- Known bugs / risks / blockers: 自然語言檢索仍需模型，實際檢索品質待人工複核。正式部署驗收及最新法律狀態查詢待補。
+- Decisions made (ADR links): 號碼查詢的分頁由既有 API 處理，點選同一文件版本時使用共用詳情。
+- Uncommitted changes / file ownership warnings: 使用隔離本機服務與測試帳號，資料卷保留。
+- Next 1–3 concrete actions: 查核最新官方案例與遠端驗收，完成人工相關性評估及部署驗收。
+- Exact reproduction steps: 依 TESTING 啟動官方隔離語料，令 `PATENTSCOPE_E2E_TIPO=versions` 並以 `--grep=official.identifier.lookup` 執行。

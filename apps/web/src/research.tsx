@@ -73,7 +73,9 @@ type CorpusCoverage = {
   semantic_versions: number;
   latest_document_date: string | null;
 };
-type Results = { items: Hit[]; has_more: boolean; limit: number; offset: number; corpus_coverage?: CorpusCoverage | null };
+type PatentPage<T> = { items: T[]; has_more: boolean; limit: number; offset: number };
+type Results = PatentPage<Hit> & { corpus_coverage?: CorpusCoverage | null };
+type NumberLookup = { number: string; numberType: string; page: PatentPage<PatentVersion> };
 type RunSummary = { id: string; created_at: string; project_id: string | null };
 type Project = { id: string; name: string; description: string };
 type SavedRun = RunSummary & {
@@ -178,6 +180,7 @@ export function Research() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState<Search | null>(null);
   const [results, setResults] = useState<Results | null>(null);
+  const [numberLookup, setNumberLookup] = useState<NumberLookup | null>(null);
   const [selected, setSelected] = useState<{ hit: PatentVersion; detail: Detail; claims: Claim[]; fromResults: boolean } | null>(null);
   const [previewComparisons, setPreviewComparisons] = useState<ComparedDocument[]>([]);
   const [session, setSession] = useState<{ token: string; email: string; canMonitorIngestion: boolean } | null>(null);
@@ -500,6 +503,13 @@ export function Research() {
     setSelected({ hit, detail, claims: claims.claims, fromResults });
     setBookmarkProject(fromResults ? saved?.project_id ?? projectFilter : projectFilter);
     setBookmarkMessage("");
+  }
+
+  async function lookupPatentNumber(number: string, numberType: string, offset: number) {
+    const params = new URLSearchParams({ number, number_type: numberType, limit: "20", offset: String(offset) });
+    const page = await request<PatentPage<PatentVersion>>("/patents?" + params);
+    setNumberLookup({ number, numberType, page });
+    setSelected(null);
   }
 
   async function comparePatent(document: PatentVersion, features: Feature[]) {
@@ -836,6 +846,46 @@ export function Research() {
           </>}
         </section>
       </div>
+      <section className="research-panel mt-6" aria-labelledby="patent-number-heading">
+        <h2 id="patent-number-heading">專利號碼查詢</h2>
+        <form onSubmit={(event) => {
+          event.preventDefault();
+          if (busy) return;
+          const data = new FormData(event.currentTarget);
+          const number = String(data.get("number") ?? "").trim();
+          if (!number) return;
+          setNumberLookup(null);
+          setSelected(null);
+          void run("正在查詢專利號碼…", () => lookupPatentNumber(number, String(data.get("number_type")), 0));
+        }}>
+          <fieldset className="grid gap-x-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-end" disabled={!!busy}>
+            <label className="research-field">號碼類型
+              <select name="number_type" defaultValue="application">
+                <option value="application">申請號</option>
+                <option value="publication">公開號</option>
+                <option value="grant">公告號</option>
+              </select>
+            </label>
+            <label className="research-field">專利號碼
+              <input name="number" required maxLength={32} />
+            </label>
+            <button className="mb-2" type="submit">查詢專利號碼</button>
+          </fieldset>
+        </form>
+        {numberLookup && <>
+          {numberLookup.page.items.length === 0 && <p role="status">已索引的資料中沒有符合這個號碼的文件。</p>}
+          <ul className="divide-y divide-slate-200">
+            {numberLookup.page.items.map((hit) => <li key={hit.document_id} className="py-3">
+              <p className="text-sm font-medium text-teal-800">{stage[hit.document_stage]} {hit.publication_no} {hit.kind_code} · {scope[hit.content_scope]}</p>
+              <button className="mt-1 text-left" type="button" disabled={!!busy} onClick={() => void run("正在載入專利詳情…", () => openPatent(hit, false))}>{title(hit)}</button>
+            </li>)}
+          </ul>
+          {(numberLookup.page.offset > 0 || numberLookup.page.has_more) && <div className="mt-4 flex gap-2">
+            <button disabled={!!busy || numberLookup.page.offset === 0} onClick={() => void run("正在查詢專利號碼…", () => lookupPatentNumber(numberLookup.number, numberLookup.numberType, numberLookup.page.offset - numberLookup.page.limit))}>上一頁</button>
+            <button disabled={!!busy || !numberLookup.page.has_more} onClick={() => void run("正在查詢專利號碼…", () => lookupPatentNumber(numberLookup.number, numberLookup.numberType, numberLookup.page.offset + numberLookup.page.limit))}>下一頁</button>
+          </div>}
+        </>}
+      </section>
       {search && !!compared.length && <ComparisonMatrix features={search.features} columns={compared.map(({ document, comparison }) => ({
         label: `${stage[document.document_stage]} ${document.publication_no} ${document.kind_code ?? ""} · ${scope[document.content_scope]}`,
         title: title(document),

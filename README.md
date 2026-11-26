@@ -1,6 +1,6 @@
 # PatentScope AI
 
-台灣專利研究平台的本機開發專案。M0 提供 React 狀態頁、FastAPI、PostgreSQL 16 與 pgvector；目前尚無已索引的專利語料。
+PatentScope AI 是以臺灣專利為主的研究平台，使用 React、FastAPI、PostgreSQL 與 pgvector。全新環境從空語料啟動，可依[官方資料匯入步驟](docs/TESTING.md#自動建立固定官方樣本)重建驗收語料。研究頁可直接按申請號、公開號或公告號查看已匯入的文件與來源。自然語言檢索另需設定本機模型並建立向量索引。
 
 ## 啟動
 
@@ -12,7 +12,7 @@ docker compose up -d --build --wait --wait-timeout 180
 python scripts/smoke.py
 ```
 
-- [繁體中文狀態頁](http://127.0.0.1:5173)
+- [繁體中文研究頁](http://127.0.0.1:5173)
 - [OpenAPI 文件](http://127.0.0.1:8000/docs)
 
 啟動順序為 PostgreSQL、Alembic、API、Web。Web 透過 Vite 代理存取同源 API。設定檔內的範例密碼僅供本機開發，請將實際值放在未追蹤的 `.env`。Compose 僅將 Web、API 綁定至本機，資料庫使用內部網路與命名卷。若修改連接埠，請將對應網址傳給 `scripts/smoke.py --api ... --web ...`。
