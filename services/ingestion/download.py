@@ -16,6 +16,7 @@ from services.ingestion.artifacts import MAX_GAZETTE_XML_BYTES, MAX_XML_BYTES
 logger = logging.getLogger(__name__)
 INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10"
 GRANT_INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01"
+ARCHIVES = {"publication": "InventionPubXML", "grant": "PatentIsuRegSpecXMLA"}
 SPEC_PATH = re.compile(
     r"/(?:InventionPubXML|PatentIsuRegSpecXMLA)/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_-]+\.xml"
     r"|/PatentPubXML/[0-9]{3}/PatentPubXML_[0-9]{6}/[0-9]+I[0-9]+/[0-9]{9}-[A-Za-z0-9_-]+\.xml"
@@ -127,6 +128,35 @@ def download_publication_index() -> bytes:
 
 def download_grant_index() -> bytes:
     return _download_https_index(GRANT_INDEX_URL, MAX_GAZETTE_XML_BYTES)
+
+
+def list_archive_issues(stage: str, year: str) -> list[str]:
+    if not re.fullmatch(r"[0-9]{3}", year):
+        raise ValueError("Expected a three-digit ROC archive year")
+    folder = ARCHIVES[stage]
+    directory = re.compile(rf"{folder}_([0-9]{{6}})")
+    issues = []
+    lines = 0
+
+    def collect(line: str) -> None:
+        nonlocal lines
+        lines += 1
+        if lines > 512:
+            raise ValueError("TIPO archive listing exceeds its size limit")
+        fields = line.split(maxsplit=8)
+        if len(fields) == 9 and fields[0].startswith("d"):
+            if match := directory.fullmatch(fields[8]):
+                issues.append(match[1])
+
+    with TIPOTransfer(timeout=30, context=tls_context()) as ftp:
+        ftp.connect_implicit()
+        ftp.login()
+        ftp.prot_p()
+        ftp.cwd(f"/{folder}/{year}")
+        response = ftp.retrlines("LIST", collect)
+    if not response.startswith("226 ") or not issues or len(issues) != len(set(issues)):
+        raise ValueError("TIPO did not return a complete archive listing")
+    return sorted(issues)
 
 
 def _download_https_index(url: str, size_limit: int) -> bytes:

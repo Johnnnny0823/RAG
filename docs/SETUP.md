@@ -368,7 +368,7 @@ docker compose --profile patent-refresh stop patent-refresh
 
 服務啟動先執行一次。預設成功後等 24 小時，失敗後等 15 分鐘再試。可用 `TIPO_REFRESH_INTERVAL`、`TIPO_REFRESH_RETRY_INTERVAL`（秒）、`TIPO_REFRESH_LIMIT` 和 `TIPO_REFRESH_INDEX_MODE` 設定，預設取 100 筆並補詞彙索引。要定期補全文，另設定已核對的 `TIPO_REFRESH_ARCHIVE_YEAR`。跨民國年度時請重新核對封存目錄並更新該值；錯誤年份會使該次全文更新失敗。設定變更後需重新建立容器。
 
-排程輪詢 S10 當次提供的卷期。停機期間可能錯過中間期別，請用既有封存匯入流程補齊。各次匯入可在管理員監控查閱，來源取得失敗也可在容器日誌查到。
+排程輪詢 S10 當次提供的卷期。停機期間可能錯過中間期別，可用[封存卷期補匯](#封存卷期補匯)補齊。各次匯入可在管理員監控查閱，來源取得失敗也可在容器日誌查到。
 
 若要在同一服務內另外更新公告，設定 `TIPO_REFRESH_INCLUDE_GRANTS=yes` 並重新建立容器。S01 及 S10 會各自驗證卷期與來源，各取設定上限。任一來源失敗時，另一來源仍可執行，下一輪使用重試間隔。公告預設保存書目與請求項；如有設定該年官方封存目錄，亦可補建全文。
 
@@ -380,6 +380,17 @@ docker compose --profile patent-refresh stop patent-refresh
 docker compose run --rm migrate python -m services.ingestion.latest_publication --grants --limit 3
 docker compose run --rm migrate python -m services.ingestion.latest_publication --grants --apply --limit 3
 ```
+
+### 封存卷期補匯
+
+以官方 FTPS 目錄核對民國年、資料類型與指定範圍。預覽只列計畫卷期，範圍缺任一期會以錯誤退出。每次可指定同一卷內最多 20 個連續期別。以下兩期使用第 53 卷公告的封存資料。
+
+```powershell
+docker compose run --rm migrate python -m services.ingestion.archive_backfill --stage grant --year 115 --from-issue 053031 --through-issue 053032 --limit 1
+docker compose run --rm migrate python -m services.ingestion.archive_backfill --stage grant --year 115 --from-issue 053031 --through-issue 053032 --limit 1 --apply
+```
+
+每期依官方索引順序取 `--limit` 筆，公告只選發明。預設補公開書目摘要或公告請求項並建立詞彙索引。`--fulltext` 使用同年的個案封存清單，`--dates` 使用同期日期公報，`--index-mode hybrid` 可另建向量。某期失敗時停止，已提交的期別保留，重跑相同選擇可重用既有批次。這項補匯以指定範圍和每期上限為準，涵蓋範圍不等於完整卷期。
 
 ### 追蹤匯入及建立索引
 

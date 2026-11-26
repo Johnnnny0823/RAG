@@ -1,4 +1,4 @@
-"""Discover a latest TIPO publication or grant issue and optionally import it."""
+"""Verify and optionally import a latest or archived TIPO issue."""
 
 import argparse
 import hashlib
@@ -12,6 +12,7 @@ from xml.etree.ElementTree import ParseError
 
 from services.ingestion.artifacts import LocalObjectStore
 from services.ingestion.download import (
+    ARCHIVES,
     GRANT_INDEX_URL,
     INDEX_URL,
     download_ftps_xml,
@@ -33,9 +34,11 @@ def main(argv=None) -> int:
     )
     parser.add_argument("--limit", type=int, default=100)
     parser.add_argument(
-        "--grants", action="store_true", help="Use the official S01 grant index"
+        "--grants", action="store_true", help="Select an invention grant index"
     )
     parser.add_argument("--grant-number", action="append", default=[])
+    parser.add_argument("--archive-issue", help="Use this six-digit archived issue")
+    parser.add_argument("--issue-year", help="ROC year of the archived issue")
     parser.add_argument(
         "--archive-year",
         help="Official three-digit ROC archive year for full specifications",
@@ -54,7 +57,12 @@ def main(argv=None) -> int:
         parser.error("--grant-number requires --grants and cannot exceed --limit")
     if args.apply and args.objects is None:
         parser.error("--apply requires --objects or PATENT_OBJECTS_DIR")
+    if bool(args.archive_issue) != bool(args.issue_year) or (
+        args.archive_issue and not re.fullmatch(r"[0-9]{6}", args.archive_issue)
+    ):
+        parser.error("Provide both a six-digit --archive-issue and --issue-year")
     for option, year in (
+        ("--issue-year", args.issue_year),
         ("--archive-year", args.archive_year),
         ("--gazette-year", args.gazette_year),
     ):
@@ -66,10 +74,16 @@ def main(argv=None) -> int:
     certificates = []
     stage = "grant" if args.grants else "publication"
     source = GRANT_INDEX_URL if args.grants else INDEX_URL
-    archive = "PatentIsuRegSpecXMLA" if args.grants else "InventionPubXML"
+    archive = ARCHIVES[stage]
     try:
+        if args.archive_issue:
+            source = f"{HOST}/{archive}/{args.issue_year}/{archive}_{args.archive_issue}/index.xml"
+            data = download_ftps_xml(source)
+        else:
+            data = (
+                download_grant_index() if args.grants else download_publication_index()
+            )
         if args.grants:
-            data = download_grant_index()
             issue, available = discover_grant_issue(data)
             total_records = len(available)
             certificates = args.grant_number or available[: args.limit]
@@ -78,19 +92,18 @@ def main(argv=None) -> int:
                 record for record, _ in parse_selected_grants(data, issue, certificates)
             ]
         else:
-            data = download_publication_index()
             issue, total_records = discover_issue(data)
+        if args.archive_issue and issue != args.archive_issue:
+            raise ValueError("Archive index does not match the requested issue")
+        if not args.grants and (args.archive_issue or args.archive_year):
+            records, invalid = parse_issue_index(data, args.limit, issue)
+            if invalid:
+                raise ValueError("Invalid selected publication records in the index")
         if args.archive_year is not None:
             manifest_url = (
                 f"{HOST}/{archive}/{args.archive_year}/{archive}_{issue}/index_all.xml"
             )
             manifest = download_ftps_xml(manifest_url)
-            if not args.grants:
-                records, invalid = parse_issue_index(data, args.limit, issue)
-                if invalid:
-                    raise ValueError(
-                        "Invalid selected publication records in the latest index"
-                    )
             resolve_spec_urls(
                 manifest,
                 manifest_url,
@@ -103,7 +116,7 @@ def main(argv=None) -> int:
             gazette = download_ftps_xml(gazette_url)
             parse_gazette(gazette, stage, args.gazette_year, issue)
     except (*all_errors, ParseError, ValueError) as error:
-        parser.exit(1, f"TIPO latest issue could not be verified: {error}\n")
+        parser.exit(1, f"TIPO issue could not be verified: {error}\n")
 
     print(
         json.dumps(

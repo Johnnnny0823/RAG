@@ -1763,3 +1763,22 @@
 - Uncommitted changes / file ownership warnings: 保留隔離資料卷供複驗，未變更其他 Docker 專案。
 - Next 1–3 concrete actions: 驗證封存目錄能否支援可靠的跨期補匯及法律事件定位，持續人工相關性複核。
 - Exact reproduction steps: 依 SETUP 設定 `TIPO_REFRESH_GAZETTE_YEAR=115` 和 `TIPO_REFRESH_INCLUDE_GRANTS=yes`，比對排程日誌、兩期官方原檔 SHA-256 及兩筆號碼查詢的詳情日期。
+
+## 官方封存卷期補匯
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `981867f`。
+- Current milestone and status: 官方資料更新 IN_PROGRESS。
+- Goal of this session: 從已驗證的官方目錄補匯指定公開、公告卷期，保留個案來源並確認重試不重複。
+- Files changed (with purpose): `services/ingestion/download.py` 讀取 FTPS 封存目錄，`latest_publication.py` 驗證固定卷期，`archive_backfill.py` 預覽並依期匯入，`tests/test_archive_backfill.py` 驗證缺期拒絕、出錯中止及原檔卷期不符。
+- Database migrations added/applied: 無新增，沿用隔離資料庫。
+- API/Schema changes: 無。
+- Commands actually run and results: 含 PostgreSQL 的 pytest 110 passed、1 則既有 Starlette 警告。補匯專屬測試最後重跑 3 passed，Ruff 及 Git diff 檢查通過。正式容器實際補入 `202637274`、`I943859`、`I945115`，三筆 API 原檔雜湊一致，兩件公告各 20 項請求項與官方 XML 逐字比對通過。公開 024021 未列於目錄，預覽回傳非零代碼。首次離線重跑碰到同庫進行中的公開匯入，被既有鎖拒絕。等待完成後以保存原檔依序重跑三批，均重用批次、各新增 0 個索引版本。前筆提交的一般 [CI 45748570074](https://github.com/Johnnnny0823/RAG/actions/runs/45748570074) 通過。
+- Tests NOT run and reason: 此切片未改前端，未重跑 Playwright。實際補匯使用公開書目、公告請求項與詞彙索引，全文、日期與向量組合未在此輪驗收。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 官方 FTPS 目錄與三個固定卷期索引，網址、雜湊及可用範圍見 [封存卷期目錄](DATA_SOURCES.md#封存卷期目錄)。
+- Known bugs / risks / blockers: 公告封存最大期別與 S01 最新期可能不同。自動排程仍只處理最新索引，法律事件自動對期尚待驗證。
+- Decisions made (ADR links): 操作者可指定同卷連續期別與每期案件上限，來源缺期即停止。見 [封存卷期補匯](SETUP.md#封存卷期補匯)。
+- Uncommitted changes / file ownership warnings: 隔離驗收資料卷保留，其他專案服務未變更。
+- Next 1–3 concrete actions: 依官方封存與入庫證據定位缺期，納入選用排程；持續檢查法律事件卷期及人工相關性標註。
+- Exact reproduction steps: 依 SETUP 的命令預覽及補匯 `053031`～`053032`，以 API 和 `verify_document --grant-issue` 核對兩件公告。

@@ -66,6 +66,16 @@
 | [發明公開 024020](ftps://ftp.tipo.gov.tw/PatentPubRegXMLB/115/PatentPubRegXMLB_024020/pubinvention.xml) | 11,975,072 bytes，1,639 筆發明，SHA-256 `32fe19989646714d2dad592cf6344d237f6bab990792d1972bfdc854c1ee3682` | `202642194`，申請日 2025-03-11，公開日 2026-10-16。 |
 | [發明公告 053030](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053030/patent.xml) | 25,347,635 bytes，1,162 筆發明，SHA-256 `d2ac1042f7cbcf7917065009626b6eccd868c55410a3f055472ea3e3146ae2c8` | `I942697`，申請日 2019-04-10，公告日 2026-10-21。 |
 
+## 封存卷期目錄
+
+2026-11-26 以匿名 FTPS 進入民國 115 年的 `/InventionPubXML/115`、`/PatentIsuRegSpecXMLA/115` 與 `/PatentIsuModXML/115`。在目錄內執行 `LIST` 均取得 `226`，分別列出 20 個公開期別（`024001`～`024020`）、33 個公告期別（`053001`～`053033`）以及 33 個異動期別（`053001`～`053033`）。同一檢查使用 `NLST` 回傳空清單。目錄可供確認封存範圍，卷期及檔案內容仍以下載後的 XML 驗證為準。S01 同日回傳 `053030`，低於公告封存目錄的最大期別 `053033`。目錄修改時間不作專利公告日期。
+
+| 實際取得的索引 | 檔案與發明筆數 | 驗收樣本 |
+| --- | --- | --- |
+| [公開 024018](ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024018/index.xml) | 12,667,509 bytes，1,984 筆，SHA-256 `96c0ac33d8ece8da926dec02432d54ff1dca46678c90adb4d84cbf822df2be3c` | `202637274` 書目與摘要。 |
+| [公告 053031](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053031/index.xml) | 17,400,928 bytes，1,256 筆，SHA-256 `c0abbd28f7635ad326bf1f5391c2b3033e1dc0629df4757ea59fb99afa024176` | `I943859` 的 20 項請求項。 |
+| [公告 053032](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053032/index.xml) | 17,656,938 bytes，1,242 筆，SHA-256 `242b4fa3b5408a5c8cd06434a7e01e2c64a4d28479975081e1f617622c75aa30` | `I945115` 的 20 項請求項。 |
+
 ## 專利權異動公報
 
 2026-11-26 查核[專利權異動公報（15974）](https://data.gov.tw/dataset/15974)。提供者經濟部智慧財產局，目錄列每月更新、免費及政府資料開放授權條款第 1 版。[最新期索引 P10](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/P10) 實得 1,662 筆、214,092 bytes，SHA-256 `3945c07fd8f2b286e00dac8d46c67faf849c998f3c89009b3eec75ebc2226299`。索引列申請號、證書號及異動種類，日期及更正欄位須讀該卷期的類別 XML。FTPS 速率限制未確認。
