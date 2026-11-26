@@ -1,4 +1,7 @@
-from services.ingestion import refresh_publications
+from contextlib import nullcontext
+from unittest.mock import Mock
+
+from services.ingestion import archive_refresh, refresh_publications
 
 
 def test_publication_refresh_retries_failure_then_returns_to_normal_interval(
@@ -44,3 +47,45 @@ def test_publication_failure_does_not_skip_the_grant_update(monkeypatch):
         ["--apply"], 86400, 900, lambda: len(runs) == 2, include_grants=True
     )
     assert runs == [["--apply"], ["--apply", "--grants"]]
+
+
+def test_archive_resumes_only_successful_issues_for_the_same_configuration(monkeypatch):
+    checkpoint_rows = set()
+    conn = Mock()
+
+    def execute(query, params):
+        if "SELECT" in query:
+            return Mock(
+                scalars=lambda: [row[3] for row in checkpoint_rows if row[:3] == params]
+            )
+        checkpoint_rows.add(params)
+
+    calls = []
+
+    def import_one(options):
+        calls.append(options[-1])
+        return int(calls == ["053031", "053032"])
+
+    conn.exec_driver_sql.side_effect = execute
+    monkeypatch.setattr(archive_refresh.engine, "connect", lambda: nullcontext(conn))
+    monkeypatch.setattr(archive_refresh.engine, "begin", lambda: nullcontext(conn))
+    monkeypatch.setattr(
+        archive_refresh,
+        "list_archive_issues",
+        lambda *_: ["053031", "053032", "053034"],
+    )
+    monkeypatch.setattr(archive_refresh, "import_one", import_one)
+    args = ("grant", "115", "053031")
+    options = ["--apply", "--grants", "--limit", "1"]
+    assert archive_refresh.refresh_archive(*args, options, 1, lambda: False)
+    assert archive_refresh.refresh_archive(*args, options, 2, lambda: False)
+    assert archive_refresh.refresh_archive(*args, options, 2, lambda: False)
+    assert archive_refresh.refresh_archive(*args, options, 2, lambda: False)
+    assert calls == ["053031", "053032", "053032"]
+    assert {row[3] for row in checkpoint_rows} == {"053031", "053032"}
+
+    assert archive_refresh.refresh_archive(
+        *args, [*options[:-1], "2"], 1, lambda: False
+    )
+    assert calls[-1] == "053031"
+    assert len(checkpoint_rows) == 3

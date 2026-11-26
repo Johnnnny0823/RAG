@@ -392,6 +392,12 @@ docker compose run --rm migrate python -m services.ingestion.archive_backfill --
 
 每期依官方索引順序取 `--limit` 筆，公告只選發明。預設補公開書目摘要或公告請求項並建立詞彙索引。`--fulltext` 使用同年的個案封存清單，`--dates` 使用同期日期公報，`--index-mode hybrid` 可另建向量。某期失敗時停止，已提交的期別保留，重跑相同選擇可重用既有批次。這項補匯以指定範圍和每期上限為準，涵蓋範圍不等於完整卷期。
 
+#### 排程自動補期
+
+啟用前先以 `archive_backfill` 預覽核對起始卷期。以民國 115 年發明公告為例，設 `TIPO_REFRESH_CATCH_UP_YEAR=115`、`TIPO_REFRESH_INCLUDE_GRANTS=yes`、`TIPO_REFRESH_GRANT_FROM=053031` 並重新建立 `patent-refresh` 容器。公開可獨立設定 `TIPO_REFRESH_PUBLICATION_FROM`。設有起始卷期的資料類型會依同年、同卷的官方 FTPS 封存目錄順序處理，其他資料類型沿用最新索引。
+
+每輪每種資料預設最多補 2 期，可用 `TIPO_REFRESH_CATCH_UP_MAX_ISSUES` 調整。尚有待補、缺期或匯入失敗時採重試間隔。缺期之後的卷期會等該期恢復後再補。每期成功完成指定匯入、索引與日期步驟後，才寫入 PostgreSQL 進度。重啟會跳過同設定已完成的期別。變更案件上限、索引模式或模型版本等條件時，同一期會依新設定重新評估。這項設定預設關閉，跨年或換卷需設新起點。已完成期別如有修訂可手動重跑封存匯入。
+
 ### 追蹤匯入及建立索引
 
 同一卷期的發明公告可以在一個工作中匯入多件。先以 `python -m services.ingestion.download --latest-grants --index-out <本機輸出路徑>` 下載 S01。核對原檔記載的卷期及欲匯入的證書號後，把檔案目錄唯讀掛到 `/inputs`。以下以第 053030 期為例。

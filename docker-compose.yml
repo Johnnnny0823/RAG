@@ -65,6 +65,10 @@ services:
       - "--archive-year=${TIPO_REFRESH_ARCHIVE_YEAR:-}"
       - "--gazette-year=${TIPO_REFRESH_GAZETTE_YEAR:-}"
       - "--include-grants=${TIPO_REFRESH_INCLUDE_GRANTS:-no}"
+      - "--catch-up-year=${TIPO_REFRESH_CATCH_UP_YEAR:-}"
+      - "--publication-from=${TIPO_REFRESH_PUBLICATION_FROM:-}"
+      - "--grant-from=${TIPO_REFRESH_GRANT_FROM:-}"
+      - "--catch-up-max-issues=${TIPO_REFRESH_CATCH_UP_MAX_ISSUES:-2}"
     stop_grace_period: 2m
     restart: unless-stopped
     depends_on:

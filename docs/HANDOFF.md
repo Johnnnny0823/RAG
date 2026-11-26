@@ -1782,3 +1782,22 @@
 - Uncommitted changes / file ownership warnings: 隔離驗收資料卷保留，其他專案服務未變更。
 - Next 1–3 concrete actions: 依官方封存與入庫證據定位缺期，納入選用排程；持續檢查法律事件卷期及人工相關性標註。
 - Exact reproduction steps: 依 SETUP 的命令預覽及補匯 `053031`～`053032`，以 API 和 `verify_document --grant-issue` 核對兩件公告。
+
+## 封存卷期自動補匯
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `a5169a1`。
+- Current milestone and status: 官方資料更新 IN_PROGRESS。
+- Goal of this session: 在選用排程依官方目錄補期，用 PostgreSQL 進度驗證重啟後接續。
+- Files changed (with purpose): `services/ingestion/archive_refresh.py` 辨識官方期別及完成紀錄，`refresh_publications.py`、Compose 及環境範例加入排程設定。`tests/test_refresh_publications.py` 覆蓋失敗重試、缺期及設定變更。
+- Database migrations added/applied: `0016_archive_refresh` 在既有隔離庫、整合測試庫及全新 `patentscope_archive_clean` 套用成功。新庫進度表為空，向量運算回傳 1，API 角色無進度表讀權限。
+- API/Schema changes: 公開 API 契約無變更。新增內部進度表 `archive_refresh_checkpoints`。
+- Commands actually run and results: 含 PostgreSQL 的 pytest 111 passed、1 則既有 Starlette 警告，排程測試最後重跑 3 passed。Ruff lint、格式及 Git diff 檢查通過。第一輪重用 `053032` 匯入並寫進度，尚有待補時採 900 秒重試間隔。重啟後跳過已完成期別，實際匯入 `053033` 新增 1 筆版本及其詞彙索引。再次重啟，完成進度仍為兩期，當輪公告匯入 0 期。`verify_document` 及詳情、請求項 API 核對 `I946357` 的 14 項請求項與原始 XML 雜湊。隔離排程退出碼 0。上一筆提交的一般 [CI 45749375252](https://github.com/Johnnnny0823/RAG/actions/runs/45749375252) 通過。
+- Tests NOT run and reason: 本輪未重跑 Playwright，未跑公開封存與日期、全文、向量同時啟用的排程組合。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 實下載 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053033/index.xml`，17,701,169 bytes、1,182 筆發明，SHA-256 `603792125d33dc6c01523af0bc83fa0591fb0d63a070df60908ad4dabb897446`。P10 與第 053033 期異動封存索引逐位元一致，見 [資料來源](DATA_SOURCES.md#專利權異動公報)。
+- Known bugs / risks / blockers: 啟用自動補期時需設定同卷起始期及封存年份。跨年或換卷自動發現、法律事件更新、完成期別的自動修訂偵測均未實作。
+- Decisions made (ADR links): 排程只在匯入成功後寫入完成紀錄，依資料階段、民國年、設定雜湊與期別查詢；工作本身沿用既有匯入鎖與去重。[資料庫設計](DATABASE.md)
+- Uncommitted changes / file ownership warnings: 測試容器已停，保留隔離資料庫及官方原始物件。
+- Next 1–3 concrete actions: 以 P10 與封存索引相等核對異動卷期，串接異動排程並對已索引案件驗收。
+- Exact reproduction steps: 依 SETUP 啟用公告自動補期，起始 `053032`，每輪 1 期。第一輪寫入進度後重啟，再比對 `archive_refresh_checkpoints` 與 `I946357` API。
