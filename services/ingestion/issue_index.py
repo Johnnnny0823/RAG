@@ -78,9 +78,7 @@ def parse_record(node: ET.Element, locator: str) -> PatentPublication:
     )
 
 
-def parse_issue_index(
-    data: bytes, limit: int | None = None, expected_issue: str | None = None
-) -> tuple[list[PatentPublication], list[ParseIssue]]:
+def index_records(data: bytes) -> list[ET.Element]:
     root = parse_xml(data)
     records = root.findall(RECORD)
     if (
@@ -89,19 +87,36 @@ def parse_issue_index(
         or root.get("total-count") != str(len(records))
     ):
         raise ValueError("Expected a complete TIPO issue index XML")
+    return records
+
+
+def record_issue(record: ET.Element) -> str:
+    prefix = "tw-bibliographic-data-application/"
+    volume = record.findtext(prefix + "volno", "").strip()
+    issue = record.findtext(prefix + "isuno", "").strip()
+    if not all(value.isascii() and value.isdecimal() for value in (volume, issue)):
+        raise ValueError("Missing or invalid issue in the TIPO index")
+    return volume.zfill(3) + issue.zfill(3)
+
+
+def discover_issue(data: bytes) -> tuple[str, int]:
+    records = index_records(data)
+    issues = {record_issue(record) for record in records}
+    if len(issues) != 1:
+        raise ValueError("TIPO latest index must contain a single nonempty issue")
+    [issue] = issues
+    if len(issue) != 6:
+        raise ValueError("TIPO latest index has an invalid issue format")
+    return issue, len(records)
+
+
+def parse_issue_index(
+    data: bytes, limit: int | None = None, expected_issue: str | None = None
+) -> tuple[list[PatentPublication], list[ParseIssue]]:
+    records = index_records(data)
     selected = records[:limit]
     if expected_issue is not None:
         for record in selected:
-            prefix = "tw-bibliographic-data-application/"
-            volume = record.findtext(prefix + "volno", "").strip()
-            issue = record.findtext(prefix + "isuno", "").strip()
-            if (
-                not volume.isascii()
-                or not volume.isdecimal()
-                or not issue.isascii()
-                or not issue.isdecimal()
-            ):
-                raise ValueError("Missing or invalid issue in the TIPO index")
-            if volume.zfill(3) + issue.zfill(3) != expected_issue:
+            if record_issue(record) != expected_issue:
                 raise ValueError("TIPO index does not match the requested issue")
-    return collect_records(selected, f"/{root.tag}/{RECORD}", parse_record)
+    return collect_records(selected, f"/tw-patent-applications/{RECORD}", parse_record)

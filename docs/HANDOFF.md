@@ -1586,3 +1586,23 @@
 - Uncommitted changes / file ownership warnings: 日誌與測試資料留在隔離容器，未放入 Git。
 - Next 1–3 concrete actions: 核對遠端完整官方驗收，完成人工評估與公開部署。
 - Exact reproduction steps: 於隔離環境使用 `docker compose logs api search-worker`。先跑 `tests/test_activity.py`，再依 TESTING 啟用 PostgreSQL 整合驗證背景工作。
+
+## 最新發明公開卷期匯入
+
+- Codex 負責 S10 來源驗證、卷期解析、更新指令及資料文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `53f8f73`。
+- Current milestone and status: 最新發明公開書目更新已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 從已核對的官方 S10 取得當期卷期及書目，安全試跑並保存匯入結果。
+- Files changed (with purpose): `latest_publication.py` 提供預覽與可選匯入，`download.py` 共用固定 S10 下載，`issue_index.py` 驗證完整性與一致卷期，`test_tipo_issue.py` 驗證混期與宣告筆數錯誤。更新 DATA_SOURCES、SETUP、PROGRESS及交接。
+- Database migrations added/applied: 無新增。全新隔離資料庫套用既有遷移與受限 API 角色。
+- API/Schema changes: 無。以現有公開專利精確查詢、詳情與詞彙 API 驗收。
+- Commands actually run and results: 從 S10 發現第 024020 期 1,639 筆。兩次 `--apply --limit 5` 保持 5 筆書目、20 個詞彙片段及 1 批次；第二次匯入標示重用、索引新增 0。兩次的來源內容皆為書目摘要，監控狀態顯示部分完成。唯讀 API 可精確及詞彙查到官方 `202642194`，詳情含 S10 和同一份來源雜湊。pytest 92 passed、8 skipped，Ruff 及 Git diff 通過。
+- Tests NOT run and reason: 本輪未跑全部 PostgreSQL pytest 或瀏覽器套件。隔離 PostgreSQL 與 API 直接驗收最新書目匯入，未重建語意向量。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 核對 `https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10`。輸入與輸出雜湊記在 DATA_SOURCES。
+- Known bugs / risks / blockers: 最新個案全文、公告與異動公報各有來源方法，尚未併入此更新指令。未設定自動排程。完整遠端官方模型工作仍待確認。
+- Decisions made (ADR links): 從 S10 XML 自身取得卷期，使用固定來源並驗證整份索引。預覽預設不寫入資料庫。
+- Uncommitted changes / file ownership warnings: 最新期樣本留在隔離資料庫和物件卷，未提交原始資料。
+- Next 1–3 concrete actions: 驗證最新期官方個案封存清單、自動更新及模型索引；持續核對遠端結果。
+- Exact reproduction steps: 依 SETUP 的最新發明公開書目段落執行預覽及 `--apply --limit 5`。來源更新後當期號碼及雜湊會不同。

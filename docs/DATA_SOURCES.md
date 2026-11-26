@@ -45,6 +45,10 @@
 
 `tipo-gazette-dates-1` 按同卷期、申請號及文件種類與編號對應已匯入版本。日期取 `application-reference/document-id/date` 與 `publication-reference/document-id/date`，把來源民國日曆轉成 PostgreSQL `date`。保留原始 XML、SHA-256 及書目 XPath。此來源用於日期補齊，缺少公報書目的既有版本仍可能無日期。
 
+## 最新發明公開卷期
+
+2026-11-26 透過 [TIPO S10 最新期索引](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10) 實際取得第 24 卷第 20 期，10,551,304 bytes、1,639 筆，SHA-256 `2f9a9744eb52eb8be24a79af4f106623e36432470f20afea45c3e0bff3cc70f0`。新版更新指令從所有書目核對 `volno` 及 `isuno`，拒絕卷期混合、筆數不符及空清單。實測匯入前 5 筆，在來源快照記錄原檔位置及雜湊。此次內容範圍為書目及摘要，公開全文另依個案來源處理。[政府目錄 15996](https://data.gov.tw/dataset/15996)
+
 ## 專利權異動公報
 
 2026-11-26 查核[專利權異動公報（15974）](https://data.gov.tw/dataset/15974)。提供者經濟部智慧財產局，目錄列每月更新、免費及政府資料開放授權條款第 1 版。[最新期索引 P10](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/P10) 實得 1,662 筆、214,092 bytes，SHA-256 `3945c07fd8f2b286e00dac8d46c67faf849c998f3c89009b3eec75ebc2226299`。索引列申請號、證書號及異動種類，日期及更正欄位須讀該卷期的類別 XML。FTPS 速率限制未確認。

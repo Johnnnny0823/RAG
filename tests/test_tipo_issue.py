@@ -1,6 +1,6 @@
 import pytest
 
-from services.ingestion.issue_index import parse_issue_index
+from services.ingestion.issue_index import discover_issue, parse_issue_index
 from services.ingestion.specification import DOCTYPE, parse_specification
 
 # DEMO fixture matching the observed issue index and specification structure.
@@ -42,6 +42,23 @@ def test_issue_index_extracts_provenance_and_bibliography():
 def test_issue_index_rejects_a_different_issue():
     with pytest.raises(ValueError, match="requested issue"):
         parse_issue_index(INDEX, expected_issue="024020")
+
+
+def test_latest_issue_rejects_mixed_versions_and_incomplete_index():
+    assert discover_issue(INDEX) == ("024019", 1)
+    second = (
+        INDEX.split(b'<tw-patent-application no="1"')[1]
+        .split(b"</tw-patent-applications>")[0]
+        .replace(b"<isuno>19</isuno>", b"<isuno>20</isuno>")
+    )
+    mixed = INDEX.replace(b'total-count="1"', b'total-count="2"').replace(
+        b"</tw-patent-applications>",
+        b'<tw-patent-application no="2"' + second + b"</tw-patent-applications>",
+    )
+    with pytest.raises(ValueError, match="single nonempty issue"):
+        discover_issue(mixed)
+    with pytest.raises(ValueError, match="complete TIPO issue index"):
+        discover_issue(INDEX.replace(b'total-count="1"', b'total-count="2"'))
 
 
 def test_specification_keeps_exact_text_and_locator():

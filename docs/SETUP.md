@@ -336,6 +336,19 @@ Compose 在遷移完成後建立 `patentscope_api` 並授權。API 使用這個�
 同一工作程序也處理私人 PDF 匯出，每輪各取一項搜尋與報告（若有）。自訂字型時，API 容器與工作程序需採用相同設定。PDF 在資料庫暫存一小時，刪除來源搜尋時會一併清除。
 ## 官方匯入與索引監控
 
+### 更新最新發明公開書目
+
+有網路時可先預覽官方 S10 回傳的卷期、筆數和雜湊。預覽不寫入資料庫。加上 `--apply` 後才會保存來源 XML、匯入書目並預設補建詞彙索引。此命令的 `--limit` 預設 100，允許 1–500 筆。
+
+```powershell
+docker compose run --rm --build migrate python -m services.ingestion.latest_publication --limit 5
+docker compose run --rm migrate python -m services.ingestion.latest_publication --apply --limit 5
+```
+
+同一份來源和相同匯入上限可重跑，既有批次與索引會重用。追蹤工作會把只有書目摘要的批次列為部分完成。需要全文時，依資料來源文件核對該期封存清單並另行匯入個案 XML。若已設定嵌入模型，可用 `--index-mode hybrid` 同時補建向量。
+
+### 追蹤匯入及建立索引
+
 先依前述官方樣本流程取得檔案並核對來源與 SHA-256。以下 PowerShell 範例以 `$inputs` 指定已有 `index.xml` 與 `spec.xml` 的絕對路徑，用已配置模型的 Compose 專案在背景執行。
 
 ```powershell

@@ -119,6 +119,16 @@ def _transfer_xml(path: str, context: ssl.SSLContext, size_limit: int) -> bytes:
     return bytes(payload)
 
 
+def download_publication_index() -> bytes:
+    with urlopen(INDEX_URL, timeout=60) as response:
+        if response.geturl() != INDEX_URL:
+            raise ValueError("Unexpected final URL for the TIPO publication index")
+        payload = response.read(MAX_XML_BYTES + 1)
+    if not payload or len(payload) > MAX_XML_BYTES:
+        raise ValueError("Unexpected TIPO publication index size")
+    return payload
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--index-out", type=Path)
@@ -133,13 +143,11 @@ def main():
     ):
         parser.error("Provide --index-out or both --spec-url and --spec-out")
     if args.index_out:
-        if args.index_url:
-            payload = download_ftps_xml(args.index_url)
-        else:
-            with urlopen(INDEX_URL, timeout=60) as response:
-                payload = response.read(MAX_XML_BYTES + 1)
-            if len(payload) > MAX_XML_BYTES:
-                raise ValueError("TIPO index exceeds the XML size limit")
+        payload = (
+            download_ftps_xml(args.index_url)
+            if args.index_url
+            else download_publication_index()
+        )
         with args.index_out.open("xb") as stream:
             stream.write(payload)
     if args.spec_out:
