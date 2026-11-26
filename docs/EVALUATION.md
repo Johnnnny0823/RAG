@@ -40,6 +40,13 @@
 
 每筆 `grade` 填 0（不相關）、1（部分相關）或 2（直接相關），在 `basis` 寫下判定依據，能定位時附請求項號或段落。若資料不足，可先保留空值。全池確認後填入 `reviewer`，將 `label_status` 改為 `human_reviewed`，以 `--dataset` 指向複核檔重跑。評估器要求每案至少有一項相關文件才能計算召回率。指標衡量是否找回指定階段的文件號，證據完整性另由引文驗證衡量。
 
+可從已匯入固定官方語料的 API 匯出離線閱讀檔。輸出目錄須先建立，程式會拒絕覆寫既有檔案。閱讀檔依文件指紋核對各版本，列出原文、請求項或段落出處、原始檔雜湊及官方授權來源。將檔案與候選池 JSON 交給複核者即可離線作業。
+
+```powershell
+New-Item -ItemType Directory -Force .patent-data/review
+python -m scripts.export_review_packet --api http://127.0.0.1:18038 --pool evaluation/tipo_official_117_review.json --output .patent-data/review/tipo-official-117.html
+```
+
 可用新檔名重建候選池，避免覆寫既有人工紀錄。
 
 ```powershell

@@ -1426,3 +1426,23 @@
 - Uncommitted changes / file ownership warnings: 隔離資料庫及資料卷保留。
 - Next 1–3 concrete actions: 核對 [正式建置官方遠端驗收](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469)，完成人工相關性複核及外部部署。
 - Exact reproduction steps: 執行 `pytest -q tests/test_search_worker.py`。以 SETUP 的 Compose 部署步驟啟動獨立環境，等 API 就緒後執行 `docker compose stop search-worker`，用 `docker inspect` 確認退出碼 0。
+
+## 官方語料人工複核材料
+
+- Codex 負責評估候選的離線閱讀檔、版本核對及評估操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `c269906`。
+- Current milestone and status: 人工複核材料驗證完成，人工評分及完整 Goal IN_PROGRESS。
+- Goal of this session: 讓人工複核者離線閱讀相同版本的官方證據。
+- Files changed (with purpose): `scripts/export_review_packet.py` 匯出官方原文和來源，`scripts/evaluate_search.py` 讓既有版本比對回傳實際詳情供匯出使用。更新 EVALUATION、PROGRESS 及本交接。HTML 放在本機已忽略的 `.patent-data/review/`。
+- Database migrations added/applied: 無。只讀隔離部署的 117 版本官方語料。
+- API/Schema changes: 無。沿用專利號查詢、詳情與請求項。
+- Commands actually run and results: CLI 產生四案、34 組材料，其中全文 14 組、請求項版 1 組、書目與摘要版 19 組。以 API 複核重建後 UUID 不同但版本相同，逐字比對 I941082 首項原文與 XPath，修改指紋後正確拒絕匯出。所有分數及理由仍空白。以 Chromium 經本機 HTTP 檢視匯出檔，展開 I941082 請求項並看到原文定位。Pytest 90 passed、7 skipped，Ruff 格式及 lint 通過。
+- Tests NOT run and reason: 本輪只改離線工具，未啟用 PostgreSQL pytest 整合及完整網站 E2E。CLI 瀏覽器限制直接載入本機檔案，使用本機 HTTP 檢視。官方遠端正式建置 [45738965469](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469) 已通過部署冒煙且仍在建立向量索引。前一提交一般 CI [45739388410](https://github.com/Johnnnny0823/RAG/actions/runs/45739388410) 通過。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 沿用 DATA_SOURCES 所載第 024019、053028 期。每件閱讀檔列出 API 已保存的官方來源、授權及卷期。
+- Known bugs / risks / blockers: 人工評分、完整部署及外部 TLS 尚待驗收。書目摘要版本的判讀受可取得篇幅限制。
+- Decisions made (ADR links): 閱讀檔與待填候選分開，保留匿名排序，保留全文字元與來源定位，避免原始標註被覆寫。
+- Uncommitted changes / file ownership warnings: 閱讀檔與測試資料卷留在本機，未提交原始專利資料。
+- Next 1–3 concrete actions: 人工複核 34 組候選並重算評估，追蹤官方 CI，驗收外部部署。
+- Exact reproduction steps: 依 EVALUATION 的人工複核段落執行 `python -m scripts.export_review_packet`，使用已匯入 117 版本的隔離 API 和固定候選池。

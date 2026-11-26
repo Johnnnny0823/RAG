@@ -86,7 +86,7 @@ def check_reviewed_version(api, row, versions):
         if version["content_scope"] == row["content_scope"]:
             detail = request(api, "/patents/" + version["document_id"])
             if all(detail[field] == row[field] for field in VERSION_FIELDS):
-                return
+                return detail
     raise ValueError(f"Reviewed version missing: {row['stage']}/{row['number']}")
 
 
