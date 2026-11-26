@@ -81,6 +81,13 @@ python scripts/smoke_semantic.py --official-e2e --api http://127.0.0.1:8000
 
 需要驗收日期時，另外執行 [公報書目日期補齊](SETUP.md#從官方公報書目補齊日期)。使用 `GET /api/v1/patents?number_type=publication&number=202639611` 與 `number_type=grant&number=I941082` 核對日期。混合檢索以 `ipc=C08F2/48`、查詢 `photocurable resin composition` 及起迄皆 `2026-10-01` 應可查到公開案。把起迄一起設為 `2026-10-02` 時，固定語料應回傳空清單。
 
+第 024020 期的增量驗收先匯入 [最新卷期書目及兩份全文](SETUP.md#更新最新發明公開書目)，再用已設定的模型補建向量。以下指令使用該期的固定已知案件，與 S10 當下回傳的卷期無關。語意測試使用改寫查詢與 IPC 條件，並檢查混合檢索合併同公開號。引文評估核對版本、字元位置、原文及來源雜湊。
+
+```powershell
+python scripts/smoke_semantic.py --issue-024020 --api http://127.0.0.1:18152
+python scripts/evaluate_citations.py --issue-024020 --api http://127.0.0.1:18152
+```
+
 ```powershell
 $env:PATENTSCOPE_E2E_URL = "http://127.0.0.1:18125"
 $env:PATENTSCOPE_E2E_TIPO = "dates"

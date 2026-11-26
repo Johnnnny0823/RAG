@@ -23,6 +23,11 @@ CASES = (
 )
 ABSENT = "不存在的驗收字串甲乙丙丁"
 POSITIVE = {"supported", "partially_supported"}
+ISSUE_024020_CASES = (
+    ("publication", "202642194", "fulltext", "雷達訊號", "claim"),
+    ("publication", "202642585", "fulltext", "天線頻率調整結構", "claim"),
+    ("publication", "202642194", "metadata_and_abstract", "雷達訊號", None),
+)
 
 
 def verify_citation(citation, detail, claims):
@@ -53,10 +58,22 @@ def verify_citation(citation, detail, claims):
     )
 
 
-def evaluate(api):
+def feature_payload(feature_id, text):
+    return {
+        "feature_id": feature_id,
+        "description_zh": text,
+        "keywords_zh": [],
+        "keywords_en": [],
+        "must_have": True,
+        "confidence": "high",
+        "ipc_candidates": [],
+    }
+
+
+def evaluate(api, cases=CASES):
     results = []
     document_ids = set()
-    for stage, number, scope, query, expected_kind in CASES:
+    for stage, number, scope, query, expected_kind in cases:
         params = urlencode({"number": number, "number_type": stage})
         items = request(api, "/patents?" + params)["items"]
         document = next(item for item in items if item["content_scope"] == scope)
@@ -75,15 +92,7 @@ def evaluate(api):
                 f"Section-only fixture does not match the indexed source: {number}"
             )
         features = [
-            {
-                "feature_id": feature_id,
-                "description_zh": text,
-                "keywords_zh": [],
-                "keywords_en": [],
-                "must_have": True,
-                "confidence": "high",
-                "ipc_candidates": [],
-            }
+            feature_payload(feature_id, text)
             for feature_id, text in (("f1", query), ("f2", ABSENT))
         ]
         comparison = request(
@@ -150,7 +159,7 @@ def evaluate(api):
         row["verdict"] in POSITIVE and not row["citation_present"] for row in results
     )
     return {
-        "comparison_requests": len(CASES),
+        "comparison_requests": len(cases),
         "document_versions": len(document_ids),
         "feature_verdicts": len(results),
         "citations_emitted": len(emitted),
@@ -167,10 +176,56 @@ def evaluate(api):
     }
 
 
+def evaluate_issue_024020_semantic_fallback(api):
+    query = (
+        "Radar and reflected structured illumination jointly drive the autofocus optics"
+    )
+    items = request(api, "/patents?number=202642194&number_type=publication")["items"]
+    document = next(row for row in items if row["content_scope"] == "fulltext")
+    path = f"/patents/{document['document_id']}"
+    detail = request(api, path)
+    claims = request(api, path + "/claims")["claims"]
+    payload = {"features": [feature_payload("f1", query)]}
+    literal = request(api, path + "/compare", {**payload, "semantic_evidence": False})
+    [literal_result] = literal["items"]
+    if (
+        literal_result["evidence"] is not None
+        or literal_result["verdict"] != "not_found_in_checked_content"
+    ):
+        raise ValueError("Expected no evidence with only literal matching")
+    semantic = request(api, path + "/compare", payload)
+    [result] = semantic["items"]
+    evidence = result["evidence"]
+    if (
+        semantic["document_id"] != detail["document_id"]
+        or semantic["document_sha256"] != detail["document_sha256"]
+        or not semantic["evidence_embedding_digest"]
+        or result["evidence_method"] != "semantic"
+        or result["verdict"] not in POSITIVE
+        or evidence is None
+        or not verify_citation(evidence, detail, claims)
+    ):
+        raise ValueError(
+            "Semantic fallback did not return verifiable same-version evidence"
+        )
+    return {
+        "publication_no": "202642194",
+        "query": query,
+        "literal_verdict": literal_result["verdict"],
+        "semantic_verdict": result["verdict"],
+        "citation_kind": evidence["kind"],
+        "citation_verified": True,
+    }
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--api", default="http://127.0.0.1:18022")
-    result = evaluate(parser.parse_args().api)
+    parser.add_argument("--issue-024020", action="store_true")
+    args = parser.parse_args()
+    result = evaluate(args.api, ISSUE_024020_CASES if args.issue_024020 else CASES)
+    if args.issue_024020:
+        result["semantic_fallback"] = evaluate_issue_024020_semantic_fallback(args.api)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if result["citation_exactness"] != 1 or result["positive_without_citation"]:
         raise SystemExit(1)

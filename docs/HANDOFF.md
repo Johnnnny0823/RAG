@@ -1626,3 +1626,23 @@
 - Uncommitted changes / file ownership warnings: 新原檔與驗收資料保留在隔離資料卷，未提交原始資料。
 - Next 1–3 concrete actions: 驗證自動排程及跨期切換，追蹤官方模型驗收。
 - Exact reproduction steps: 依 SETUP 的最新發明公開書目段落預覽並執行全文命令，再查閱 API 與 `verify_document`。
+
+## 第 024020 期語意檢索與引文驗收
+
+- Codex 負責新卷期的向量、混合檢索及版本引文驗收腳本。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `a518038`。
+- Current milestone and status: 新卷期語意與引文增量驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 確認由新匯入流程取得的官方原文能經向量搜尋發現並回溯。
+- Files changed (with purpose): `scripts/smoke_semantic.py` 新增第 024020 期已知案件及混合檢索核對。 `scripts/evaluate_citations.py` 增加同卷期精確引文與語意證據案例，更新 TESTING、EVALUATION、PROGRESS 與交接文件。
+- Database migrations added/applied: 無新增。隔離資料庫以 Qwen3 Embedding 建立 7 個版本、166 筆向量。重跑新增 0 筆。
+- API/Schema changes: 無。
+- Commands actually run and results: `smoke_semantic.py --issue-024020` 通過，`202642194`、`202642585` 語意查詢各排第一，混合結果沒有重複同公開號。 `evaluate_citations.py --issue-024020` 對三版本執行字詞比對共 6 判定，兩段引文均核對成功。另測英文改寫，關閉語意查找時未找到證據，啟用後得到同版本說明書引文且逐字吻合。Ruff 與 Git diff 檢查通過。
+- Tests NOT run and reason: 本輪只改驗收工具及文件，未重跑全套 pytest 與 Playwright。使用真實 PostgreSQL、Ollama 與 API 驗證新卷期。前一提交一般 CI [45744322517](https://github.com/Johnnnny0823/RAG/actions/runs/45744322517) 通過。較早的完整官方 E2E 仍在建索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 沿用第 024020 期既有核對原檔，未下載新資料。
+- Known bugs / risks / blockers: 已知案件驗收不足以推論其他技術領域的相關性。人工評分、跨期更新排程與公開部署仍待完成。
+- Decisions made (ADR links): 保留舊種子組的預設行為，以明確的卷期參數啟用增量驗收。
+- Uncommitted changes / file ownership warnings: 隔離語料與向量未提交。
+- Next 1–3 concrete actions: 核對完整官方遠端測試，複核人工評分，驗證更新排程與跨期切換。
+- Exact reproduction steps: 先依 SETUP 匯入第 024020 期兩份全文並建向量，依 TESTING 在該 API 執行兩支 `--issue-024020` 驗收指令。
