@@ -1546,3 +1546,23 @@
 - Uncommitted changes / file ownership warnings: 本機驗收使用隔離 Compose，保留資料卷。
 - Next 1–3 concrete actions: 核對新版來源模式、舊版尚在執行的完整官方工作及 HTTPS CI。
 - Exact reproduction steps: 在 GitHub Actions 手動執行 `Official patent E2E`，選擇 `coverage=source`。完整模型驗收選擇 `coverage=full`。
+
+## 官方語料展示與現況文件
+
+- Codex 負責展示流程、架構文件及本機核心瀏覽器驗收。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `69f6521`。
+- Current milestone and status: 本機完整核心展示及遠端來源模式已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 提供從 README 可重現的官方語料展示，更新架構現況與遠端驗收紀錄。
+- Files changed (with purpose): README 提供展示入口，`docs/DEMO.md` 記錄按號碼與從構想到報告的流程，`docs/ARCHITECTURE.md` 更新工作佇列、來源核對、HTTPS 及資料邊界。同步進度及交接。
+- Database migrations added/applied: 無新增，沿用 117 個版本、1,624 個向量的隔離資料庫。
+- API/Schema changes: 無。
+- Commands actually run and results: 隔離正式 Compose 建置暨啟動，核對兩個本機 Qwen 模型 digest，語意 API 冒煙通過，兩個已知公開號均為首筆。桌面 Chromium `tipo-research.spec.ts` 1 passed（1.3 分鐘），涵蓋拆解、特徵修改、RAG 搜尋、引用核對、歷史重開和私人 PDF。下載再以 pypdf 核對繁中、官方文件及來源。報告保存於 `.patent-data/demo/patentscope-official-research-sample.pdf`，SHA-256 `d32325fb4e71acfb2c68f8b94de512c460b122e6d3987959dcac7ef5b68a1772`。
+- Tests NOT run and reason: 本輪未改產品程式碼，未重跑 pytest 或完整跨瀏覽器模型回歸。遠端 [來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45742177190) 已通過，模型階段按配置跳過。修正後的 [HTTPS CI](https://github.com/Johnnnny0823/RAG/actions/runs/45741807070) 已通過。先前完整官方遠端工作仍在建立索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 使用已匯入第 024019 與 053028 期，無新下載。PDF 內的官方來源 URL 已由測試核對。
+- Known bugs / risks / blockers: 外部部署與人工相關性評分待驗。隔離資料庫另留一個先前測試帳號，本輪新增帳號經瀏覽器測試清理。
+- Decisions made (ADR links): 選任一固定官方樣本可展示；此次使用公開樹脂案例便於重現。
+- Uncommitted changes / file ownership warnings: 本機 PDF 為測試輸出，未放入 Git。隔離資料卷保留。
+- Next 1–3 concrete actions: 完整遠端模型驗收、人工相關性複核及目標主機部署。
+- Exact reproduction steps: 依 [展示指南](DEMO.md) 準備語料與模型，令 `PATENTSCOPE_E2E_TIPO=1` 並執行 `tipo-research.spec.ts`。

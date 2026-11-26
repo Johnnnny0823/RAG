@@ -1,6 +1,6 @@
 # 系統架構
 
-PatentScope AI 是模組化單體：一個 React 前端、一個 FastAPI 行程、一個 PostgreSQL，加上部署者自管的 Ollama 模型服務。全部由 Docker Compose 啟動。規格以 [AGENTS.md](../AGENTS.md) 為準，本文件描述目前實作的樣子。
+PatentScope AI 由 React 前端、FastAPI、背景工作程序、PostgreSQL 及部署者自管的 Ollama 模型服務組成。Compose 管理應用程式及資料庫，Ollama 可在受控主機獨立執行。實作規格見 [AGENTS.md](../AGENTS.md)。
 
 ```mermaid
 flowchart LR
@@ -8,6 +8,8 @@ flowchart LR
     W -->|/api/v1 同源代理| A[FastAPI]
     A --> D[(PostgreSQL + pgvector)]
     A -->|嵌入、拆解、比對、重排| O[Ollama 本機模型]
+    J[背景工作程序] -->|認領已保存搜尋與 PDF 工作| D
+    J -->|背景檢索與重排| O
     T[TIPO 官方 FTPS／HTTPS] -->|下載並核對雜湊| I[匯入指令]
     I --> S[原始物件目錄]
     I --> D
@@ -34,35 +36,35 @@ flowchart LR
 3. `verify_document` 從資料庫連回原始檔重新解析，逐項比對請求項與段落。
 4. `index_lexical` 與 `index_semantic` 為尚未處理的文件版本建立索引，可重複執行。
 
-匯入與索引是命令列工作，由操作者執行。API 沒有管理端匯入介面，也沒有背景工作佇列。
+匯入與索引由操作員啟動。可使用 `run_pipeline` 記錄匯入、詞彙與向量階段，研究工作台的管理員可以唯讀監控狀態。[匯入操作](SETUP.md#官方匯入與索引監控)
 
 ## 線上檢索
 
 1. `POST /queries/analyze` 用本機模型草擬技術特徵，使用者可以編輯。
 2. `POST /patents/search/hybrid` 以原始查詢和已確認的特徵詞分別跑詞彙與向量檢索，各取前 100 筆，以 RRF（k=60）融合，再依公開號與文件階段去重。可選擇用本機模型重排前幾筆，原始融合名次會保留。
-3. `POST /patents/{id}/compare` 為每項特徵選一段字詞命中的原文交給模型判定。引文由伺服器依原文位置擷取並核對，模型不能自行提供引文。
-4. 登入後可保存搜尋快照與比對結果，並匯出 PDF。
+3. `POST /patents/{id}/compare` 為每項特徵在同一文件版本找原文。字詞找不到片段時可用同版本向量索引候選；引文由伺服器依原文位置擷取並核對。
+4. 登入後，「搜尋並保存」與私人 PDF 由 PostgreSQL 持久工作佇列處理，前端輪詢進度。預覽搜尋與技術比對仍透過同步 API。保存的搜尋包含候選排行、模型設定與索引涵蓋資訊。
 
-搜尋、比對與 PDF 產生都是同步請求。前端有 180 秒的用戶端逾時。
+使用者可另外下載自己的研究資料 JSON，內容涵蓋已保存的專案、候選、比對、收藏與 Session 訊息。[API 契約](API.md)
 
 ## 資料邊界
 
-- 公開專利資料：`patent_*` 與 `ingestion_*` 資料表，所有人可查。只回傳來源為正式資料集且解析成功的文件。
+- 公開專利資料：API 只回傳來源為正式資料集且解析成功的文件。匯入工作進度限管理員查閱。
 - 私人研究資料：專案、搜尋、收藏、Session。每次查詢以帳號 UUID 限定，跨帳號存取回傳 404。
 - 模型服務：查詢文字和被比對的專利原文會送到設定的 Ollama 位址。處理未公開構想前，部署者須把模型服務限制在受控的網路內。
 
 ## 部署
 
 - 開發：`docker-compose.yml`，含 Vite 開發伺服器與本機連接埠。
-- 靜態部署：加上 `docker-compose.deploy.yml`，由 Nginx 提供編譯後的前端並代理 API，只有 Web 綁定回環位址。
+- 靜態部署：加上 `docker-compose.deploy.yml`，由 Nginx 提供編譯後的前端、同源 API、內容安全政策與入口速率限制，只有 Web 綁定回環位址。
+- HTTPS 部署：再加上 `docker-compose.tls.yml`，以部署者提供的憑證開啟 HTTPS。
 - 測試：加上 `docker-compose.test.yml`，使用獨立資料庫 `patentscope_test`。
 
-對外開放所需的 TLS、反向代理、一般速率限制與備份由部署端負責，尚未實測。步驟見 [環境設定](SETUP.md)。
+HTTPS、速率限制及備份還原已有隔離環境驗收。外部網域、代理拓樸、憑證續期與正式環境復原需在目標主機驗證。[環境設定](SETUP.md)
 
 ## 目前沒有的部分
 
-- 管理端的匯入監控介面與背景工作佇列。
-- 登入以外的速率限制。
+- 官方資料的自動更新排程。
 - 結構化日誌與操作稽核紀錄。
 - 語料快照版本化：保存的搜尋保留當時的候選與分數，但無法以舊語料重跑。
 - 經人工標註的檢索品質評估，見 [檢索評估](EVALUATION.md)。

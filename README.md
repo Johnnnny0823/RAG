@@ -25,6 +25,10 @@ docker compose stop
 
 要執行遷移，使用 `docker compose run --rm migrate`。第一個修訂只啟用 pgvector，降版保留擴充功能以保護可能已存在的物件。
 
+## 官方語料展示
+
+可用固定的臺灣官方專利資料重現「文字構想 → AI 拆解 → 混合搜尋 → 原文證據 → 私人 PDF」。也可只驗證官方專利號及請求項，無須啟動模型。[完整展示步驟](docs/DEMO.md)
+
 ## 本機檢查
 
 建議使用 Python 3.12 與 Node.js 22.12+。
