@@ -16,13 +16,18 @@ from services.ingestion.artifacts import MAX_GAZETTE_XML_BYTES, MAX_XML_BYTES
 logger = logging.getLogger(__name__)
 INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10"
 GRANT_INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01"
-ARCHIVES = {"publication": "InventionPubXML", "grant": "PatentIsuRegSpecXMLA"}
+LEGAL_INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/P10"
+ARCHIVES = {
+    "publication": "InventionPubXML",
+    "grant": "PatentIsuRegSpecXMLA",
+    "legal": "PatentIsuModXML",
+}
 SPEC_PATH = re.compile(
     r"/(?:InventionPubXML|PatentIsuRegSpecXMLA)/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_-]+\.xml"
     r"|/PatentPubXML/[0-9]{3}/PatentPubXML_[0-9]{6}/[0-9]+I[0-9]+/[0-9]{9}-[A-Za-z0-9_-]+\.xml"
 )
 EVENT_PATH = re.compile(
-    r"/PatentIsuModXML/[0-9]{3}/PatentIsuModXML_[0-9]{6}/sud(?:08|24)\.xml"
+    r"/PatentIsuModXML/[0-9]{3}/PatentIsuModXML_[0-9]{6}/(?:index|sud08|sud24)\.xml"
 )
 GAZETTE_PATH = re.compile(
     r"/(?:PatentIsuRegSpecXMLA/[0-9]{3}/PatentIsuRegSpecXMLA_[0-9]{6}/index(?:_all)?"
@@ -128,6 +133,10 @@ def download_publication_index() -> bytes:
 
 def download_grant_index() -> bytes:
     return _download_https_index(GRANT_INDEX_URL, MAX_GAZETTE_XML_BYTES)
+
+
+def download_legal_index() -> bytes:
+    return _download_https_index(LEGAL_INDEX_URL, MAX_XML_BYTES)
 
 
 def list_archive_issues(stage: str, year: str) -> list[str]:

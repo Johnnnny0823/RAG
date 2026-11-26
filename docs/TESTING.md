@@ -100,6 +100,8 @@ npm run test:e2e --prefix apps/web
 
 異動公報套件使用擴充至前 500 筆書目的隔離語料。先依 [匯入官方異動公報](SETUP.md#匯入官方異動公報) 準備 `I874215` 公告及第 53 卷第 33 期的 `sud24`、`sud08`，將 `PATENTSCOPE_E2E_TIPO` 設為 `events` 再執行 Playwright。案例在公開案 `202639186` 核對更正公報，在公告案 `I874215` 核對消滅日期、原因、原檔定位及雜湊。
 
+也可先匯入兩個案件，再用[異動公報排程](SETUP.md#最新異動公報定期更新)建立事件。模型未設定時，可從 `apps/web` 執行 `node node_modules/@playwright/test/cli.js test legal-events.spec.ts --grep 'identifier lookup'`，用專利號碼直接驗證兩件的日期或異動欄位、卷期、原檔連結及雜湊。其餘兩項測試透過自然語言搜尋，需要已設定嵌入模型與向量索引。
+
 ```powershell
 $env:API_PORT = "18025"
 $env:WEB_PORT = "18125"

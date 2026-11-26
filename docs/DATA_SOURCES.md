@@ -80,9 +80,9 @@
 
 2026-11-26 查核[專利權異動公報（15974）](https://data.gov.tw/dataset/15974)。提供者經濟部智慧財產局，目錄列每月更新、免費及政府資料開放授權條款第 1 版。[最新期索引 P10](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/P10) 實得 1,662 筆、214,092 bytes，SHA-256 `3945c07fd8f2b286e00dac8d46c67faf849c998f3c89009b3eec75ebc2226299`。索引列申請號、證書號及異動種類，日期及更正欄位須讀該卷期的類別 XML。FTPS 速率限制未確認。
 
-同日重抓 P10 的雜湊一致。根元素 `SundryData` 與 `Sundry` 記錄缺少卷期欄位，無法直接從此回應定位封存檔。因此目前仍依人工核對的封存卷期匯入異動。
+同日重抓 P10 的雜湊一致。根元素 `SundryData` 與 `Sundry` 記錄缺少卷期欄位，須核對封存索引才能定位卷期。
 
-同日另以 `LIST` 找到[第 053033 期封存索引](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053033/index.xml)。用匿名 FTPS 取得後與 P10 回應逐位元相同，大小與 SHA-256 均為上列值。可用原檔相等核對這一期的對應；此比對尚未串接排程。
+同日另以 `LIST` 找到[第 053033 期封存索引](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053033/index.xml)。用匿名 FTPS 取得後與 P10 回應逐位元相同，大小與 SHA-256 均為上列值。定期更新用此方法核對卷期，再以申請號及證書號的出現次數核對類別 XML。實測 `sud08` 的 838 筆及 `sud24` 的 31 筆發明異動均與 P10 一致。
 
 第 53 卷第 33 期的匿名 FTPS 封存實測如下。
 

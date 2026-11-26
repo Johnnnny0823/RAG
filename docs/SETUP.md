@@ -398,6 +398,17 @@ docker compose run --rm migrate python -m services.ingestion.archive_backfill --
 
 每輪每種資料預設最多補 2 期，可用 `TIPO_REFRESH_CATCH_UP_MAX_ISSUES` 調整。尚有待補、缺期或匯入失敗時採重試間隔。缺期之後的卷期會等該期恢復後再補。每期成功完成指定匯入、索引與日期步驟後，才寫入 PostgreSQL 進度。重啟會跳過同設定已完成的期別。變更案件上限、索引模式或模型版本等條件時，同一期會依新設定重新評估。這項設定預設關閉，跨年或換卷需設新起點。已完成期別如有修訂可手動重跑封存匯入。
 
+#### 最新異動公報定期更新
+
+設定 `TIPO_REFRESH_LEGAL_YEAR=115` 並重建 `patent-refresh` 容器，可在每輪更新中納入官方異動公報。也可先獨立執行預覽。
+
+```powershell
+docker compose run --rm migrate python -m services.ingestion.legal_refresh --year 115
+docker compose run --rm migrate python -m services.ingestion.legal_refresh --year 115 --apply
+```
+
+服務將 P10 原檔與該年度最近 8 期的封存索引逐位元比對，再核對消滅公告及更正公報的發明案件清單和原文卷期。無法核對時以錯誤回報並按重試間隔重試。只有可對應既有申請案的事件會加入詳情，重跑可補上新匯入案件並避免重複。設定預設留空，跨年度須更新。歷史卷期仍可使用既有指定期別命令。來源只涵蓋這兩類公報及其已匯入案件，個案即時權利狀態須另外向官方查證。
+
 ### 追蹤匯入及建立索引
 
 同一卷期的發明公告可以在一個工作中匯入多件。先以 `python -m services.ingestion.download --latest-grants --index-out <本機輸出路徑>` 下載 S01。核對原檔記載的卷期及欲匯入的證書號後，把檔案目錄唯讀掛到 `/inputs`。以下以第 053030 期為例。

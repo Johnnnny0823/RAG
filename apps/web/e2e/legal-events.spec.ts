@@ -38,3 +38,38 @@ test("an official grant links its dated extinguishment to the matching certifica
   await expect(event).toContainText("213b98e7337a0f99b74b9eff59ce0d92f0f27ccecf665892f8ee48b8423bd964");
   await expect(event).toContainText("sud08'][1447]");
 });
+
+test("official identifier lookup opens synchronized gazette events @legal-events", async ({ page }) => {
+  await page.goto("/");
+  const lookup = page.getByRole("region", { name: "專利號碼查詢" });
+  const cases = [
+    {
+      type: "grant",
+      number: "I874215",
+      label: "專利權消滅公告 · 證書號 I874215",
+      detail: "公報記載消滅日 2026-02-21",
+      file: "sud08.xml",
+      hash: "213b98e7337a0f99b74b9eff59ce0d92f0f27ccecf665892f8ee48b8423bd964",
+    },
+    {
+      type: "publication",
+      number: "202639186",
+      label: "公報更正 · 證書號 I927657",
+      detail: "代理人",
+      file: "sud24.xml",
+      hash: "97993734e1cd87b54537069ded8593a02615d7aa09442779a47a688ccffc16a3",
+    },
+  ];
+  for (const sample of cases) {
+    await lookup.getByLabel("號碼類型").selectOption(sample.type);
+    await lookup.getByLabel("專利號碼").fill(sample.number);
+    await lookup.getByRole("button", { name: "查詢專利號碼" }).click();
+    await lookup.getByRole("listitem").filter({ hasText: sample.number }).first().getByRole("button").click();
+    const event = page.getByRole("listitem").filter({ hasText: sample.label });
+    await expect(event).toContainText(sample.detail);
+    await expect(event).toContainText("卷期 053033");
+    await expect(event.getByRole("link", { name: "異動公報原始檔" })).toHaveAttribute("href", `ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053033/${sample.file}`);
+    await event.getByText("異動公報來源定位").click();
+    await expect(event).toContainText(sample.hash);
+  }
+});

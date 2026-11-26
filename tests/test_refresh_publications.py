@@ -49,6 +49,19 @@ def test_publication_failure_does_not_skip_the_grant_update(monkeypatch):
     assert runs == [["--apply"], ["--apply", "--grants"]]
 
 
+def test_legal_refresh_still_runs_after_publication_failure(monkeypatch):
+    def fail(options):
+        raise SystemExit(1)
+
+    completed = []
+    monkeypatch.setattr(refresh_publications, "refresh_once", fail)
+    monkeypatch.setattr(refresh_publications, "refresh_legal", completed.append)
+    refresh_publications.serve(
+        ["--apply"], 86400, 900, lambda: bool(completed), legal_year="115"
+    )
+    assert completed == [["--year", "115", "--apply"]]
+
+
 def test_archive_resumes_only_successful_issues_for_the_same_configuration(monkeypatch):
     checkpoint_rows = set()
     conn = Mock()

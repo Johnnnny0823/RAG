@@ -1801,3 +1801,22 @@
 - Uncommitted changes / file ownership warnings: 測試容器已停，保留隔離資料庫及官方原始物件。
 - Next 1–3 concrete actions: 以 P10 與封存索引相等核對異動卷期，串接異動排程並對已索引案件驗收。
 - Exact reproduction steps: 依 SETUP 啟用公告自動補期，起始 `053032`，每輪 1 期。第一輪寫入進度後重啟，再比對 `archive_refresh_checkpoints` 與 `I946357` API。
+
+## 官方異動公報定期更新
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `822d143`。
+- Current milestone and status: 官方資料更新 IN_PROGRESS。
+- Goal of this session: 自動定位最新 P10 卷期，驗證原文後更新已收錄案件的消滅及更正事件。
+- Files changed (with purpose): `services/ingestion/legal_refresh.py` 核對來源與事件身分，`download.py` 新增 P10 與固定封存索引讀取，`refresh_publications.py`、Compose、環境範例接上排程。擴充 pytest 及 `apps/web/e2e/legal-events.spec.ts` 的真實號碼查詢驗收。
+- Database migrations added/applied: 無新增，沿用 `0016_archive_refresh`。
+- API/Schema changes: 無，沿用既有 `legal_events` 詳情欄位。
+- Commands actually run and results: pytest 含 PostgreSQL 115 passed、1 則既有 Starlette 警告，異動與排程專屬 10 passed。Ruff、前端 lint 及 TypeScript 通過。實際排程首輪 FTPS `425`，依 60 秒設定重試後新增 `I874215` 消滅紀錄。下一輪重跑該筆新增數為 0。`202639186` 入庫後，再由同一份官方公報新增 `I927657` 更正紀錄。正式建置專利號碼查詢的 Chromium 桌面、平板、手機共 3 passed。前一筆提交的一般 [CI 45749996252](https://github.com/Johnnnny0823/RAG/actions/runs/45749996252) 通過。
+- Tests NOT run and reason: 最初執行兩個既有自然語言案例時，隔離 API 沒有設定嵌入模型，首案逾時並停止該套件。之後使用專利號碼查詢補驗事件 UI，未重跑模型搜尋案例。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26，`https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/P10` 與 `ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053033/index.xml` 逐位元一致。`sud08` 的 838 筆與 `sud24` 的 31 筆發明事件均符合索引身分。授權及各原檔 SHA-256 見 [資料來源](DATA_SOURCES.md#專利權異動公報)。
+- Known bugs / risks / blockers: 指定年份的最近 8 期內必須有與 P10 相同的索引。歷史期別須手動補匯，其他事件類別與任意案件的即時法律狀態尚未整合。
+- Decisions made (ADR links): 預設關閉，按檔案相等及原始卷期核對，保留既有兩類事件與去重方式。[設定](SETUP.md#最新異動公報定期更新)
+- Uncommitted changes / file ownership warnings: 保留隔離資料庫及原始檔供複驗。
+- Next 1–3 concrete actions: 核對完整的自動法律異動歷史匯入需求及授權條件，並追蹤人工相關性複核及正式目標主機驗收。
+- Exact reproduction steps: 匯入 SETUP 的 `I874215` 和 `202639186` 範例，將 `TIPO_REFRESH_LEGAL_YEAR` 設為 `115`，再使用 TESTING 的號碼查詢測試。

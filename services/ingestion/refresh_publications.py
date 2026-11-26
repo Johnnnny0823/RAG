@@ -13,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from services.ingestion.archive_refresh import refresh_archive
 from services.ingestion.latest_publication import main as refresh_once
+from services.ingestion.legal_refresh import main as refresh_legal
 
 logger = logging.getLogger(__name__)
 
@@ -28,17 +29,22 @@ def serve(
     publication_from: str | None = None,
     grant_from: str | None = None,
     catch_up_max_issues: int = 2,
+    legal_year: str | None = None,
 ) -> None:
     batches = [("publication", options, publication_from)]
     if include_grants:
         batches.append(("grant", [*options, "--grants"], grant_from))
+    if legal_year:
+        batches.append(("legal", ["--year", legal_year, "--apply"], None))
     while not should_stop():
         needs_retry = False
         for stage, arguments, first_issue in batches:
             if should_stop():
                 return
             try:
-                if catch_up_year and first_issue:
+                if stage == "legal":
+                    refresh_legal(arguments)
+                elif catch_up_year and first_issue:
                     needs_retry |= refresh_archive(
                         stage,
                         catch_up_year,
@@ -76,6 +82,7 @@ def main() -> None:
     parser.add_argument("--publication-from")
     parser.add_argument("--grant-from")
     parser.add_argument("--catch-up-max-issues", type=int, default=2)
+    parser.add_argument("--legal-year")
     parser.add_argument(
         "--index-mode", choices=("none", "lexical", "hybrid"), default="lexical"
     )
@@ -84,6 +91,8 @@ def main() -> None:
         parser.error("Expected a limit of 1..500 and 60 <= retry interval <= interval")
     if not getenv("PATENT_OBJECTS_DIR"):
         parser.error("Set PATENT_OBJECTS_DIR to a persistent object directory")
+    if args.legal_year and not re.fullmatch(r"[0-9]{3}", args.legal_year):
+        parser.error("--legal-year must be a three-digit ROC archive year")
     starts = [issue for issue in (args.publication_from, args.grant_from) if issue]
     if (
         bool(args.catch_up_year) != bool(starts)
@@ -127,6 +136,7 @@ def main() -> None:
         publication_from=args.publication_from,
         grant_from=args.grant_from,
         catch_up_max_issues=args.catch_up_max_issues,
+        legal_year=args.legal_year,
     )
 
 
