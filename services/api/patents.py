@@ -176,6 +176,7 @@ class HybridSearchRequest(RankedSearchRequest):
     query: str = Field(min_length=1, max_length=MAX_INVENTION_LENGTH)
     features: list[TechnicalFeature] = Field(default_factory=list, max_length=5)
     rerank: bool = False
+    sort_by: Literal["relevance", "date_desc", "date_asc"] = "relevance"
 
 
 class SemanticSearchResults(PatentSearchResults):
@@ -805,6 +806,13 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
             version=RERANK_VERSION,
             candidate_count=len(prefix),
         )
+    if request.sort_by != "relevance":
+        dated = [hit for hit in ranked if hit["publication_date"] is not None]
+        dated.sort(
+            key=lambda hit: hit["publication_date"],
+            reverse=request.sort_by == "date_desc",
+        )
+        ranked = dated + [hit for hit in ranked if hit["publication_date"] is None]
     start = 0 if full_snapshot else request.offset
     end = len(ranked) if full_snapshot else start + request.limit
     return HybridSearchResults(

@@ -168,6 +168,8 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     expect(Array.from(claim.text as string).slice(citation.char_start, citation.char_end).join("")).toBe(citation.quote);
     const evidence = page.getByRole("article").filter({ has: page.locator("blockquote") });
     await expect(evidence.locator("blockquote").filter({ hasText: citation.quote })).toBeVisible();
+    await evidence.getByRole("button", { name: "定位並標記原文" }).click();
+    await expect(page.locator(`#claim-${citation.ordinal} mark`)).toHaveText(citation.quote);
     await evidence.getByText("原文定位", { exact: true }).click();
     await expect(evidence.getByText(citation.xpath, { exact: true })).toBeVisible();
     await expect(evidence.getByText(`原始檔 SHA-256 · ${citation.artifact_sha256}`)).toBeVisible();

@@ -105,6 +105,28 @@ def accounts():
                 assert response.status_code == 204
 
 
+def test_account_audit_and_corpus_routes_work_with_the_restricted_api_role(accounts):
+    client, ((_, first, _), (_, second, _)) = accounts
+    assert client.get("/api/v1/audit-logs").status_code == 401
+    first_log = client.get("/api/v1/audit-logs", headers=first)
+    second_log = client.get("/api/v1/audit-logs", headers=second)
+    assert first_log.status_code == second_log.status_code == 200
+    assert first_log.headers["cache-control"] == "no-store"
+    assert (
+        first_log.headers["permissions-policy"]
+        == "camera=(), microphone=(), geolocation=()"
+    )
+    first_entries = first_log.json()["items"]
+    second_entries = second_log.json()["items"]
+    assert [entry["action"] for entry in first_entries] == ["register"]
+    assert [entry["action"] for entry in second_entries] == ["register"]
+    assert first_entries[0]["id"] != second_entries[0]["id"]
+    assert first_entries[0]["resource_id"] is None
+    corpus = client.get("/api/v1/corpus/status")
+    assert corpus.status_code == 200
+    assert corpus.json()["documents_total"] >= 0
+
+
 def test_repeated_login_failures_are_throttled_per_address(accounts):
     client, ((_, _, target), (_, _, bystander)) = accounts
     guess = {"email": target["email"], "password": "wrong-password-guess"}

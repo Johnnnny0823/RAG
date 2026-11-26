@@ -43,6 +43,11 @@ test("workspace uses the live API and persists project changes", async ({ page, 
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "PatentScope AI" })).toBeVisible();
     await expect(page.getByText("API、資料庫與向量擴充功能已就緒。")).toBeVisible();
+    const coverage = await request.get("/api/v1/corpus/status");
+    expect(coverage.ok()).toBe(true);
+    expect(coverage.headers()["x-content-type-options"]).toBe("nosniff");
+    expect((await request.get("/manifest.webmanifest")).ok()).toBe(true);
+    await expect(page.getByRole("heading", { name: "語料涵蓋與匯入監控" })).toBeVisible();
 
     await button("建立帳號").click();
     await page.getByLabel("電子郵件").fill(email);

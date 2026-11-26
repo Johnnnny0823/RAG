@@ -1,0 +1,20 @@
+{
+  "name": "PatentScope AI — 臺灣專利智慧檢索與先前技術分析系統",
+  "short_name": "PatentScope AI",
+  "description": "以臺灣官方專利資料為核心的 AI 專利智慧檢索、技術特徵比對與研究工作台。",
+  "lang": "zh-Hant-TW",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#0f766e",
+  "background_color": "#f8fafc",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

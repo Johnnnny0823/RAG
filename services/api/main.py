@@ -20,9 +20,15 @@ from services.api.sessions import router as sessions_router
 from services.api.reports import router as reports_router
 from services.api.report_jobs import router as report_jobs_router
 from services.api.queries import router as queries_router
+from services.api.audit import router as audit_router
+from services.api.corpus import router as corpus_router
+from services.api.security import SecurityHeaders
 
 logger = logging.getLogger(__name__)
 app = FastAPI(title="PatentScope AI", version="0.1.0")
+app.add_middleware(SecurityHeaders)
+app.include_router(audit_router)
+app.include_router(corpus_router)
 app.include_router(patents_router)
 app.include_router(queries_router)
 app.include_router(comparisons_router)

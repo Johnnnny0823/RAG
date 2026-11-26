@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Response
 from sqlalchemy.exc import SQLAlchemyError
 
 from services.api.admin_ingestion import is_ingestion_admin
+from services.api.audit import record_audit_event
 from services.api.identity import (
     AccessToken,
     Account,
@@ -47,6 +48,7 @@ def register(payload: AccountInput):
         return unavailable()
     if account is None:
         return api_error(409, "ACCOUNT_EXISTS", "此帳號已註冊。")
+    record_audit_event("register", "account", user_id=account.id)
     return account
 
 
@@ -95,6 +97,7 @@ def download_research(
     response.headers["Content-Disposition"] = (
         'attachment; filename="patentscope-research.json"'
     )
+    record_audit_event("export", "research", user_id=account.id)
     return export
 
 

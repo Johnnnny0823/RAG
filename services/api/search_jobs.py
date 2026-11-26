@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
 from services.api.db import engine
+from services.api.audit import record_audit_event
 from services.api.patents import (
     HybridSearchRequest,
     PatentErrorEnvelope,
@@ -77,6 +78,9 @@ def enqueue(request: HybridSearchRequest, account: Owner, response: Response):
     if row is None:
         return api_error(409, "SEARCH_JOB_ACTIVE", "已有一項搜尋工作正在等待或執行。")
     response.headers["Location"] = f"/api/v1/search-jobs/{row['id']}"
+    record_audit_event(
+        "enqueue", "search_job", user_id=account.id, resource_id=row["id"]
+    )
     return public_status(row, response)
 
 

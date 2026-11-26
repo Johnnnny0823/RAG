@@ -153,3 +153,11 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 ## 官方匯入監控
 
 `GET /api/v1/admin/ingestion/jobs?limit=20&offset=0` 回傳期別、匯入／詞彙／向量階段、執行狀態、時間與筆數。由部署者以 `INGESTION_ADMIN_USER_IDS` 授權既有帳號 UUID；`GET /api/v1/me` 的 `can_monitor_ingestion` 供工作台顯示權限。未登入回傳 401，未授權回傳 403，所有工作紀錄均依權限保護。此 API 提供查詢，匯入由部署者從命令列啟動。
+
+## 語料狀態與操作歷程補充
+
+`GET /api/v1/corpus/status` 為公開資料，回傳已驗證的文件版本、詞彙及所有模型的向量覆蓋筆數，以及最近 10 筆官方批次的安全計數。不回傳匯入失敗文字、工作日誌或私人研究資料。
+
+`GET /api/v1/audit-logs` 需要 Bearer token。透過 `limit` 與 `offset` 查詢登入者的註冊、研究資料匯出及背景搜尋送出紀錄。結果禁止快取，事件不含構想內容或登入憑證。帳號刪除時同步清理。
+
+混合搜尋與使用相同查詢結構的背景研究接受 `sort_by`，值為 `relevance`（預設）、`date_desc` 或 `date_asc`。日期只調整已選出的候選順序，在分頁前套用。同日維持相關性順序，未知日期放在最後。

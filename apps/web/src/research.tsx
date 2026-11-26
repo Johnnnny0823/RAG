@@ -36,13 +36,16 @@ type Hit = PatentVersion & {
   rerank_rank: number | null;
 };
 type Party = { zh: string | null; en: string | null };
+type SourceLocation = { xpath: string; artifact_sha256: string };
+type Evidence = SourceLocation & { quote: string; char_start: number; char_end: number };
+type SearchSort = "relevance" | "date_desc" | "date_asc";
 type Detail = {
   abstract_zh: string | null;
   abstract_en: string | null;
   applicants: Party[];
   inventors: Party[];
   classifications: { scheme: string; code: string }[];
-  sections: { ordinal: number; section_type: string; original_text: string }[];
+  sections: { ordinal: number; section_type: string; original_text: string; source: SourceLocation }[];
   sources: { dataset_name: string; publisher: string; dataset_url: string | null; source_url: string | null; batch_key: string; ingested_at: string }[];
   legal_events: {
     kind: "extinguishment" | "gazette_correction";
@@ -57,7 +60,7 @@ type Detail = {
     record_locator: string;
   }[];
 };
-type Claim = { claim_number: number; text: string; referenced_claim_numbers: number[] };
+type Claim = { claim_number: number; text: string; referenced_claim_numbers: number[]; source: SourceLocation };
 type SearchFilters = {
   published_from: string;
   published_to: string;
@@ -65,7 +68,7 @@ type SearchFilters = {
   content_scope: string;
   applicant: string;
 };
-type Search = { query: string; ipc: string | null; features: Feature[]; rerank: boolean; offset: number } &
+type Search = { query: string; ipc: string | null; features: Feature[]; rerank: boolean; offset: number; sort_by?: SearchSort } &
   { [Key in keyof SearchFilters]?: string | null };
 const emptyFilters: SearchFilters = { published_from: "", published_to: "", document_stage: "", content_scope: "", applicant: "" };
 type CorpusCoverage = {
@@ -92,7 +95,7 @@ export type Comparison = {
     feature_id: string;
     verdict: keyof typeof verdicts;
     basis: string;
-    evidence: { quote: string; xpath: string; artifact_sha256: string; char_start: number; char_end: number } | null;
+    evidence: Evidence | null;
   }[];
 };
 type ComparedDocument = { document: PatentVersion; comparison: Comparison };
@@ -106,6 +109,19 @@ const scope: Record<string, string> = {
 const splitTerms = (value: string) => value.split(/[,，、\n]/).map((word) => word.trim()).filter(Boolean);
 const names = (parties: Party[]) => parties.map((party) => party.zh || party.en).filter(Boolean).join("、") || "未提供";
 const title = (hit: PatentVersion) => hit.title_zh || hit.title_en || hit.publication_no;
+
+function evidenceBounds(text: string, source: SourceLocation, evidence: Evidence | null) {
+  if (!source || !evidence || evidence.xpath !== source.xpath || evidence.artifact_sha256 !== source.artifact_sha256) return null;
+  const chars = Array.from(text);
+  const { char_start: start, char_end: end } = evidence;
+  if (start < 0 || end <= start || end > chars.length || chars.slice(start, end).join("") !== evidence.quote) return null;
+  return { prefix: chars.slice(0, start).join(""), quote: evidence.quote, suffix: chars.slice(end).join("") };
+}
+
+function highlighted(text: string, source: SourceLocation, evidence: Evidence | null) {
+  const bounds = evidenceBounds(text, source, evidence);
+  return bounds ? <>{bounds.prefix}<mark>{bounds.quote}</mark>{bounds.suffix}</> : text;
+}
 
 class SessionExpired extends Error {}
 
@@ -193,6 +209,9 @@ export function Research() {
   const [ipc, setIpc] = useState("");
   const [filters, setFilters] = useState(emptyFilters);
   const [rerank, setRerank] = useState(false);
+  const [sortBy, setSortBy] = useState<SearchSort>("relevance");
+  const [highlight, setHighlight] = useState<{ documentId: string; evidence: Evidence } | null>(null);
+  const [relatedVersions, setRelatedVersions] = useState<PatentVersion[] | null>(null);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [busy, setBusy] = useState("");
   const [searchJob, setSearchJob] = useState<SearchJob | null>(null);
@@ -257,6 +276,7 @@ export function Research() {
     setIpc("");
     setFilters(emptyFilters);
     setRerank(false);
+    setSortBy("relevance");
     setDrafts([]);
     setError("");
   }
@@ -284,6 +304,7 @@ export function Research() {
   function showSavedPage(record: SavedRun, offset = 0) {
     const limit = record.request.limit;
     setSearch(record.request);
+    setSortBy(record.request.sort_by ?? "relevance");
     setResults({ items: record.items.slice(offset, offset + limit), offset, limit, has_more: offset + limit < record.items.length, corpus_coverage: record.settings?.corpus_coverage });
     setSelected(null);
   }
@@ -449,7 +470,7 @@ export function Research() {
       throw new Error("每項特徵須填寫描述。每種語言最多四個檢索詞，每詞最多 48 字。");
     }
     const payload = {
-      query: query.trim(), ipc: ipc.trim() || null, features, rerank, offset: 0,
+      query: query.trim(), ipc: ipc.trim() || null, features, rerank, offset: 0, sort_by: sortBy,
       published_from: filters.published_from || null,
       published_to: filters.published_to || null,
       document_stage: filters.document_stage || null,
@@ -507,6 +528,7 @@ export function Research() {
     const path = "/patents/" + hit.document_id;
     const [detail, claims] = await Promise.all([request<Detail>(path), request<{ claims: Claim[] }>(path + "/claims")]);
     setSelected({ hit, detail, claims: claims.claims, fromResults });
+    setRelatedVersions(null);
     setBookmarkProject(fromResults ? saved?.project_id ?? projectFilter : projectFilter);
     setBookmarkMessage("");
   }
@@ -794,6 +816,13 @@ export function Research() {
                 <input value={filters.applicant} maxLength={120} onChange={(event) => setFilters({ ...filters, applicant: event.target.value })} />
               </label>
               <label className="my-3 block"><input type="checkbox" checked={rerank} onChange={(event) => setRerank(event.target.checked)} /> 使用本機模型重排序</label>
+              <label className="research-field">候選排序
+                <select value={sortBy} onChange={(event) => setSortBy(event.target.value as SearchSort)}>
+                  <option value="relevance">相關性</option>
+                  <option value="date_desc">文件日期（新至舊）</option>
+                  <option value="date_asc">文件日期（舊至新）</option>
+                </select>
+              </label>
               <button className="research-primary" disabled={!query.trim()} type="submit">搜尋臺灣專利</button>
               {session && <button className="ml-2" type="button" disabled={!query.trim()} onClick={() => void run("正在檢索並保存…", () => submitSearch(true))}>搜尋並保存</button>}
             </fieldset>
@@ -912,8 +941,22 @@ export function Research() {
       {selected && (
         <section className="research-panel mt-6">
           <h2>專利詳情</h2>
+          <div className={`grid gap-6 ${comparison ? "lg:grid-cols-2" : ""}`}>
+          <div className="min-w-0">
           <h3 className="mt-2 text-xl">{title(selected.hit)}</h3>
           <p>{stage[selected.hit.document_stage]} {selected.hit.publication_no} {selected.hit.kind_code} · {scope[selected.hit.content_scope]}</p>
+          <button type="button" disabled={!!busy} onClick={() => void run("正在查詢同案版本…", async () => {
+            const query = new URLSearchParams({ number: selected.hit.application_no, number_type: "application", limit: "100" });
+            const page = await request<PatentPage<PatentVersion>>("/patents?" + query);
+            setRelatedVersions(page.items.filter((item) => item.document_id !== selected.hit.document_id));
+          })}>查詢同案其他版本</button>
+          {relatedVersions && (relatedVersions.length ? <ul>
+            {relatedVersions.map((version) => <li key={version.document_id}>
+              <button type="button" disabled={!!busy} onClick={() => void run("正在載入專利詳情…", () => openPatent(version, !!(saved?.items ?? results?.items)?.some((item) => item.document_id === version.document_id)))}>
+                {stage[version.document_stage]} {version.publication_no} · {scope[version.content_scope]}
+              </button>
+            </li>)}
+          </ul> : <p role="status">目前索引沒有同案的其他文件版本。</p>)}
           <dl className="my-4 grid gap-2 text-sm sm:grid-cols-2">
             <div><dt>申請號</dt><dd>{selected.hit.application_no}</dd></div>
             <div><dt>申請日期</dt><dd>{selected.hit.filing_date || "未提供"}</dd></div>
@@ -926,8 +969,8 @@ export function Research() {
           <p className="mb-4 whitespace-pre-wrap">{selected.detail.abstract_zh || selected.detail.abstract_en || "此版本未提供摘要。"}</p>
           <details className="my-3"><summary>請求項（{selected.claims.length}）</summary>
             {selected.claims.map((claim) => (
-              <div key={claim.claim_number} id={`claim-${claim.claim_number}`} className="my-2 scroll-mt-4">
-                <p className="whitespace-pre-wrap">第 {claim.claim_number} 項 · {claim.text}</p>
+              <div key={claim.claim_number} id={`claim-${claim.claim_number}`} tabIndex={-1} className="my-2 scroll-mt-4">
+                <p className="whitespace-pre-wrap">第 {claim.claim_number} 項 · {highlighted(claim.text, claim.source, highlight?.documentId === selected.hit.document_id ? highlight.evidence : null)}</p>
                 {claim.referenced_claim_numbers.length > 0 && (
                   <p className="text-sm">原文援引：
                     {claim.referenced_claim_numbers.map((number) => (
@@ -939,7 +982,7 @@ export function Research() {
             ))}
           </details>
           <details className="my-3"><summary>說明書段落（{selected.detail.sections.length}）</summary>
-            {selected.detail.sections.map((section) => <p key={`${section.section_type}-${section.ordinal}`} className="my-2 whitespace-pre-wrap">第 {section.ordinal} 段 · {section.original_text}</p>)}
+            {selected.detail.sections.map((section) => <p id={`section-${section.section_type}-${section.ordinal}`} tabIndex={-1} key={`${section.section_type}-${section.ordinal}`} className="my-2 whitespace-pre-wrap">第 {section.ordinal} 段 · {highlighted(section.original_text, section.source, highlight?.documentId === selected.hit.document_id ? highlight.evidence : null)}</p>)}
           </details>
           <h3>權利異動公報</h3>
           <p className="mb-2 text-sm text-slate-700">涵蓋已匯入的公報卷期。查詢目前權利狀態時，請以智慧財產局最新資料為準。</p>
@@ -975,7 +1018,9 @@ export function Research() {
             <button disabled={!!busy || !bookmarkProject} onClick={() => void run("正在收藏文件…", () => addBookmark(selected.hit.document_id, session.token))}>收藏此版本</button>
             {bookmarkMessage && <p role="status" className="mt-2 text-sm text-teal-900">{bookmarkMessage}</p>}
           </div>}
+          </div>
           {search && selected.fromResults && <>
+          <div className="min-w-0">
           <button disabled={!!busy || !search.features.length || (!!saved && !!comparison)} onClick={() => void run("正在核對技術特徵…", () => comparePatent(selected.hit, search.features))}>
             {saved ? comparison ? "已保存技術比對" : "比對並保存證據" : "比對本次搜尋特徵"}
           </button>
@@ -983,18 +1028,33 @@ export function Research() {
           {comparison && <div className="mt-5">
             <h3>技術特徵比對</h3>
             <p className="text-sm">檢查 {comparison.passages_checked} 個原文片段。判定限於此次檢查範圍。</p>
-            {comparison.items.map((item) => <article className="my-3 rounded-lg border border-slate-300 p-3" key={item.feature_id}>
+            {comparison.items.map((item) => {
+              const evidence = item.evidence;
+              const claim = selected.claims.find((entry) => evidenceBounds(entry.text, entry.source, evidence));
+              const section = selected.detail.sections.find((entry) => evidenceBounds(entry.original_text, entry.source, evidence));
+              const target = claim ? `claim-${claim.claim_number}` : section ? `section-${section.section_type}-${section.ordinal}` : null;
+              return <article className="my-3 rounded-lg border border-slate-300 p-3" key={item.feature_id}>
               <h4 className="font-semibold">{search.features.find((feature) => feature.feature_id === item.feature_id)?.description_zh} · {verdicts[item.verdict]}</h4>
               <p>{item.basis}</p>
               {item.evidence ? <>
                 <blockquote className="my-2 border-l-2 border-teal-700 pl-3 whitespace-pre-wrap">{item.evidence.quote}</blockquote>
+                {target && evidence && <button onClick={() => {
+                  setHighlight({ documentId: selected.hit.document_id, evidence });
+                  const passage = document.getElementById(target);
+                  const reader = passage?.closest("details");
+                  if (reader) reader.open = true;
+                  passage?.focus();
+                  passage?.scrollIntoView({ block: "nearest" });
+                }}>定位並標記原文</button>}
                 <details><summary>原文定位</summary>
                   <EvidenceLocator evidence={item.evidence} />
                 </details>
               </> : <p>此項判定沒有可引用的原文證據。</p>}
-            </article>)}
+            </article>})}
           </div>}
+          </div>
           </>}
+          </div>
         </section>
       )}
     </>

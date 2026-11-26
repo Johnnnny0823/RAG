@@ -1839,3 +1839,22 @@
 - Uncommitted changes / file ownership warnings: 原始物件與隔離資料庫保留供複驗。
 - Next 1–3 concrete actions: 考量歷史事件與新收錄案件重新配對的負載和完整性，持續人工相關性複核與正式目標主機驗收。
 - Exact reproduction steps: 匯入官方 `I874722`，以 `TIPO_REFRESH_LEGAL_YEAR=115`、`TIPO_REFRESH_LEGAL_FROM=053032` 啟動隔離排程。在 `archive_refresh_checkpoints` 核對 `legal` 兩期，重啟後核對跳過紀錄與專利詳情 API。
+
+## Gemini M6 選擇性整合
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `90ddd1f`。
+- Current milestone and status: 整合與部署驗收 IN_PROGRESS。
+- Goal of this session: 審查 ZIP 獨立檔與附帶補丁，整合符合目前分支的功能。
+- Files changed (with purpose): 公開語料狀態與面板、帳號操作歷程、API 安全標頭、正式部署新增限流路徑、混合候選日期排序、PWA 靜態離線備援、原文標記與同案版本介面、測試及工作流程版本。
+- Database migrations added/applied: `0018_audit_logs` 續接 `0017_legal_archive_refresh`。在既有測試庫及空白 `patentscope_gemini_m6` 套用成功。現有另一工作區尚未提交的 `0018_legal_event_catalog` 保留，將來合併需重新接續編號。
+- API/Schema changes: 加入 `/api/v1/corpus/status`、本人 `/api/v1/audit-logs` 與混合查詢 `sort_by`。請求項依附與法律異動沿用開發分支實作。
+- Commands actually run and results: Ruff、Oxlint、TypeScript、Vite 正式建置、pytest 含 PostgreSQL 123 passed、Nginx 冒煙與限流通過。實測受限 API 角色能寫入並讀取本人的歷程、無刪除權限。正式 Chromium 工作台冒煙與 PWA 離線頁、API 快取排除、靜態安全標頭驗證通過。初次前端建置缺少 Vite 型別宣告，補齊後成功。初次正式 Chromium 混跑限流冒煙與登入案例發生入口限流干擾，也發現代理重複標頭。後續隔離執行，Nginx 統一對外標頭後正式桌面工作台回歸通過。
+- Tests NOT run and reason: 正式外部主機及實體裝置安裝尚未驗證。人工標註需由人員完成。
+- Data sources checked (exact URL/date) and license/access notes: 本地驗收以隔離空白資料庫與既有測試資料為主。官方語料由原有 E2E 流程載入。本輪未擴大資料源或授權範圍。
+- Known bugs / risks / blockers: 依帳號提供的操作歷程目前只涵蓋三種操作，寫入失敗會記錄告警。PWA 離線提供說明頁。背景模型操作及專利詳情須連線。
+- Decisions made (ADR links): 保留已有 Nginx 限流與 TLS。未導入未設容量上限的行程內 IP 限流。公開批次監控只回傳固定名稱的非負整數。高亮先核對文件版本、來源雜湊、XPath 與字元位置。
+- Uncommitted changes / file ownership warnings: ZIP 未整批套用，原工作區的歷史異動配對變更維持現況。
+- Next 1–3 concrete actions: 核對此提交一般及官方 CI，接續保留的歷史異動配對並整合遷移鏈，完成人工檢索複核與正式環境驗收。
+- Exact reproduction steps: 依 TESTING 跑 PostgreSQL 整合、工作台 Playwright 及 `PATENTSCOPE_E2E_TIPO=1`。使用正式映像完成服務工作程序註冊後，將瀏覽器切為離線並重整，以確認離線頁及 API 快取隔離。

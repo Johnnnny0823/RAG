@@ -37,6 +37,7 @@ RESEARCH_GRANTS = {
     "saved_patents": "SELECT, INSERT, UPDATE, DELETE",
     "sessions": "SELECT, INSERT, DELETE, UPDATE (id)",
     "messages": "SELECT, INSERT",
+    "audit_logs": "SELECT, INSERT",
 }
 
 

@@ -1,9 +1,13 @@
 from uuid import UUID
+from contextlib import nullcontext
+from datetime import UTC, datetime, date
+from unittest.mock import Mock
 
 import pytest
 from fastapi.testclient import TestClient
 
 from services.api.main import app
+from services.api import patents
 from services.retrieval.fusion import RRF_K, fuse_rankings
 
 
@@ -60,3 +64,52 @@ def test_hybrid_reports_unconfigured_embedding(monkeypatch):
     )
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "EMBEDDING_UNAVAILABLE"
+
+
+def test_hybrid_api_sorts_dates_before_pagination_and_keeps_fusion_ranks(monkeypatch):
+    model = Mock(name="embedding")
+    model.name = "DEMO-model"
+    model.digest = "DEMO-digest"
+    model.embed_query.return_value = [1.0]
+    monkeypatch.setattr(patents.LocalEmbeddingModel, "from_env", lambda: model)
+    monkeypatch.setattr(patents, "indexed_model_id", lambda _: 1)
+    conn = Mock()
+    conn.execution_options.return_value = nullcontext(conn)
+    conn.exec_driver_sql.return_value.mappings.return_value.one.return_value = {
+        "observed_at": datetime.now(UTC),
+        "lexical_versions": 4,
+        "semantic_versions": 4,
+        "latest_document_date": date(2026, 1, 1),
+    }
+    monkeypatch.setattr(patents.engine, "connect", lambda: conn)
+    dates = [None, date(2025, 1, 1), date(2026, 1, 1), date(2026, 1, 1)]
+    rows = [
+        {
+            **hit(i, number=f"DEMO-{i}"),
+            "publication_date": published,
+            "application_no": f"DEMO-{i}",
+            "filing_date": None,
+            "title_zh": None,
+            "title_en": None,
+        }
+        for i, published in enumerate(dates, 1)
+    ]
+    monkeypatch.setattr(patents, "lexical_rows", lambda *_: rows)
+    monkeypatch.setattr(patents, "semantic_rows", lambda *_: rows)
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/patents/search/hybrid",
+        json={
+            "query": "電阻",
+            "sort_by": "date_desc",
+            "limit": 2,
+            "offset": 1,
+        },
+    )
+    assert response.status_code == 200
+    assert [
+        (row["publication_no"], row["fusion_rank"]) for row in response.json()["items"]
+    ] == [
+        ("DEMO-4", 4),
+        ("DEMO-2", 2),
+    ]
