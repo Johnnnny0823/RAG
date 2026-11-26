@@ -48,6 +48,10 @@ CI 已加入 Chromium 測試步驟，失敗時保存 HTML 報告、截圖、Trac
 
 ## 真實 TIPO 資料的 TypeScript 回歸
 
+Gemini 整合分支新增原文定位驗收。此套件會核對引文屬於指定文件版本，再按「定位並標記原文」，核對 `<mark>` 內的文字。若只驗收工作台、API 錯誤與安裝資訊，使用開發前端及隔離 API，於 `apps/web` 執行 `node node_modules/@playwright/test/cli.js test workspace.spec.ts search-errors.spec.ts`。將 `PATENTSCOPE_E2E_CROSS_BROWSER` 設為 `1` 可另跑 Firefox、WebKit。
+
+離線驗收使用正式 Nginx 映像。透過 Chromium 開啟首頁，等待 `navigator.serviceWorker.controller` 出現，再用同源 `fetch` 查詢語料狀態。確認 `patentscope-static-v1` 快取含 `/offline.html` 且沒有 `/api/` 項目。使該瀏覽器的測試環境離線後重新整理首頁，畫面應顯示「目前離線」。正式入口的 IP 限流冒煙與 API 登入限流案例使用不同階段，避免同一來源 IP 互相影響。
+
 依 [SETUP](SETUP.md#靜態前端部署) 啟動專用 Compose 專案，匯入 24 卷 19 期索引與 `202639611` 全文，再建立詞彙與向量索引。確認模型設定含 embedding 和比對模型。官方下載指令與固定 SHA-256 見 [DATA_SOURCES](DATA_SOURCES.md) 及 [M1 樣本重現](SETUP.md#m1-官方樣本重現)。用 `verify_document 202639611` 核對原始物件和資料庫後，再執行：
 
 ```powershell

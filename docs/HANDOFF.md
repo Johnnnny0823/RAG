@@ -1852,6 +1852,7 @@
 - API/Schema changes: 加入 `/api/v1/corpus/status`、本人 `/api/v1/audit-logs` 與混合查詢 `sort_by`。請求項依附與法律異動沿用開發分支實作。
 - Commands actually run and results: Ruff、Oxlint、TypeScript、Vite 正式建置、pytest 含 PostgreSQL 123 passed、Nginx 冒煙與限流通過。實測受限 API 角色能寫入並讀取本人的歷程、無刪除權限。正式 Chromium 工作台冒煙與 PWA 離線頁、API 快取排除、靜態安全標頭驗證通過。初次前端建置缺少 Vite 型別宣告，補齊後成功。初次正式 Chromium 混跑限流冒煙與登入案例發生入口限流干擾，也發現代理重複標頭。後續隔離執行，Nginx 統一對外標頭後正式桌面工作台回歸通過。
 - Tests NOT run and reason: 正式外部主機及實體裝置安裝尚未驗證。人工標註需由人員完成。
+- Subsequent verification: `workspace.spec.ts` 與 `search-errors.spec.ts` 使用開發前端及同一隔離 API，在 Chromium 桌面、平板、手機及 Firefox／WebKit 桌面共 20 項通過。首次案例均完成，但 Windows 拒絕建立 HTML 報告目錄。改用暫存輸出與 list reporter 後重跑，以退出碼 0 完成。提交 `daa86ac` 的 [一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45874611331) 與 [官方完整 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45874632186) 已啟動。
 - Data sources checked (exact URL/date) and license/access notes: 本地驗收以隔離空白資料庫與既有測試資料為主。官方語料由原有 E2E 流程載入。本輪未擴大資料源或授權範圍。
 - Known bugs / risks / blockers: 依帳號提供的操作歷程目前只涵蓋三種操作，寫入失敗會記錄告警。PWA 離線提供說明頁。背景模型操作及專利詳情須連線。
 - Decisions made (ADR links): 保留已有 Nginx 限流與 TLS。未導入未設容量上限的行程內 IP 限流。公開批次監控只回傳固定名稱的非負整數。高亮先核對文件版本、來源雜湊、XPath 與字元位置。
