@@ -15,6 +15,7 @@ from services.ingestion.artifacts import MAX_GAZETTE_XML_BYTES, MAX_XML_BYTES
 
 logger = logging.getLogger(__name__)
 INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10"
+GRANT_INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01"
 SPEC_PATH = re.compile(
     r"/(?:InventionPubXML|PatentIsuRegSpecXMLA)/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_-]+\.xml"
 )
@@ -120,34 +121,45 @@ def _transfer_xml(path: str, context: ssl.SSLContext, size_limit: int) -> bytes:
 
 
 def download_publication_index() -> bytes:
-    with urlopen(INDEX_URL, timeout=60) as response:
-        if response.geturl() != INDEX_URL:
-            raise ValueError("Unexpected final URL for the TIPO publication index")
-        payload = response.read(MAX_XML_BYTES + 1)
-    if not payload or len(payload) > MAX_XML_BYTES:
-        raise ValueError("Unexpected TIPO publication index size")
+    return _download_https_index(INDEX_URL, MAX_XML_BYTES)
+
+
+def _download_https_index(url: str, size_limit: int) -> bytes:
+    with urlopen(url, timeout=60) as response:
+        if response.geturl() != url:
+            raise ValueError("Unexpected final URL for the TIPO issue index")
+        payload = response.read(size_limit + 1)
+    if not payload or len(payload) > size_limit:
+        raise ValueError("Unexpected TIPO issue index size")
     return payload
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--index-out", type=Path)
-    parser.add_argument("--index-url", help="Official archived issue index FTPS URL")
+    index_source = parser.add_mutually_exclusive_group()
+    index_source.add_argument(
+        "--index-url", help="Official archived issue index FTPS URL"
+    )
+    index_source.add_argument(
+        "--latest-grants", action="store_true", help="Use the official S01 index"
+    )
     parser.add_argument("--spec-url")
     parser.add_argument("--spec-out", type=Path)
     args = parser.parse_args()
     if (
-        (args.index_url and not args.index_out)
+        ((args.index_url or args.latest_grants) and not args.index_out)
         or bool(args.spec_url) != bool(args.spec_out)
         or not (args.index_out or args.spec_out)
     ):
         parser.error("Provide --index-out or both --spec-url and --spec-out")
     if args.index_out:
-        payload = (
-            download_ftps_xml(args.index_url)
-            if args.index_url
-            else download_publication_index()
-        )
+        if args.index_url:
+            payload = download_ftps_xml(args.index_url)
+        elif args.latest_grants:
+            payload = _download_https_index(GRANT_INDEX_URL, MAX_GAZETTE_XML_BYTES)
+        else:
+            payload = download_publication_index()
         with args.index_out.open("xb") as stream:
             stream.write(payload)
     if args.spec_out:

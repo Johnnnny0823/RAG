@@ -372,6 +372,14 @@ docker compose --profile patent-refresh stop patent-refresh
 
 ### 追蹤匯入及建立索引
 
+同一卷期的發明公告可以在一個工作中匯入多件。先以 `python -m services.ingestion.download --latest-grants --index-out <本機輸出路徑>` 下載 S01。核對原檔記載的卷期及欲匯入的證書號後，把檔案目錄唯讀掛到 `/inputs`。以下以第 053030 期為例。
+
+```powershell
+docker compose run --rm -v "${inputs}:/inputs:ro" migrate python -m services.ingestion.run_pipeline --index-mode lexical -- --verified-tipo --index /inputs/s01.xml --index-source-url https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01 --batch 053030 --grant-number I942697 --grant-number I942698
+```
+
+每件保留獨立的公告版本和原文請求項定位。選取的證書號必須全部出現在同份索引。對同一原檔、同一批證書號重跑會重用批次，證書號順序不影響判定。
+
 先依前述官方樣本流程取得檔案並核對來源與 SHA-256。以下 PowerShell 範例以 `$inputs` 指定已有 `index.xml` 與 `spec.xml` 的絕對路徑，用已配置模型的 Compose 專案在背景執行。
 
 ```powershell

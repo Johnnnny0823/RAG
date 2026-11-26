@@ -1666,3 +1666,23 @@
 - Uncommitted changes / file ownership warnings: 隔離排程測試已停止；本機既有專案未啟用排程。
 - Next 1–3 concrete actions: 驗收跨期過渡、後補期間與公告更新，持續追蹤完整官方 E2E。
 - Exact reproduction steps: 依 SETUP 的「定期更新」小節，在隔離專案用 `--profile patent-refresh` 啟動服務。使用日誌核對來源和週期間隔，從管理員監控或資料庫查詢工作狀態。
+
+## 發明公告多案匯入
+
+- Codex 負責公告解析、批次匯入及官方 S01 驗收。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `aa219a3`。
+- Current milestone and status: 同一期所選公告的批次匯入已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 從同一份官方公告索引保存多件公告，維持各自的證書號及請求項來源。
+- Files changed (with purpose): `download.py` 支援取得官方 S01 最新 XML，`grant_index.py` 一次解析選取公告，`import_issue.py` 支援重複指定 `--grant-number` 並將各件引文連到自己的 XML 位置。新增解析回歸與來源、操作文件。
+- Database migrations added/applied: 無新增。隔離庫原有 7 個公開版本，驗收後另有 2 個公告版本。
+- API/Schema changes: 無。從現有精確查詢、詳情及請求項 API 驗收兩案。
+- Commands actually run and results: S01 官方原檔 SHA-256 核對通過。第 053030 期 `I942697`、`I942698` 批次匯入成功，建立 66 個詞彙片段。調換證書號順序重跑仍重用批次，新增索引 0。`verify_document` 核對 38、24 項請求項，唯讀 API 驗證不同申請號、公告類型、書目與請求項範圍、來源雜湊與不同的原文定位。pytest 95 passed、8 skipped，調整合成測試識別碼後重跑公告解析測試 3 passed。Ruff 與 Git diff 通過。
+- Tests NOT run and reason: 未重跑完整 PostgreSQL pytest／Playwright，本輪以隔離 PostgreSQL 及 API 直接驗收公告匯入，未建立公告語意索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 核對 `https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01`，實際來源細節見 DATA_SOURCES。
+- Known bugs / risks / blockers: 目前只驗收選取兩件的公告請求項，未匯入公告說明書或啟用公告排程。
+- Decisions made (ADR links): 保持舊單案命令及批次識別相容，多案批次以排序後的選取清單識別。
+- Uncommitted changes / file ownership warnings: 官方案例存於隔離資料庫及未追蹤物件卷。
+- Next 1–3 concrete actions: 驗收公告全文、公告排程及跨期補匯，持續查核完整模型遠端結果。
+- Exact reproduction steps: 依 SETUP 的追蹤匯入小節取得該期官方索引並重複傳入兩個 `--grant-number`。

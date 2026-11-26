@@ -11,18 +11,39 @@ from services.ingestion.specification import Claim
 
 
 def parse_grant(data: bytes, issue: str, certificate: str):
+    [grant] = parse_selected_grants(data, issue, [certificate])
+    return grant
+
+
+def parse_selected_grants(
+    data: bytes, issue: str, certificates: list[str]
+) -> list[tuple[PatentPublication, list[Claim]]]:
+    selected = set(certificates)
+    if (
+        not selected
+        or len(selected) != len(certificates)
+        or any(not re.fullmatch(r"I[0-9]+", certificate) for certificate in selected)
+    ):
+        raise ValueError("Expected distinct invention grant numbers")
     root = parse_xml(data, size_limit=MAX_GAZETTE_XML_BYTES)
     if root.tag != "tw-patent-grants" or root.get("total-count") != str(len(root)):
         raise ValueError("Expected a complete TIPO grant issue index")
-    candidates = [
-        (position, item)
-        for position, item in enumerate(root, 1)
-        if item.tag == "tw-patent-grant"
-        and item.get("certificate-number") == certificate
-    ]
-    if len(candidates) != 1 or not re.fullmatch(r"I[0-9]+", certificate):
-        raise ValueError("Expected exactly one matching invention grant")
-    position, item = candidates[0]
+    matches = {}
+    for position, item in enumerate(root, 1):
+        certificate = item.get("certificate-number")
+        if item.tag != "tw-patent-grant" or certificate not in selected:
+            continue
+        if certificate in matches:
+            raise ValueError(f"Multiple matching invention grants: {certificate}")
+        matches[certificate] = _parse_grant(item, position, issue, certificate)
+    if missing := selected - matches.keys():
+        raise ValueError(
+            f"Missing selected invention grants: {', '.join(sorted(missing))}"
+        )
+    return [matches[certificate] for certificate in certificates]
+
+
+def _parse_grant(item: ET.Element, position: int, issue: str, certificate: str):
     biblio = item.find("tw-bibliographic-data-grant")
     if biblio is None:
         raise ValueError("Missing grant bibliography")

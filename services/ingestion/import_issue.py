@@ -19,7 +19,11 @@ from services.ingestion.artifacts import (
     RawArtifact,
     add_objects_argument,
 )
-from services.ingestion.grant_index import parse_grant
+from services.ingestion.grant_index import parse_selected_grants
+from services.ingestion.download import (
+    GRANT_INDEX_URL,
+    INDEX_URL as PUBLICATION_INDEX_URL,
+)
 from services.ingestion.claim_references_v1 import INSERT_REFERENCES, reference_pairs
 from services.ingestion.issue_index import parse_issue_index
 from services.ingestion.issue_manifest import fetch_specifications, resolve_spec_urls
@@ -29,8 +33,6 @@ from services.ingestion.specification import Claim, Section, parse_specification
 PARSER_VERSION = "tipo-issue-1"
 DATASET_URL = "https://data.gov.tw/dataset/15996"
 LICENSE_URL = "https://data.gov.tw/license"
-GRANT_INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01"
-PUBLICATION_INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10"
 
 
 def validate_index_source(url: str, batch: str, *, grant: bool) -> None:
@@ -205,11 +207,12 @@ def import_issue(args):
     )
     index_raw = store.put(data)
     index_error = None
-    grant_claims = []
+    grant_claims = {}
     try:
         if args.grant_number:
-            grant, grant_claims = parse_grant(data, args.batch, args.grant_number)
-            records, issues = [grant], []
+            grants = parse_selected_grants(data, args.batch, args.grant_number)
+            records, issues = [grant for grant, _ in grants], []
+            grant_claims = {grant.publication_no: claims for grant, claims in grants}
         else:
             records, issues = parse_issue_index(
                 data, args.limit, None if args.demo else args.batch
@@ -255,8 +258,10 @@ def import_issue(args):
     }
     if args.index_source_url:
         manifest["index_source_url"] = args.index_source_url
-    if args.grant_number:
-        manifest["grant_number"] = args.grant_number
+    if len(args.grant_number) == 1:
+        manifest["grant_number"] = args.grant_number[0]
+    elif args.grant_number:
+        manifest["grant_numbers"] = sorted(args.grant_number)
     if official_manifest is not None:
         manifest.update(
             official_manifest=official_manifest.checksum,
@@ -331,7 +336,7 @@ def import_issue(args):
                     conn,
                     record,
                     jurisdiction,
-                    Specification(index_raw, [], grant_claims),
+                    Specification(index_raw, [], grant_claims[record.publication_no]),
                     stage="grant",
                 )
                 link_artifact(conn, document_id, index_id, record.locator)
@@ -416,7 +421,9 @@ def parse_import_args(argv=None):
     parser.add_argument("--limit", type=int, default=100)
     parser.add_argument(
         "--grant-number",
-        help="Import a selected invention grant from an official S01 index",
+        action="append",
+        default=[],
+        help="Select an invention grant from an official S01 index (repeatable)",
     )
     parser.add_argument("--manifest", type=Path, help="Official index_all.xml file")
     parser.add_argument("--manifest-url", help="Official FTPS URL of the manifest file")
@@ -441,6 +448,8 @@ def parse_import_args(argv=None):
     args = parser.parse_args(argv)
     if not 1 <= args.limit <= 500:
         parser.error("--limit must be between 1 and 500")
+    if len(args.grant_number) > args.limit:
+        parser.error("The number of selected grants exceeds --limit")
     if args.index_source_url:
         if args.demo:
             parser.error("--index-source-url requires --verified-tipo")
