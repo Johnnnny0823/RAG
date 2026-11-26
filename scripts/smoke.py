@@ -1,8 +1,9 @@
 import argparse
 import json
+import ssl
 import time
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import HTTPSHandler, Request, build_opener, install_opener, urlopen
 
 
 def read(url: str) -> str:
@@ -41,6 +42,11 @@ def verify_deployment(web: str) -> None:
             raise ValueError("Unexpected deployment browser security headers")
         if "/@vite/client" in response.read().decode("utf-8"):
             raise ValueError("Deployment uses the Vite development page")
+    if web.startswith("https://"):
+        expected = f"{web}/api/v1/health"
+        with urlopen(f"{expected}/", timeout=5) as response:
+            if response.url != expected or json.load(response) != {"status": "ok"}:
+                raise ValueError("API redirect did not preserve the HTTPS origin")
 
 
 def verify_rate_limits(web: str) -> None:
@@ -90,9 +96,16 @@ if __name__ == "__main__":
     parser.add_argument("--web", default="http://127.0.0.1:5173")
     parser.add_argument("--deployment", action="store_true")
     parser.add_argument("--deployment-rate-limit", action="store_true")
+    parser.add_argument(
+        "--ca-file", help="Trust an additional CA certificate for HTTPS"
+    )
     args = parser.parse_args()
     if args.deployment_rate_limit and not args.deployment:
         parser.error("--deployment-rate-limit requires --deployment")
+    if args.ca_file:
+        context = ssl.create_default_context()
+        context.load_verify_locations(cafile=args.ca_file)
+        install_opener(build_opener(HTTPSHandler(context=context)))
 
     deadline = time.monotonic() + 45
     while True:

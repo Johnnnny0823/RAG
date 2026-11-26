@@ -1486,3 +1486,23 @@
 - Uncommitted changes / file ownership warnings: 隔離資料卷保留，未修改既有開發服務。
 - Next 1–3 concrete actions: 驗收正式入口的遠端冒煙、人工評分及外部部署。
 - Exact reproduction steps: 依 SETUP 啟動隔離靜態部署，以 `scripts/smoke.py --deployment --deployment-rate-limit` 驗證。在同一來源反覆測試裝置的登入節流前，需重設隔離入口或等待配額恢復。
+
+## HTTPS 正式入口驗收
+
+- Codex 負責 HTTPS 覆蓋檔、Nginx、部署冒煙及操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `e84ea06`。
+- Current milestone and status: 本機 HTTPS 驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 從部署文件可在同一個 Nginx 正式入口啟用 HTTPS，並驗證官方資料與帳號 API。
+- Files changed (with purpose): `docker-compose.tls.yml` 加入憑證掛載和僅發布 HTTPS 的連接埠，`apps/web/nginx-tls.conf` 加入 TLS listener，`apps/web/nginx.conf` 及 `docker-compose.deploy.yml` 正確轉送隔離代理的 scheme 和來源。`scripts/smoke.py` 支援信任測試 CA 並驗證重新導向，一般 CI 會執行 HTTPS 冒煙。
+- Database migrations added/applied: 無新增。沿用原隔離部署與官方語料。
+- API/Schema changes: 無。代理覆寫來源與協定標頭，讓 FastAPI 的尾斜線重新導向保留 HTTPS 與原始主機及連接埠。
+- Commands actually run and results: Compose 建置與啟動、Nginx 含及不含 HTTPS 設定的語法檢查均通過。只有 `127.0.0.1:18443` 發布到主機。使用一天期測試憑證核對 TLS 1.2／1.3、系統未信任的憑證會被拒，指定該憑證後 HTTPS 冒煙、速率限制及官方專利版本、分頁與原始檔雜湊檢查均通過。驗證測試帳號註冊、登入、讀取和刪除。pytest 90 passed、7 skipped，Ruff lint 和格式通過。
+- Tests NOT run and reason: 本輪未啟用 PostgreSQL pytest 整合，未以瀏覽器安裝測試憑證信任或重跑完整模型流程。一般 CI 新加入的 HTTPS 步驟未取得遠端完成結果。既有 [官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469) 屬較早提交。
+- Data sources checked (exact URL/date) and license/access notes: 沿用既有第 024019、053028 期，未下載新來源。
+- Known bugs / risks / blockers: 外部網域公開 CA 憑證與續期、實際反向代理、防火牆、外部主機連線尚待驗證。人工相關性評分尚待完成。
+- Decisions made (ADR links): 保留目前單一 Nginx 入口。只在使用 HTTPS 覆蓋檔時掛載部署方提供的憑證，預設綁定回環位址。
+- Uncommitted changes / file ownership warnings: 測試憑證及私鑰位於作業系統暫存目錄，均未進入 repository。隔離測試服務已停止。
+- Next 1–3 concrete actions: 驗證 HTTPS 遠端冒煙與官方 E2E，完成人工相關性複核，取得實際主機及憑證後驗收公開部署。
+- Exact reproduction steps: 依 [HTTPS 部署操作](SETUP.md#使用自備憑證啟用-https) 啟動隔離 Compose，以 `scripts/smoke.py --deployment --deployment-rate-limit --ca-file` 驗證同源 HTTPS。

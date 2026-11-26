@@ -40,7 +40,20 @@ python scripts/smoke.py --api http://127.0.0.1:18123 --web http://127.0.0.1:1812
 
 匯入公開文件 `202639611` 的全文並索引後，建立測試帳號，輸入「光硬化性樹脂組成物」。執行 AI 拆解後保留該技術特徵，選擇「搜尋並保存」，再開啟該文件的全文版本執行「比對並保存證據」及「匯出 PDF 報告」。在瀏覽器網路面板可核對回應的 `application/pdf` 與 `Cache-Control: private, no-store`。
 
-此設定綁定回環位址。若開放給其他裝置，需由部署端設定 TLS、存取與速率限制，並管理 PostgreSQL 與原始物件備份。這些外部服務設定尚未實測。
+此設定綁定回環位址。跨裝置使用時可啟用下列 HTTPS 覆蓋檔，並依主機拓樸管理防火牆、存取及備份。
+
+### 使用自備憑證啟用 HTTPS
+
+準備與部署網域相符的 PEM 憑證鏈和私鑰，放在版本庫之外。使用支援 `!override` 的 Docker Compose，將 HTTPS 覆蓋檔放在靜態部署覆蓋檔之後。
+
+```powershell
+$env:TLS_CERTIFICATE_FILE = 'C:/secure/patentscope/fullchain.pem'
+$env:TLS_KEY_FILE = 'C:/secure/patentscope/privkey.pem'
+$tlsArgs = $deployArgs + @('-f', 'docker-compose.tls.yml')
+docker compose @tlsArgs up -d --build --wait --wait-timeout 180
+```
+
+預設只將 HTTPS 發布在 `127.0.0.1:18443`。對外部署時設定 `TLS_BIND_ADDRESS` 為指定對外介面、`TLS_PORT` 為對外連接埠，並依憑證網域及連接埠執行 `scripts/smoke.py --deployment`。如果由內部 CA 簽發，可加 `--ca-file <CA 憑證>` 進行憑證及主機名稱驗證。API、資料庫和工作程序沒有主機連接埠，API 僅信任隔離容器網路上的代理標頭。憑證續期後以相同參數執行 `docker compose @tlsArgs up -d --no-deps --force-recreate web`，再重跑 HTTPS 冒煙。外部網域、公開 CA 續期與防火牆仍須在目標主機驗證。
 
 ## M1 官方樣本重現
 

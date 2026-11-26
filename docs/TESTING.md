@@ -15,6 +15,7 @@ npm run build --prefix apps/web
 | HTTP 冒煙 | `python scripts/smoke.py --api <API> --web <Web>` | API 存活、資料庫就緒、同源代理與首頁。 |
 | 靜態部署 | `python scripts/smoke.py --api <Web> --web <Web> --deployment` | Nginx 編譯頁、同源 API、內容安全政策及瀏覽器安全標頭。官方遠端工作使用部署覆蓋檔後執行。 |
 | 入口速率限制 | 在隔離部署的冒煙命令加上 `--deployment-rate-limit` | 使用空請求驗證兩個分組的 HTTP 429 和 JSON 錯誤契約，也驗證就緒與工作進度請求仍抵達 API。需從配額尚未用完的本機來源執行。 |
+| HTTPS 部署 | `python scripts/smoke.py --api <HTTPS> --web <HTTPS> --deployment --ca-file <測試 CA 憑證>` | 驗證憑證與主機名稱、首頁、同源 API 及尾斜線重新導向。公開 CA 已在本機信任時可省略 `--ca-file`。 |
 | 真實資料回歸 | [SETUP](SETUP.md) 的匯入及 `verify_document` | 核對 XML、文件版本、請求項與說明書。 |
 | 私人研究流程 | [Playwright CLI 驗收](SETUP.md#m4-瀏覽器驗收) | 帳號隔離、檢索、比對、保存、刪除及 PDF 下載。 |
 | 評估 | [檢索評估](EVALUATION.md) | 三種檢索基線與引文完整性，人工評分待完成。 |
