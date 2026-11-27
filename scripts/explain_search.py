@@ -11,7 +11,9 @@ from services.api.db import engine
 from services.api.patents import (
     PUBLIC_DOCUMENTS,
     SEMANTIC_SEARCH,
+    GazettePdfQuery,
     RankedSearchRequest,
+    gazette_pdf_statement,
     lexical_statement,
     search_filter_params,
     semantic_statement,
@@ -146,16 +148,57 @@ def benchmark(repetitions: int) -> dict:
         }
 
 
+def benchmark_gazette_pdf(repetitions: int) -> dict:
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY"
+        )
+        cases = []
+        publication_pages = {("202640162", 1)}
+        grant_pages = {("I941082", 1), ("I941082", 2)}
+        for stage, expected in (
+            (None, publication_pages | grant_pages),
+            ("publication", publication_pages),
+            ("grant", grant_pages),
+        ):
+            request = GazettePdfQuery(query="動態導通電阻", document_stage=stage)
+            statement = gazette_pdf_statement(request)
+            if statement is None:
+                raise ValueError("The fixed gazette PDF query produced no terms")
+            rows = conn.exec_driver_sql(*statement).mappings().all()
+            actual = {(row["publication_no"], row["page_number"]) for row in rows}
+            if actual != expected or len(rows) != len(expected):
+                raise ValueError(
+                    "Expected the isolated paired official gazette PDF fixture"
+                )
+            cases.append(
+                {
+                    "document_stage": stage,
+                    "matching_pages": len(rows),
+                    **sample(conn, statement, repetitions),
+                }
+            )
+        return {
+            "measured_at": datetime.now(UTC).isoformat(),
+            "postgresql": conn.exec_driver_sql("SHOW server_version").scalar_one(),
+            "query": "動態導通電阻",
+            "warmup_per_statement": 1,
+            "cases": cases,
+        }
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repetitions", type=int, default=7)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--gazette-pdf", action="store_true")
     args = parser.parse_args()
     if not 1 <= args.repetitions <= 30:
         parser.error("Repetitions must be between 1 and 30")
     if args.output.exists():
         parser.error("Output file already exists")
-    result = benchmark(args.repetitions)
+    measure = benchmark_gazette_pdf if args.gazette_pdf else benchmark
+    result = measure(args.repetitions)
     with args.output.open("x", encoding="utf-8") as destination:
         json.dump(result, destination, ensure_ascii=False, indent=2)
         destination.write("\n")

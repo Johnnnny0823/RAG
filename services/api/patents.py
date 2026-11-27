@@ -980,16 +980,12 @@ def patent_detail(document_id: UUID):
     )
 
 
-@router.post("/gazette-pdfs/search", response_model=GazettePdfResults)
-def search_gazette_pdfs(request: GazettePdfQuery):
+def gazette_pdf_statement(request: GazettePdfQuery):
     terms = " & ".join(dict.fromkeys(tokenize(request.query)))
     if not terms:
-        return api_error(422, "INVALID_REQUEST", "請輸入可檢索的公報文字。")
-    try:
-        with engine.connect() as conn:
-            rows = (
-                conn.exec_driver_sql(
-                    f"""WITH q AS (SELECT to_tsquery('simple', %s) AS terms)
+        return None
+    return (
+        f"""WITH q AS (SELECT to_tsquery('simple', %s) AS terms)
                     SELECT {SUMMARY_FIELDS}, p.page_number, ia.checksum AS artifact_sha256,
                            ia.source_locator, ts_rank(p.search_terms, q.terms) AS score
                     {DOCUMENTS_FROM}
@@ -1010,17 +1006,24 @@ def search_gazette_pdfs(request: GazettePdfQuery):
                     ORDER BY score DESC, d.publication_no, d.id, ia.checksum,
                              p.page_number, ia.id, da.record_locator
                     LIMIT %s OFFSET %s""",
-                    (
-                        terms,
-                        request.document_stage,
-                        request.document_stage,
-                        request.limit + 1,
-                        request.offset,
-                    ),
-                )
-                .mappings()
-                .all()
-            )
+        (
+            terms,
+            request.document_stage,
+            request.document_stage,
+            request.limit + 1,
+            request.offset,
+        ),
+    )
+
+
+@router.post("/gazette-pdfs/search", response_model=GazettePdfResults)
+def search_gazette_pdfs(request: GazettePdfQuery):
+    statement = gazette_pdf_statement(request)
+    if statement is None:
+        return api_error(422, "INVALID_REQUEST", "請輸入可檢索的公報文字。")
+    try:
+        with engine.connect() as conn:
+            rows = conn.exec_driver_sql(*statement).mappings().all()
     except SQLAlchemyError:
         return unavailable()
     items = []

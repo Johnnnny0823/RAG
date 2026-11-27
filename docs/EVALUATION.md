@@ -148,3 +148,21 @@ JSON 保留計畫名稱、使用的索引、節點實際筆數、記憶體／磁
 python -m scripts.benchmark_search_load --api http://127.0.0.1:18039 --requests-per-group 20 --output search-load.json
 python scripts/smoke_patents.py --official-e2e --expanded-corpus --api http://127.0.0.1:18039
 ```
+
+## 2026-11-27 公報 PDF 詞彙查詢計畫
+
+以 117 個官方文件版本與 11 頁公報 PDF 的隔離 PostgreSQL 16.14，使用 API 角色及唯讀交易，對「動態導通電阻」執行實際 API 的頁面查詢 SQL。每種條件預熱一次，量測七次 `EXPLAIN (ANALYZE, BUFFERS)`。工作負載只含同案公開及公告兩份 PDF。
+
+| 文件階段 | 命中頁數 | SQL P50／P95（毫秒） |
+| --- | ---: | ---: |
+| 全部 | 3 | 0.75／0.88 |
+| 公開 | 1 | 0.77／1.25 |
+| 公告 | 2 | 0.18／0.21 |
+
+三種條件的計畫都使用 `gazette_pdf_pages_pkey` 依附件連結頁面，再核對詞彙。這組語料的計畫未選用 `ix_gazette_pdf_terms`。數字只涵蓋資料庫執行時間，未量測大量 PDF、HTTP 傳輸或併發效能。
+
+依 [固定官方樣本與 PDF 驗收](TESTING.md#官方公報-pdf-回歸) 準備隔離庫，設定 PG 連線環境後執行下列命令。腳本會核對預期文件與頁碼，並匯出節點、時序及緩衝區計數。
+
+```powershell
+python -m scripts.explain_search --gazette-pdf --repetitions 7 --output gazette-pdf-plans.json
+```

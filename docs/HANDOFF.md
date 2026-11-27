@@ -2182,3 +2182,22 @@
 - Uncommitted changes / file ownership warnings: 只更新整合分支文件，下載原件與測試報告留在隔離環境。
 - Next 1–3 concrete actions: 匯入人工複核結果後重跑檢索評估，取得正式部署環境後驗收對外連線。
 - Exact reproduction steps: 依 TESTING 的固定官方樣本及 PDF 章節，啟動獨立包裝版 Compose，匯入固定 XML，執行 PDF API smoke，再以 `PATENTSCOPE_E2E_TIPO=versions`、`PATENTSCOPE_E2E_GAZETTE_PDFS=1` 和 `PATENTSCOPE_E2E_CROSS_BROWSER=1` 驗收。
+
+## 公報 PDF 詞彙查詢計畫
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `3458c9e`。
+- Current milestone and status: PDF 查詢的隔離資料庫基準已量測，整體交付 IN_PROGRESS。
+- Goal of this session: 量測實際 PDF 詞彙查詢 SQL，保留可重跑的查詢計畫，並啟動 GitHub 官方完整回歸。
+- Files changed (with purpose): `services/api/patents.py` 提供 API 與評估腳本共用的 PDF 查詢，`scripts/explain_search.py` 加入唯讀 `--gazette-pdf` 模式，`docs/EVALUATION.md`、`PROGRESS.md`、`HANDOFF.md` 更新證據與限制。
+- Database migrations added/applied: 無新增。量測使用 `0021_gazette_pdf_search` 隔離庫及受限 API 角色。
+- API/Schema changes: API 輸入、輸出及 SQL 條件沿用，新增評估命令選項。
+- Commands actually run and results: Ruff 格式及 lint 通過，pytest 128 通過、9 跳過。固定官方 PDF 的 SQL 呼叫命中 3／1／2 頁，核對公開與公告號及頁碼。HTTP 核對分頁及無詞彙輸入回傳 422。Chromium 三種裝置、Firefox、WebKit 的 `patent-number.spec.ts` 共五項通過。SQL P50／P95、規劃器所用索引及限制見 EVALUATION。
+- Tests NOT run and reason: 本輪本機未執行九項 PostgreSQL pytest 整合套件，另以隔離庫實跑真實資料及 API。新版[完整官方遠端工作](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)於 `3458c9e` 啟動，交接時仍在執行，未選用 PDF 首次下載關卡。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 量測沿用 DATA_SOURCES 所列並已驗證的 `202640162`、`I941082`，本輪無新取件。
+- Known bugs / risks / blockers: 11 頁基準未驗證大量 PDF 或併發效能。遠端 PDF 取件 403、人工複核及公開部署仍需分別驗收。
+- Decisions made (ADR links): API 與基準共用 SQL，以唯讀交易量測並逐組核對固定命中頁碼。
+- Uncommitted changes / file ownership warnings: 僅在整合工作樹操作。查詢計畫 JSON 留在本機隔離資料目錄。
+- Next 1–3 concrete actions: 確認遠端工作終態。取得人工複核及部署環境後完成評估與主機驗收。
+- Exact reproduction steps: 依 EVALUATION 指令執行 `python -m scripts.explain_search --gazette-pdf --repetitions 7 --output gazette-pdf-plans.json`。
