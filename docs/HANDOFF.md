@@ -2155,11 +2155,11 @@
 - Files changed (with purpose): `services/ingestion/gazette_pdf.py` 驗證版本及已保存的官方附件，`scripts/smoke_gazette_pdfs.py` 改為各下載一次再離線重跑，`tests/test_gazette_pdf.py` 補錯版前置檢查，SETUP、TESTING、PROGRESS 更新操作與結果。
 - Database migrations added/applied: 無新增。使用隔離 PostgreSQL 現有 `0021_gazette_pdf_search`。
 - API/Schema changes: API 與資料庫結構無變更，匯入 CLI 增加 `--replay-stored`。
-- Commands actually run and results: `ruff check .`、`ruff format --check .` 通過，pytest 128 通過、9 跳過。隔離庫命令拒絕將 `I941082` 附到公開版本。將官方 `202640162` 及 `I941082` 離線重新解析並寫入空白暫存頁面表，連跑兩次仍分別是 2 頁及 9 頁，且拒絕未保存的雜湊。起點提交的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45972232794)通過。
+- Commands actually run and results: `ruff check .`、`ruff format --check .` 通過，本機 pytest 128 通過、9 跳過。隔離庫命令拒絕將 `I941082` 附到公開版本。將官方 `202640162` 及 `I941082` 離線重新解析並寫入空白暫存頁面表，連跑兩次仍分別是 2 頁及 9 頁，且拒絕未保存的雜湊。Windows 本機重取兩份官方 PDF，雜湊一致。`1b10861` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45973006766)通過，PostgreSQL 整合 9 項、Playwright 12 項通過，API 冒煙與隔離 HTTPS 驗收亦通過。
 - Tests NOT run and reason: 本機 pytest 未啟用九項 PostgreSQL 全套整合測試。此次無前端變更，沿用上輪瀏覽器結果。PDF 掃描辨識未納入此切片。
 - Data sources checked (exact URL/date) and license/access notes: 2026-11-27 使用 DATA_SOURCES 記錄的兩份已驗證官方原檔。此次回填不更新來源檢查日期。
 - Known bugs / risks / blockers: [遠端官方 PDF 來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45972249350)呼叫公告個案端點收到 HTTP 403 與 `text/html`，首次下載仍需官方端點允許取用。人工相關性評分與對外主機驗收待完成。
 - Decisions made (ADR links): 回填只接受同版、同卷期及同官方來源的既有附件，並重新核對 SHA-256 及首頁。回填只補頁面索引。
 - Uncommitted changes / file ownership warnings: 只在整合工作樹作業，官方原件未納入 Git。
-- Next 1–3 concrete actions: 觀察新版一般 CI。官方完整取件從可正常存取的環境執行。匯入人工作業完成的複核表後重跑評估。
+- Next 1–3 concrete actions: 官方完整取件從可正常存取的環境重跑。匯入人工作業完成的複核表後重跑評估。取得正式部署環境後執行對外驗收。
 - Exact reproduction steps: 依 SETUP 對已存在的官方附件加入 `--replay-stored` 並帶 `--apply-to`、`--expected-sha256`，再依 TESTING 核對原件、頁碼及 API。
