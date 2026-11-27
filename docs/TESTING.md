@@ -387,4 +387,4 @@ npx playwright test --reporter=list
 
 另以舊版匯入 `I940474` 後升版，在同一個隔離庫用原參數重跑兩次。既有批次維持 1 筆、文件 UUID 相同、優先權維持 13 筆。資料存在時降版受到保護，遷移仍為 `0023_patent_priorities`。
 
-設定 `PATENTSCOPE_E2E_TIPO=grant-types`、`PATENTSCOPE_E2E_CROSS_BROWSER=1` 及 `PATENTSCOPE_E2E_URL`，執行 `npm run test:e2e --prefix apps/web -- patent-number.spec.ts`。Chromium 桌面／平板／手機、Firefox、WebKit 五項通過，核對 `D246917` 的日本優先權、日期及官方資料集和 XML 定位。API 專用角色的 PostgreSQL 測試另外確認可讀優先權、無刪除權限。
+設定 `PATENTSCOPE_E2E_TIPO=grant-types`、`PATENTSCOPE_E2E_CROSS_BROWSER=1` 及 `PATENTSCOPE_E2E_URL`，執行 `npm run test:e2e --prefix apps/web -- patent-number.spec.ts`。Chromium 桌面／平板／手機、Firefox、WebKit 五項通過，核對 `D246917` 的日本優先權、日期及官方資料集和 XML 定位。API 專用角色的 PostgreSQL 測試另外確認可讀優先權、無刪除權限。 `f85c79b` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46082787440)及[基礎官源 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46082788078)也通過。
