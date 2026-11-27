@@ -21,6 +21,8 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 來源包含資料集、提供機關、授權、批次、匯入時間、原檔雜湊及檔內位置。已保存且通過官方來源檢查的原檔 URL 才會回傳。缺少日期、kind code 或原檔 URL 時回傳 `null`。`content_scope` 區分 `metadata_and_abstract`、`claims_only` 和 `fulltext`。已核對並附加的官方公報 PDF 可從其來源 URL 開啟，專利詳情亦提供同版本的頁面文字 API。[公報 PDF](#官方公報-pdf-頁面文字)
 
+已驗證的新型個案摘要同時提供 `abstract_zh`／`abstract_en` 預覽，以及 `sections` 內帶 `abstract-zh`／`abstract-en` 類型的原文、XPath 與原檔雜湊。比對可引用該摘要段落。既有書目來源的摘要仍維持原有欄位。
+
 詳情的 `legal_events` 列出同一申請案已匯入的官方異動公報。公告版本須再符合事件上的證書號。事件種類目前有 `extinguishment`（消滅公告）與 `gazette_correction`（公報更正），並提供證書號、卷期、匯入時間、已知生效日、來源、雜湊及定位。`effective_on` 僅在來源提供時有值。空陣列表示已匯入語料沒有該案的事件，最新權利狀態仍應查智慧財產局。
 
 查無相符號碼時回傳 HTTP 200 與空清單；未知文件版本回傳 404。格式或參數錯誤為 422，資料庫不可查詢為 503。錯誤均使用 `error.code`、`error.message` 和 `error.request_id`。

@@ -141,6 +141,21 @@ def test_utility_model_uses_the_verified_model_dtd_version():
     assert claim.number == 1
     with pytest.raises(ValueError, match="Unexpected specification format"):
         parse_specification(model, "000000001", grant_number="I000001")
+    abstracts = b'<abstract lang="tw"><abstract-dtext>DEMO <b>TW</b></abstract-dtext></abstract><abstract lang="en"><abstract-dtext>DEMO EN</abstract-dtext></abstract>'
+    model = model.replace(b"<description>", abstracts + b"<description>")
+    _, chinese, english = parse_specification(
+        model, "000000001", grant_number="M000001"
+    )[0]
+    assert (chinese.kind, chinese.text, chinese.locator) == (
+        "abstract-zh",
+        "DEMO TW",
+        "/specification/abstract[1]/abstract-dtext[1]",
+    )
+    assert (english.kind, english.text, english.locator) == (
+        "abstract-en",
+        "DEMO EN",
+        "/specification/abstract[2]/abstract-dtext[1]",
+    )
 
 
 def test_design_specification_keeps_description_without_claims():

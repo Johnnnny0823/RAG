@@ -9,6 +9,8 @@ DOCTYPE = b'<!DOCTYPE invention-specification SYSTEM "../invention-specification
 GRANT_DOCTYPE = b'<!DOCTYPE specification SYSTEM "../specification.dtd">'
 DTD_VERSION = "A103.1.0"
 GRANT_DTD_VERSIONS = {"I": DTD_VERSION, "M": "1.0.0", "D": "2.0.1"}
+UTILITY_SPEC_PARSER_VERSION = "tipo-issue-2"
+ABSTRACT_LANGUAGES = {"tw": "zh", "en": "en"}
 
 
 @dataclass(frozen=True)
@@ -95,4 +97,26 @@ def parse_specification(
         raise ValueError("Unexpected claims in design specification")
     if grant_prefix != "D" and not claims:
         raise ValueError("Specification is missing claims")
+    if grant_prefix == "M":
+        abstracts = []
+        seen = set()
+        for index, item in enumerate(root.findall("abstract"), 1):
+            language = ABSTRACT_LANGUAGES.get(item.get("lang", ""))
+            paragraphs = item.findall("abstract-dtext")
+            if language is None or not paragraphs:
+                continue
+            if language in seen or len(paragraphs) != 1:
+                raise ValueError("Ambiguous abstract in utility model specification")
+            text = "".join(paragraphs[0].itertext())
+            if text.strip():
+                abstracts.append(
+                    Section(
+                        f"abstract-{language}",
+                        1,
+                        text,
+                        f"/{root_name}/abstract[{index}]/abstract-dtext[1]",
+                    )
+                )
+            seen.add(language)
+        sections.extend(abstracts)
     return sections, claims

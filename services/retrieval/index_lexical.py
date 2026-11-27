@@ -33,6 +33,12 @@ CHUNKS = """
                ('abstract_zh', d.abstract_zh), ('abstract_en', d.abstract_en)
     ) AS fields(field, body)
     WHERE d.id = ANY(%s::uuid[]) AND fields.body IS NOT NULL
+      AND NOT EXISTS (
+          SELECT 1 FROM patent_sections s
+          WHERE s.document_id = d.id
+            AND s.section_type IN ('abstract-zh', 'abstract-en')
+            AND replace(s.section_type, '-', '_') = fields.field
+      )
     UNION ALL
     SELECT document_id, 'claim', claim_number, text FROM patent_claims
     WHERE document_id = ANY(%s::uuid[])

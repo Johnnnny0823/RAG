@@ -29,7 +29,12 @@ from services.ingestion.issue_index import parse_issue_index
 from services.ingestion.issue_manifest import fetch_specifications, resolve_spec_urls
 from services.ingestion.legal_linking import link_events
 from services.ingestion.patentpub import PatentPublication
-from services.ingestion.specification import Claim, Section, parse_specification
+from services.ingestion.specification import (
+    UTILITY_SPEC_PARSER_VERSION,
+    Claim,
+    Section,
+    parse_specification,
+)
 
 PARSER_VERSION = "tipo-issue-1"
 DATASET_URL = "https://data.gov.tw/dataset/15996"
@@ -105,7 +110,21 @@ def store_document(
         source_hash = hashlib.sha256(
             f"{source_hash}:{spec.artifact.checksum}".encode()
         ).hexdigest()
-    key = (jurisdiction, record.publication_no, source_hash, PARSER_VERSION, stage)
+    parser_version = (
+        UTILITY_SPEC_PARSER_VERSION
+        if has_fulltext and stage == "grant" and record.publication_no.startswith("M")
+        else PARSER_VERSION
+    )
+    abstracts = (
+        {
+            section.kind: section.text
+            for section in spec.sections
+            if section.kind in {"abstract-zh", "abstract-en"}
+        }
+        if spec
+        else {}
+    )
+    key = (jurisdiction, record.publication_no, source_hash, parser_version, stage)
     document_id = conn.exec_driver_sql(
         """INSERT INTO patent_documents
            (jurisdiction, publication_no, source_hash, parser_version,
@@ -120,8 +139,8 @@ def store_document(
             record.publication_date,
             record.title_zh,
             record.title_en,
-            record.abstract_zh,
-            record.abstract_en,
+            abstracts.get("abstract-zh", record.abstract_zh),
+            abstracts.get("abstract-en", record.abstract_en),
             Jsonb(
                 {
                     "applicants": record.applicants,
@@ -310,7 +329,12 @@ def import_issue(args):
         dataset_id = conn.exec_driver_sql(
             "SELECT id FROM source_datasets WHERE dataset_key = %s", (dataset_key,)
         ).scalar_one()
-        batch_key = (dataset_id, args.batch, checksum, PARSER_VERSION)
+        batch_parser_version = (
+            UTILITY_SPEC_PARSER_VERSION
+            if any(number.startswith("M") for number in specs_raw)
+            else PARSER_VERSION
+        )
+        batch_key = (dataset_id, args.batch, checksum, batch_parser_version)
         batch_id = conn.exec_driver_sql(
             """INSERT INTO ingestion_batches (dataset_id, batch_key, checksum, parser_version, status)
                VALUES (%s,%s,%s,%s,'processing') ON CONFLICT DO NOTHING RETURNING id""",

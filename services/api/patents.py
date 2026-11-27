@@ -398,7 +398,8 @@ LEXICAL_SEARCH = f"""
         SELECT t.document_id, max(
             ts_rank(t.terms, q.terms) *
             CASE WHEN t.field IN ('title_zh', 'title_en') THEN 3
-                 WHEN t.field IN ('abstract_zh', 'abstract_en') THEN 2 ELSE 1 END
+                 WHEN t.field IN ('abstract_zh', 'abstract_en', 'section:abstract-zh', 'section:abstract-en')
+                    THEN 2 ELSE 1 END
         ) AS score, array_agg(DISTINCT t.field ORDER BY t.field) AS lexical_match_fields
         FROM patent_lexical_chunks t CROSS JOIN query q
         WHERE t.tokenizer_version = %s AND t.terms @@ q.terms
@@ -711,6 +712,7 @@ def search_patents(
                     ORDER BY d.document_stage, d.publication_no,
                        CASE d.metadata_jsonb->>'content_scope'
                          WHEN 'fulltext' THEN 0 WHEN 'claims_only' THEN 1 ELSE 2 END,
+                       d.parser_version DESC,
                        d.id
                     LIMIT %s OFFSET %s""",
                     (number, limit + 1, offset),

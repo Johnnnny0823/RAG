@@ -2258,3 +2258,22 @@
 - Uncommitted changes / file ownership warnings: 原件與測試資料僅存放於隔離目錄，無正式資料庫變更。
 - Next 1–3 concrete actions: 將個案摘要的原始定位納入索引與比對。依官方個案的圖式引用確認圖式可用性，再考慮顯示。核對遠端執行終態。
 - Exact reproduction steps: 依 TESTING「新型與設計公告回歸」選取 `M688679`、`D247328`，執行 `verify_document --grant-issue 053030 --grant-fulltext`，再啟用 `PATENTSCOPE_E2E_GRANT_FULLTEXT=1`。
+
+## 新型個案摘要及原文引用
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `016f256`。
+- Current milestone and status: 固定官方新型個案的中英文摘要已通過匯入、檢索、引用及瀏覽器驗收，整體 IN_PROGRESS。
+- Goal of this session: 保留並引用官方個案摘要，維持舊版來源及獨立索引。
+- Files changed (with purpose): `specification.py` 解析 `abstract-dtext`，`import_issue.py` 為新摘要使用 `tipo-issue-2`，`verify_document.py` 逐版核對預覽及原文，`index_lexical.py` 以可追溯摘要段落建索引。API、UI、測試及文件串接摘要來源及定位。
+- Database migrations added/applied: 無新增。隔離庫新增 `M688679` 的單一新版與 222 個詞彙片段，其中兩個摘要片段各索引一次。
+- API/Schema changes: 新型個案回傳中英文摘要預覽，以及 `sections` 中帶 `abstract-zh`／`abstract-en` 的可信原文定位。相同範圍的號碼查詢依 parser 版本排序後再依 UUID 排序。
+- Commands actually run and results: Ruff 格式與 lint、前端 lint、TypeScript 建置通過，pytest 132 項通過、9 跳過。官方個案匯入首輪新增，重跑重用，`verify_document` 核對新舊版。實際 API 核對兩種語言摘要及 XML 位置，只有新版命中所選摘要詞彙。Qwen `qwen2.5:1.5b` 回應 `supported`，程式核對證據類型 `abstract-en`、XPath、原檔雜湊與逐字偏移。Playwright 五項通過。起點[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45977243097)通過。
+- Tests NOT run and reason: 本輪未執行完整 PostgreSQL pytest 或重建向量，另以隔離庫完成詞彙及使用本機模型的引用驗收。遠端[完整官方工作](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)仍在建立語意索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 沿用已下載並校驗的 `M688679` 原件，完整官方網址及 SHA-256 見 DATA_SOURCES。
+- Known bugs / risks / blockers: 其他 DTD 格式及新型全文向量未驗證，圖式與公開部署尚待，人工關聯性複核未完成。
+- Decisions made (ADR links): 摘要以有可追溯 XPath 的文字段落保存，也提供詳情預覽。搜尋不重複索引預覽欄位。重跑舊案建立解析新版以保留舊引用。
+- Uncommitted changes / file ownership warnings: 只操作整合工作樹與隔離庫。原檔未納入 Git。
+- Next 1–3 concrete actions: 驗證新型摘要向量，確認官方圖式下載及媒體格式，追蹤完整遠端驗收。
+- Exact reproduction steps: 依 TESTING 重新匯入 `M688679` 個案，執行 `verify_document M688679 --grant-issue 053030 --grant-fulltext` 及舊版對照，建立詞彙索引，檢索英文摘要中的片語並用同一段原文比對。

@@ -39,7 +39,7 @@
 | `M688679`，申請號 `114206535` | [個案 XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330M688679/114206535-A0305.xml)，72,760 bytes，SHA-256 `adef492f39db89c809115dd68d028cbff178a3634fbcf11f38de3ab0739c3093`，DTD `1.0.0`。核對 208 段說明書及 10 項請求項。 |
 | `D247328`，申請號 `113306657` | [個案 XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330D247328/113306657-A0305.xml)，4,689 bytes，SHA-256 `f8c18dc5cb114fc70bd54b38a4cd8ea97b57772adac3568603e88c36c3e83d18`，DTD `2.0.1`。核對 7 段說明書，原檔沒有請求項。 |
 
-兩案都保留獨立的 S01 版本及個案文字版本。`fulltext` 涵蓋本次驗證的個案說明書及來源提供的請求項。個案摘要欄位、圖式內容、新型與設計法律異動及自動補期尚待整合，圖式的實際下載可用性仍待驗證。
+兩案都保留獨立的 S01 版本及個案文字版本。`fulltext` 涵蓋本次驗證的個案說明書及來源提供的請求項。`M688679` 的個案 XML 另有 `lang=tw` 及 `lang=en` 的摘要。新版 `tipo-issue-2` 保留原文及 `/specification/abstract[1]/abstract-dtext[1]`、`/specification/abstract[2]/abstract-dtext[1]`，既有版本可繼續回查。圖式內容、新型與設計法律異動及自動補期尚待整合，圖式的實際下載可用性仍待驗證。
 
 ## 公告期別的固定封存檔
 

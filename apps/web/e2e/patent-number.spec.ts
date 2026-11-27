@@ -19,11 +19,15 @@ test("utility model and design expose their actual official content @grant-types
     await lookup.getByLabel("專利號碼").fill(number);
     await lookup.getByRole("button", { name: "查詢專利號碼" }).click();
     const match = lookup.getByRole("listitem").filter({ hasText: new RegExp(`公告 ${number}.*${label}`) });
-    await expect(match).toBeVisible();
-    await match.getByRole("button").click();
+    await expect(match.first()).toBeVisible();
+    await match.first().getByRole("button").click();
     await expect(page.getByText(`請求項（${claims}）`, { exact: true })).toBeVisible();
     await expect(page.getByText(`說明書段落（${sections}）`, { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: `在智慧財產局查詢公告號 ${number}` })).toBeVisible();
+    if (number === "M688679") {
+      await expect(page.getByRole("heading", { name: "中文摘要" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "英文摘要" })).toBeVisible();
+    }
   }
 });
 

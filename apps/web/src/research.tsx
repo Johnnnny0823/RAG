@@ -120,9 +120,9 @@ function retrievalReason(hit: Hit): string {
   const fields = hit.lexical_match_fields ?? [];
   const areas = [
     fields.some((field) => field.startsWith("title_")) && "標題",
-    fields.some((field) => field.startsWith("abstract_")) && "摘要",
+    fields.some((field) => field.startsWith("abstract_") || field.startsWith("section:abstract-")) && "摘要",
     fields.includes("claim") && "請求項",
-    fields.some((field) => field.startsWith("section:")) && "說明書",
+    fields.some((field) => field.startsWith("section:") && !field.startsWith("section:abstract-")) && "說明書",
   ].filter(Boolean);
   return [
     hit.lexical_rank !== null && (areas.length ? `詞彙命中${areas.join("、")}` : "詞彙檢索候選"),
@@ -684,6 +684,9 @@ export function Research() {
     else if (search) void run("正在檢索專利…", () => loadResults({ ...search, offset }));
   }
 
+  const abstractSections = selected?.detail.sections.filter((section) => section.section_type.startsWith("abstract-")) ?? [];
+  const descriptionSections = selected?.detail.sections.filter((section) => !section.section_type.startsWith("abstract-")) ?? [];
+
   return (
     <>
       <p className="mb-6 max-w-3xl text-slate-700">描述你的構想，從已索引的 TIPO 公開資料找出相關技術。涵蓋範圍以本機已匯入的批次為限。比對僅供研究參考。</p>
@@ -1094,7 +1097,14 @@ export function Research() {
             <div><dt>分類</dt><dd>{selected.detail.classifications.map((item) => `${item.scheme} ${item.code}`).join("、") || "未提供"}</dd></div>
           </dl>
           <h3>摘要</h3>
-          <p className="mb-4 whitespace-pre-wrap">{selected.detail.abstract_zh || selected.detail.abstract_en || "此版本未提供摘要。"}</p>
+          {abstractSections.length ? abstractSections.map((section) => (
+            <div className="mb-4" key={section.section_type}>
+              <h4>{section.section_type === "abstract-zh" ? "中文摘要" : "英文摘要"}</h4>
+              <p id={`section-${section.section_type}-${section.ordinal}`} tabIndex={-1} className="scroll-mt-4 whitespace-pre-wrap">
+                {highlighted(section.original_text, section.source, highlight?.documentId === selected.hit.document_id ? highlight.evidence : null)}
+              </p>
+            </div>
+          )) : <p className="mb-4 whitespace-pre-wrap">{selected.detail.abstract_zh || selected.detail.abstract_en || "此版本未提供摘要。"}</p>}
           <details className="my-3"><summary>請求項（{selected.claims.length}）</summary>
             {selected.claims.map((claim) => (
               <div key={claim.claim_number} id={`claim-${claim.claim_number}`} tabIndex={-1} className="my-2 scroll-mt-4">
@@ -1109,8 +1119,8 @@ export function Research() {
               </div>
             ))}
           </details>
-          <details className="my-3"><summary>說明書段落（{selected.detail.sections.length}）</summary>
-            {selected.detail.sections.map((section) => <p id={`section-${section.section_type}-${section.ordinal}`} tabIndex={-1} key={`${section.section_type}-${section.ordinal}`} className="my-2 whitespace-pre-wrap">第 {section.ordinal} 段 · {highlighted(section.original_text, section.source, highlight?.documentId === selected.hit.document_id ? highlight.evidence : null)}</p>)}
+          <details className="my-3"><summary>說明書段落（{descriptionSections.length}）</summary>
+            {descriptionSections.map((section) => <p id={`section-${section.section_type}-${section.ordinal}`} tabIndex={-1} key={`${section.section_type}-${section.ordinal}`} className="my-2 whitespace-pre-wrap">第 {section.ordinal} 段 · {highlighted(section.original_text, section.source, highlight?.documentId === selected.hit.document_id ? highlight.evidence : null)}</p>)}
           </details>
           <h3>權利異動公報</h3>
           <p className="mb-2 text-sm text-slate-700">涵蓋已匯入的公報卷期。查詢目前權利狀態時，請以智慧財產局最新資料為準。</p>

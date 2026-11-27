@@ -91,6 +91,8 @@ python scripts/smoke_semantic.py --official-e2e --api http://127.0.0.1:8000
 
 要驗證個案說明書，另準備[第 053030 期索引與全文清單](DATA_SOURCES.md#新型與設計個案說明書)，選取 `M688679`、`D247328`。依 [公告個案全文流程](SETUP.md#追蹤匯入及建立索引) 先匯入 S01 書目，再用同樣選案加上 `--manifest` 及 `--manifest-url` 匯入個案；使用先前下載快取時加 `--cache-only`。用 `verify_document <公告號> --grant-issue 053030 --grant-fulltext` 核對個案原件，並重跑詞彙索引。另設 `PATENTSCOPE_E2E_GRANT_FULLTEXT=1` 後，前述 Playwright 測試會核對新型 208 段、10 項請求項及設計 7 段、0 項請求項。
 
+新型 `M688679` 個案的中英文摘要使用解析版 `tipo-issue-2`，重新匯入會建立獨立版本。`verify_document M688679 --grant-issue 053030 --grant-fulltext` 預設核對新版；舊版使用 `--parser-version tipo-issue-1`。前述個案 Playwright 也會核對新版顯示兩種語言的摘要。
+
 ### 官方公報 PDF 回歸
 
 以獨立 Compose 專案匯入上述固定官方語料後，可驗證同案的公開及公告 PDF。此測試先驗證錯版的附件請求在連線前遭拒。兩份 PDF 各實取一次，後續透過 `--replay-stored` 重跑，再用 API 核對去重及 XML 請求項來源。若智財局拒絕下載，首次取件關卡會依實際 HTTP 狀態回報失敗。

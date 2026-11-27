@@ -219,7 +219,7 @@ def compare(document_id: UUID, request: CompareRequest):
         method = None
         basis = "此版本缺少可追溯的請求項或說明書。"
         if passages:
-            basis = "在已保存且可追溯的請求項及說明書中未找到指定字詞。"
+            basis = "在已保存且可追溯的原文中未找到指定字詞。"
             if request.semantic_evidence:
                 basis += (
                     "本機嵌入模型目前無法使用。"
