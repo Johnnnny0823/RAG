@@ -140,7 +140,7 @@ npm run test:e2e --prefix apps/web -- patent-number.spec.ts
 
 2026-11-27 以 Windows Docker Desktop 的新 Compose 專案從空白資料庫遷移到 `0021_gazette_pdf_search`。`seed_tipo_e2e --offline --skip-semantic` 核對 24 件先前保存的官方 XML，再重建 117 個官方版本及 1,560 個詞彙索引片段。`smoke_gazette_pdfs` 隨後從智財局首次下載兩份 PDF、核對錯版與原始 XML，並實跑離線回填及 PDF 詞彙檢索。Chromium 桌面／平板／手機、Firefox 及 WebKit 共五項號碼查詢測試通過。要加跑 Firefox 與 WebKit，請設定 `PATENTSCOPE_E2E_CROSS_BROWSER=1`。
 
-2026-11-28，同一組公報的[遠端執行](https://github.com/Johnnnny0823/RAG/actions/runs/46079497499)完成固定 XML 雜湊檢查、匯入及詞彙 API，但在取得 `202640162` 的個案 JSON 時收到 HTTP 403（`text/html`）。該次走不到 PDF 下載及瀏覽器。同期在本機直接使用相同來源檢查，公開 `202640162` 的 22,539 bytes 與公告 `I941082` 的 1,349,889 bytes 均符合固定 SHA-256。遠端回應的原因未確認。
+2026-11-28，同一組公報的[遠端執行](https://github.com/Johnnnny0823/RAG/actions/runs/46079497499)完成固定 XML 雜湊檢查、匯入及詞彙 API，但在取得 `202640162` 的個案 JSON 時收到 HTTP 403（`text/html`）。該次走不到 PDF 下載及瀏覽器。同期在本機直接使用相同來源檢查，公開 `202640162` 的 22,539 bytes 與公告 `I941082` 的 1,349,889 bytes 均符合固定 SHA-256。調整順序後以 `850523a` [重跑](https://github.com/Johnnnny0823/RAG/actions/runs/46079899351)，公開與公告號查詢、新型與設計查詢、法律異動及部署限流均通過。選用 PDF 再次在相同端點收到 HTTP 403，對應的 PDF 瀏覽器步驟跳過，整次工作保留失敗。遠端回應的原因未確認。
 
 若 Docker Desktop 無法掛載 `D:` 的樣本目錄，可把固定 XML 快取複製到 `$env:TEMP` 內另一個資料夾，再以 `--offline --skip-semantic` 驗證及匯入。上述本機驗收與 GitHub runner 的 [HTTP 403](https://github.com/Johnnnny0823/RAG/actions/runs/45972249350)是不同環境的取件結果。
 
