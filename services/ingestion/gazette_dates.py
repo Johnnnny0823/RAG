@@ -109,12 +109,9 @@ def parse_gazette(
             continue
         if stage == "publication" and actual_type != application_type:
             raise ValueError("Unexpected gazette application type")
-        if actual_type == "design":
-            application_no = reference.findtext("document-id/doc-number", "").strip()
-            if not re.fullmatch(r"[0-9]{9}(?:D[0-9]{2})?", application_no):
-                raise ValueError("Invalid design application number")
-        else:
-            application_no = patent_number(reference, "document-id/doc-number")
+        application_no = patent_number(
+            reference, "document-id/doc-number", design=actual_type == "design"
+        )
         publication_no = bibliography.findtext(
             "publication-reference/document-id/doc-number", ""
         ).strip()

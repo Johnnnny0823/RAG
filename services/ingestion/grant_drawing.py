@@ -16,7 +16,7 @@ from services.ingestion.artifacts import (
 )
 from services.ingestion.download import download_verified_path
 from services.ingestion.import_issue import link_artifact
-from services.ingestion.patentpub import parse_xml
+from services.ingestion.patentpub import APPLICATION_NUMBER_PATTERN, parse_xml
 from services.ingestion.specification import GRANT_DOCTYPE
 
 HOST = "ftps://ftp.tipo.gov.tw"
@@ -72,7 +72,10 @@ def attach(store, document_id, specification_sha256, position, expected_sha256):
     number, application, issue, source, digest, key, size = verified
     if not (
         re.fullmatch(r"[IMD][0-9]{1,12}", number)
-        and re.fullmatch(r"[0-9]{9}", application)
+        and re.fullmatch(
+            APPLICATION_NUMBER_PATTERN if number.startswith("D") else r"[0-9]{9}",
+            application,
+        )
         and re.fullmatch(r"[0-9]{6}", issue)
     ):
         raise ValueError("Invalid official grant identifiers")

@@ -120,6 +120,10 @@ API 冒煙覆蓋錯版附加拒絕、官方取件、重跑去重、JPEG 原始�
 
 隔離 API 驗收另以 `{"query":"載具","loc":"13-99"}` 跑詞彙、語意及混合檢索，三種模式皆回傳同一設計。保存搜尋後，回查 `request.loc` 並下載 PDF，驗證報告保留代碼 `13-99`。
 
+### 衍生設計申請號回歸
+
+依 [第 053028 期原件](DATA_SOURCES.md#原設計及衍生設計的編號與來源) 準備獨立庫，匯入 `--grant-number D246928 --grant-number D246929` 各一個 S01 與個案版本，再以 `gazette_dates --stage grant --year 115 --issue 053028 --include-other-grants` 核對日期和 LOC。使用 `grant_drawing` 對 `D246929` 的個案版本附加 `--figure 1`，個案 XML 和 JPEG 的 SHA-256 見資料來源。設定 `PATENTSCOPE_E2E_TIPO=derived-design`，執行 `npm run test:e2e --prefix apps/web -- patent-number.spec.ts`。案例比較原號與全形衍生號，確認各回傳兩個自身文件版本，並可開啟衍生設計說明書及圖式。
+
 ### 官方公報 PDF 回歸
 
 以獨立 Compose 專案匯入上述固定官方語料後，可驗證同案的公開及公告 PDF。此測試先驗證錯版的附件請求在連線前遭拒。兩份 PDF 各實取一次，後續透過 `--replay-stored` 重跑，再用 API 核對去重及 XML 請求項來源。若智財局拒絕下載，首次取件關卡會依實際 HTTP 狀態回報失敗。

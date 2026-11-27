@@ -1,5 +1,31 @@
 import { expect, test } from "@playwright/test";
 
+test("keeps a derived design separate from its original design @derived-design", async ({ page }) => {
+  await page.goto("/");
+  const lookup = page.getByRole("region", { name: "專利號碼查詢" });
+  const number = lookup.getByLabel("專利號碼");
+  const submit = lookup.getByRole("button", { name: "查詢專利號碼" });
+  await number.fill("１１４３０２３１８ｄ０１");
+  await submit.click();
+  const derived = lookup.getByRole("listitem").filter({ hasText: "公告 D246929" });
+  await expect(derived).toHaveCount(2);
+  await expect(lookup.getByText(/公告 D246928/)).toHaveCount(0);
+  await derived.filter({ hasText: "全文" }).getByRole("button").click();
+  await expect(page.getByText("114302318D01", { exact: true })).toBeVisible();
+  await expect(page.getByText("說明書段落（1）", { exact: true })).toBeVisible();
+  await page.getByText("官方圖式（1）", { exact: true }).click();
+  const drawing = page.getByRole("img", { name: "官方圖式 1" });
+  await drawing.scrollIntoViewIfNeeded();
+  await expect.poll(() => drawing.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  await page.getByRole("button", { name: "查詢同案其他版本" }).click();
+  await expect(page.getByRole("button", { name: /公告 D246928/ })).toHaveCount(0);
+
+  await number.fill("114302318");
+  await submit.click();
+  await expect(lookup.getByRole("listitem").filter({ hasText: "公告 D246928" })).toHaveCount(2);
+  await expect(lookup.getByText(/公告 D246929/)).toHaveCount(0);
+});
+
 test("utility model and design expose their actual official content @grant-types", async ({ page }) => {
   await page.goto("/");
   const lookup = page.getByRole("region", { name: "專利號碼查詢" });

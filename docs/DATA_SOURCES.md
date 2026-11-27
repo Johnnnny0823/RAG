@@ -56,7 +56,20 @@
 
 2026-11-27 核對第 053028 期的[官方完整書目](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053028/patent.xml)，23,778,073 bytes，SHA-256 `836c3c9db01099dfe38fa1d15e9e1d3116180126c02f5179ebcf17542c7bd5c8`。書目含 1,095 筆發明、349 筆新型及 196 筆設計。每一筆設計都提供 `classification-locarno/main-classification`，樣本版次皆為 `15`。來源為智財局發布，目錄列免費、每月更新及政府資料開放授權條款第 1 版。[官方資料集 15972](https://data.gov.tw/dataset/15972)
 
-固定驗收的 `D246917`／`112306158` 的申請日為 `2023-11-29`、公告日為 `2026-10-01`、LOC `13-99`；新型 `M687984`／`114206949` 的申請日為 `2025-07-02`、公告日同為 `2026-10-01`。有 12 筆設計書目的申請號帶 `D01`，解析保留尾碼。此輪驗收未將衍生設計匯入，既有九位申請號查詢契約仍適用。
+固定驗收的 `D246917`／`112306158` 的申請日為 `2023-11-29`、公告日為 `2026-10-01`、LOC `13-99`；新型 `M687984`／`114206949` 的申請日為 `2025-07-02`、公告日同為 `2026-10-01`。有 12 筆設計書目的申請號帶 `D01`，解析保留尾碼。
+
+### 原設計及衍生設計的編號與來源
+
+2026-11-27 核對智財局編碼規則，衍生設計由九位原設計申請號加 `D` 及從 `01` 開始的兩位序號組成。第 053028 期書目與封存清單中的原設計 `114302318`（公告 `D246928`）和衍生設計 `114302318D01`（公告 `D246929`）保留為不同申請案。兩案依各自書目定位補入申請日 `2025-05-21`、公告日 `2026-10-01` 和第 15 版 LOC `26-06`。[智財局編號說明](https://www.tipo.gov.tw/tw/patents/546-7241.html)
+
+同一卷期的[清單](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index_all.xml)為 16,394,615 bytes，SHA-256 `03e60d4c62ac2f36b6d201d12b69735827db8cdc4d4a90d18f523eb645f7f39a`。清單指定的兩份個案 XML 都是 DTD `1.0.0`，各有一個說明書段落及零項請求項。個案目錄、識別與雜湊逐筆核對，沿用資料集 15987 的授權條件。[官方資料集](https://data.gov.tw/dataset/15987)
+
+| 公告號 | 個案原件 |
+| --- | --- |
+| `D246928` | [XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053028/5328D246928/114302318-A0305.xml)，2,902 bytes，SHA-256 `ad6b07bf406f57b216a590a09efde0c66586176213f323d418144695c756d608` |
+| `D246929` | [XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053028/5328D246929/114302318D01-A0305.xml)，2,936 bytes，SHA-256 `0f68a2e3b310bdbe5860b7fc8608201eb4f020a9cccefd2fe3ac5fe2f936a5b2` |
+
+`D246929` 個案的首張官方 [JPEG](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053028/5328D246929/IMG-2/Draw/114302318D01-A0305-14-0001-1.JPG) 為 114,315 bytes，SHA-256 `7c05913e3c7256fdd5f2edc3e1e31a04678f2500e06138024e98be6293f9d399`，原文位置 `/specification/drawings/figure[1]/img[1]`。
 
 ## 公告期別的固定封存檔
 

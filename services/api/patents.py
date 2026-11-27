@@ -24,6 +24,7 @@ from services.api.db import engine
 from services.api.identity import IdentityError, IdentityUnavailable
 from services.api.model_limits import ModelBusy, model_slot
 from services.ingestion.artifacts import LocalObjectStore, RawArtifact
+from services.ingestion.patentpub import APPLICATION_NUMBER_PATTERN
 from services.retrieval.embeddings import (
     EmbeddingError,
     LocalEmbeddingModel,
@@ -582,7 +583,11 @@ def missing_semantic_index():
 
 def normalize_number(number: str, number_type: NumberType) -> str:
     normalized = unicodedata.normalize("NFKC", number).strip().upper()
-    pattern = r"[IMD][0-9]{1,12}" if number_type == "grant" else r"[0-9]{9}"
+    pattern = {
+        "grant": r"[IMD][0-9]{1,12}",
+        "application": APPLICATION_NUMBER_PATTERN,
+        "publication": r"[0-9]{9}",
+    }[number_type]
     if not re.fullmatch(pattern, normalized):
         raise ValueError("專利號碼格式與查詢類型不符。")
     return normalized

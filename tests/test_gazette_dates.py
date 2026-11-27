@@ -78,12 +78,12 @@ def test_design_gazette_classification_is_bound_to_the_certificate_and_edition()
     ]
     assert record.loc == (("13-99", "15"),)
     assert record.application_no == "000000002"
-    derived = design.replace(b"000000002", b"000000002D01")
+    derived = design.replace(b"000000002", b"000300002D01")
     assert (
         parse_gazette(derived, "grant", "115", "024019", include_other_grants=True)[
             "D000001"
         ].application_no
-        == "000000002D01"
+        == "000300002D01"
     )
     with pytest.raises(ValueError, match="application type disagree"):
         parse_gazette(

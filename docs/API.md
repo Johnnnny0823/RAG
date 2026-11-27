@@ -17,7 +17,7 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 | GET | `/api/v1/patents/{document_id}` | 指定文件版本的書目、摘要、申請人、發明人、IPC、說明書段落與來源。 |
 | GET | `/api/v1/patents/{document_id}/claims` | 同一文件版本的請求項，依編號排序，包含可取得的獨立項標記及原文定位。 |
 
-`number_type` 必填，支援 `application`（9 位數申請號）、`publication`（9 位數發明公開號）及 `grant`（I 為發明、M 為新型、D 為設計）。輸入做全半形與大小寫正規化，保留前導零。分頁預設 `limit=20`、`offset=0`，上限分別為 100 與 10,000。同一號碼的不同文件版本可並存，全文版本排在同一文件的書目版本之前。S01 設計書目仍回傳 `metadata_and_abstract`，來源無摘要時為 `null`，請求項回傳空陣列。
+`number_type` 必填，支援 `application`（9 位數申請號，或設計號加 `D01` 至 `D99` 的衍生設計案號）、`publication`（9 位數發明公開號）及 `grant`（I 為發明、M 為新型、D 為設計）。輸入做全半形與大小寫正規化，保留前導零與衍生尾碼。申請號採完整精確比對，查原設計 `114302318` 及衍生設計 `114302318D01` 分別回傳各自版本。分頁預設 `limit=20`、`offset=0`，上限分別為 100 與 10,000。同一號碼的不同文件版本可並存，全文版本排在同一文件的書目版本之前。S01 設計書目仍回傳 `metadata_and_abstract`，來源無摘要時為 `null`，請求項回傳空陣列。
 
 來源包含資料集、提供機關、授權、批次、匯入時間、原檔雜湊及檔內位置。已保存且通過官方來源檢查的原檔 URL 才會回傳。缺少日期、kind code 或原檔 URL 時回傳 `null`。`content_scope` 區分 `metadata_and_abstract`、`claims_only` 和 `fulltext`。已核對並附加的官方公報 PDF 可從其來源 URL 開啟，專利詳情亦提供同版本的頁面文字 API。[公報 PDF](#官方公報-pdf-頁面文字)
 

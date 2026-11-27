@@ -12,6 +12,7 @@ from urllib.parse import urlsplit
 from urllib.request import urlopen
 
 from services.ingestion.artifacts import MAX_GAZETTE_XML_BYTES, MAX_XML_BYTES
+from services.ingestion.patentpub import APPLICATION_NUMBER_PATTERN
 
 logger = logging.getLogger(__name__)
 INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10"
@@ -24,7 +25,7 @@ ARCHIVES = {
 }
 SPEC_PATH = re.compile(
     r"/(?:InventionPubXML|PatentIsuRegSpecXMLA)/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_-]+\.xml"
-    r"|/PatentPubXML/[0-9]{3}/PatentPubXML_[0-9]{6}/[0-9]+[IMD][0-9]+/[0-9]{9}-[A-Za-z0-9_-]+\.xml"
+    rf"|/PatentPubXML/[0-9]{{3}}/PatentPubXML_[0-9]{{6}}/(?:[0-9]+[IM][0-9]+/[0-9]{{9}}|[0-9]+D[0-9]+/{APPLICATION_NUMBER_PATTERN})-[A-Za-z0-9_-]+\.xml"
 )
 EVENT_PATH = re.compile(
     r"/PatentIsuModXML/[0-9]{3}/PatentIsuModXML_[0-9]{6}/(?:index|sud08|sud24)\.xml"

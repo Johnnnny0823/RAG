@@ -86,3 +86,6 @@ def test_design_keeps_bibliography_without_creating_claims():
     assert grant.publication_no == "D000001"
     assert grant.title_en == "DEMO"
     assert claims == []
+    derived = design.replace(b"000000001", b"000300001D01")
+    grant, _ = parse_grant(derived, "053028", "D000001")
+    assert grant.application_no == "000300001D01"

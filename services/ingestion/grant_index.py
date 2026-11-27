@@ -127,7 +127,9 @@ def _parse_grant(item: ET.Element, position: int, issue: str, certificate: str):
     return PatentPublication(
         locator=locator,
         application_no=patent_number(
-            biblio, "application-reference/document-id/doc-number"
+            biblio,
+            "application-reference/document-id/doc-number",
+            design=application_type == "design",
         ),
         publication_no=certificate,
         filing_date=None,

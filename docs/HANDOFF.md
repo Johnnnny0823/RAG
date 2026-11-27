@@ -2334,3 +2334,22 @@
 - Uncommitted changes / file ownership warnings: 只在整合工作樹和隔離庫操作。
 - Next 1–3 concrete actions: 確認新版一般 CI，接續衍生設計身份與新型、設計的異動來源驗證。
 - Exact reproduction steps: 依 TESTING 設計 LOC 篩選回歸，先匯入第 053028 期指定案件，再跑 `gazette_dates --include-other-grants` 與 `PATENTSCOPE_E2E_TIPO=loc`。
+
+## 原設計與衍生設計的申請號隔離
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `e4705bc`。
+- Current milestone and status: 兩件真實原設計及衍生設計的匯入與跨版本檢查已完成，整體 IN_PROGRESS。
+- Goal of this session: 從官方清單下載、保存、驗證及查詢 `D01` 尾碼的衍生設計，維持兩案各自的來源、日期及圖式。
+- Files changed (with purpose): `patentpub.py`、`grant_index.py`、`gazette_dates.py` 保留衍生號碼，`download.py` 與 `grant_drawing.py` 驗證衍生個案檔名，`specification.py` 支援已核對的設計 DTD `1.0.0`，`patents.py` 支援號碼正規化與精確查詢。其餘為測試與文件。
+- Database migrations added/applied: 無新增。空白隔離庫遷移至 `0021_gazette_pdf_search`，建立兩個申請案、四個文件版本、10 個詞彙片段，補入各版本日期、LOC 及原始來源。
+- API/Schema changes: `number_type=application` 支援設計案號尾碼 `D01`–`D99`。公告號、公開號與原申請案的精確查詢使用原有語意。
+- Commands actually run and results: 實取兩份個案 XML 及一張衍生設計 JPEG。首輪解析因設計原件使用已知範圍外的 DTD `1.0.0` 失敗，核對兩份 XML 後補支援並通過。個案匯入重跑 `reused=true`，`verify_document` 逐字驗證各一段說明書。真實 API 驗證書目日期、LOC 及 SHA-256，原設計的衍生圖式路由回傳 404。Chromium 三尺寸、Firefox、WebKit 共五項 Playwright 通過，皆開啟衍生圖式並核對原號及衍生號。pytest 139 項通過、9 項跳過，Ruff、前端 lint、型別檢查及 Compose 建置通過。起點[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46020836862)通過。
+- Tests NOT run and reason: 本機未啟用九項 PostgreSQL pytest，已用全新隔離庫實跑。尚未量測此組新案向量或跨期衍生設計涵蓋。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 查核 https://www.tipo.gov.tw/tw/patents/546-7241.html，實取第 053028 期清單指定個案 XML 與圖式。各原檔完整 URL 及雜湊見 DATA_SOURCES。
+- Known bugs / risks / blockers: 目前保留申請案精確身分，同案版本不包含原設計與衍生設計的親屬導覽。其他衍生格式、兩類法律異動、人工相關性評分及正式主機驗收仍待。
+- Decisions made (ADR links): 尾碼視為官方完整識別的一部分，使用精確匹配，分開保留書目及個案來源。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹操作，官方原檔未納入 Git。
+- Next 1–3 concrete actions: 查核新型與設計法律異動書目是否可按公告號及申請號無歧義配對，再爭取完成目標主機與人工評估。
+- Exact reproduction steps: 依 TESTING 的衍生設計申請號回歸建立第 053028 期隔離庫，開啟 `PATENTSCOPE_E2E_TIPO=derived-design` 執行 Playwright。

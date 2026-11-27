@@ -9,6 +9,7 @@ from datetime import date
 from services.ingestion.artifacts import MAX_XML_BYTES
 
 PARSER_VERSION = "tipopatentpub-1"
+APPLICATION_NUMBER_PATTERN = r"(?:[0-9]{9}|[0-9]{3}3[0-9]{5}D(?:0[1-9]|[1-9][0-9]))"
 
 
 @dataclass(frozen=True)
@@ -43,9 +44,10 @@ def optional_text(node: ET.Element, path: str) -> str | None:
     return (node.findtext(path) or "").strip() or None
 
 
-def patent_number(node: ET.Element, path: str) -> str:
+def patent_number(node: ET.Element, path: str, *, design: bool = False) -> str:
     value = optional_text(node, path)
-    if not value or not re.fullmatch(r"[0-9]{9}", value):
+    pattern = APPLICATION_NUMBER_PATTERN if design else r"[0-9]{9}"
+    if not value or not re.fullmatch(pattern, value):
         raise ValueError(f"Invalid or missing {path}")
     return value
 

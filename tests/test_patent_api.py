@@ -51,6 +51,13 @@ def test_query_number_normalization_keeps_leading_zeroes():
     assert patents.normalize_number(" ｉ９４１０８２ ", "grant") == "I941082"
     assert patents.normalize_number(" ｍ６８７９８４ ", "grant") == "M687984"
     assert patents.normalize_number("ｄ２４６９１７", "grant") == "D246917"
+    assert (
+        patents.normalize_number("１１４３０２３１８ｄ０１", "application")
+        == "114302318D01"
+    )
+    for invalid in ("114302318D00", "114102318D01"):
+        with pytest.raises(ValueError):
+            patents.normalize_number(invalid, "application")
 
 
 def test_source_url_omits_unverified_links_and_tokens():

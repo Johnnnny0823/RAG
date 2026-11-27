@@ -8,7 +8,7 @@ from services.ingestion.patentpub import parse_xml
 DOCTYPE = b'<!DOCTYPE invention-specification SYSTEM "../invention-specification.dtd">'
 GRANT_DOCTYPE = b'<!DOCTYPE specification SYSTEM "../specification.dtd">'
 DTD_VERSION = "A103.1.0"
-GRANT_DTD_VERSIONS = {"I": DTD_VERSION, "M": "1.0.0", "D": "2.0.1"}
+GRANT_DTD_VERSIONS = {"I": (DTD_VERSION,), "M": ("1.0.0",), "D": ("1.0.0", "2.0.1")}
 UTILITY_SPEC_PARSER_VERSION = "tipo-issue-2"
 ABSTRACT_LANGUAGES = {"tw": "zh", "en": "en"}
 
@@ -35,17 +35,16 @@ def parse_specification(
     # The publisher's known external DTD is inert. All other declarations fail in parse_xml.
     grant = grant_number is not None
     grant_prefix = grant_number[:1] if grant_number is not None else None
-    expected_version = (
-        GRANT_DTD_VERSIONS.get(grant_prefix)
+    expected_versions = (
+        GRANT_DTD_VERSIONS.get(grant_prefix, ())
         if grant_prefix is not None
-        else DTD_VERSION
+        else (DTD_VERSION,)
     )
     root_name = "specification" if grant else "invention-specification"
     root = parse_xml(data.replace(GRANT_DOCTYPE if grant else DOCTYPE, b"", 1))
     if (
-        expected_version is None
-        or root.tag != root_name
-        or root.get("dtd-version") != expected_version
+        root.tag != root_name
+        or root.get("dtd-version") not in expected_versions
         or root.get("application-num") != application_no
     ):
         raise ValueError("Unexpected specification format or application number")
