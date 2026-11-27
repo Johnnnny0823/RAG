@@ -1,6 +1,6 @@
 # 資料庫設計
 
-PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，此整合分支單一 head 為 `0022_legal_event_grant_types`。
+PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，此整合分支單一 head 為 `0023_patent_priorities`。
 
 `audit_logs` 保存帳號 UUID、操作、結果、資源類型、可選的資源 UUID 及時間。API 角色可讀取與新增，無更新或刪除權限。刪除帳號時由外鍵清理歷程。
 
@@ -27,6 +27,7 @@ erDiagram
     patent_applications ||--o{ patent_legal_events : "application_id"
     patent_documents ||--o{ document_artifacts : "document_id"
     ingestion_artifacts ||--o{ document_artifacts : "artifact_id"
+    document_artifacts ||--o{ patent_priorities : "document_id, artifact_id, record_locator"
     patent_documents ||--o{ patent_classifications : "document_id"
     patent_documents ||--o{ patent_sections : "document_id"
     patent_documents ||--o{ patent_claims : "document_id"
@@ -67,6 +68,7 @@ erDiagram
 | --- | --- | --- |
 | `patent_applications` | 申請案。 | `(jurisdiction, application_no)` 唯一。 |
 | `patent_documents` | 公開或公告的文件版本。`metadata_jsonb` 保存申請人、發明人與 `content_scope`（`fulltext`、`claims_only`、`metadata_and_abstract`）。 | `(jurisdiction, document_stage, publication_no, kind_code, source_hash, parser_version)` 唯一。來源內容或解析器改變會產生新版本，舊版本保留。 |
+| `patent_priorities` | 官方公告的版次優先權及其原始 XML 定位。 | 同一版本以國別原文、優先權號、日期去重。 |
 | `patent_classifications` | IPC 與來源提供的分類版次。 | `(document_id, scheme, code, version)` 唯一。 |
 | `patent_sections` | 說明書段落原文與 XPath、原始檔雜湊。 | `(document_id, section_type, ordinal)` 唯一。 |
 | `patent_claims` | 請求項原文、編號、是否獨立項與來源定位。 | `(document_id, claim_number)` 唯一。 |
@@ -111,7 +113,7 @@ erDiagram
 
 相較 [AGENTS.md](../AGENTS.md) 第 5 節的規劃，目前資料存放方式如下。
 
-- 申請人與發明人存於 `patent_documents.metadata_jsonb`。優先權資料尚未獨立建模。
+- 申請人與發明人存於 `patent_documents.metadata_jsonb`。`patent_priorities` 以文件版本保存官方公告的國別原文、優先權號及日期，申請案關係由文件回溯。同一版本的相同國別、號碼與日期只保存一次。資料透過複合外鍵引用 `document_artifacts`，保留優先權節點的原始序位。`0023_patent_priorities` 可在空表時降版，有資料時會停止。
 - `claim_dependencies` 保存原文明示的同版本援引。`patent_legal_events` 連結已核對的消滅及更正公告，涵蓋範圍見 [官方資料來源](DATA_SOURCES.md#專利權異動公報)。
 - 原始文件透過 `document_artifacts` 關聯 `ingestion_artifacts` 與檔內位置。公報 PDF 文字以原件及頁碼保存。
 - 技術特徵、比對判定與引文分別存於 `search_runs.request` 和 `search_run_comparisons.result` 的 JSONB。保存的搜尋保留候選排行與語料涵蓋資訊，重現舊索引所需的版本化語料快照尚未建立。

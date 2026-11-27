@@ -3,10 +3,17 @@
 import hashlib
 import re
 import xml.etree.ElementTree as ET
+from datetime import date
 
 from services.ingestion.artifacts import MAX_GAZETTE_XML_BYTES
 from services.ingestion.issue_index import party_names, text
-from services.ingestion.patentpub import PatentPublication, parse_xml, patent_number
+from services.ingestion.patentpub import (
+    PatentPublication,
+    PriorityClaim,
+    optional_text,
+    parse_xml,
+    patent_number,
+)
 from services.ingestion.specification import Claim
 
 GRANT_APPLICATION_TYPES = {"I": "invention", "M": "model", "D": "design"}
@@ -92,6 +99,22 @@ def grant_issue(biblio: ET.Element) -> str:
     return volume.zfill(3) + issue_number.zfill(3)
 
 
+def parse_priorities(biblio: ET.Element) -> tuple[PriorityClaim, ...]:
+    priorities = []
+    for ordinal, item in enumerate(biblio.findall("priority-claims/priority-claim"), 1):
+        country = optional_text(item, "country")
+        number = optional_text(item, "doc-number")
+        day = optional_text(item, "date")
+        if not country or not number or not day or not re.fullmatch(r"[0-9]{8}", day):
+            raise ValueError("Incomplete or invalid TIPO priority claim")
+        try:
+            priority_date = date.fromisoformat(day)
+        except ValueError:
+            raise ValueError("Invalid TIPO priority date") from None
+        priorities.append(PriorityClaim(ordinal, country, number, priority_date))
+    return tuple(priorities)
+
+
 def _parse_grant(item: ET.Element, position: int, issue: str, certificate: str):
     biblio = item.find("tw-bibliographic-data-grant")
     if biblio is None:
@@ -150,4 +173,5 @@ def _parse_grant(item: ET.Element, position: int, issue: str, certificate: str):
             and (code := (part.text or "").strip())
         ],
         source_hash=hashlib.sha256(ET.tostring(item, encoding="utf-8")).hexdigest(),
+        priorities=parse_priorities(biblio),
     ), claims

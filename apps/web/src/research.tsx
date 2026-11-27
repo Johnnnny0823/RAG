@@ -51,6 +51,7 @@ type Detail = {
   applicants: Party[];
   inventors: Party[];
   classifications: { scheme: string; code: string }[];
+  priorities: { country: string; priority_no: string; priority_date: string; source_url: string | null; dataset_url: string | null; source: SourceLocation }[];
   sections: { ordinal: number; section_type: string; original_text: string; source: SourceLocation }[];
   sources: { dataset_name: string; publisher: string; dataset_url: string | null; source_url: string | null; batch_key: string; ingested_at: string; artifact_sha256: string; record_locator: string }[];
   legal_events: {
@@ -1122,6 +1123,20 @@ export function Research() {
             <div><dt>發明人</dt><dd>{names(selected.detail.inventors)}</dd></div>
             <div><dt>分類</dt><dd>{selected.detail.classifications.map((item) => `${item.scheme} ${item.code}`).join("、") || "未提供"}</dd></div>
           </dl>
+          {selected.detail.priorities.length > 0 && (
+            <details className="my-3">
+              <summary>優先權（{selected.detail.priorities.length}）</summary>
+              <ul className="my-2 space-y-2 text-sm">
+                {selected.detail.priorities.map((item) => (
+                  <li key={item.source.xpath} className="break-words">
+                    <p>{item.country} · {item.priority_no} · <time dateTime={item.priority_date}>{item.priority_date}</time></p>
+                    {(item.dataset_url || item.source_url) && <a className="underline" href={item.dataset_url || item.source_url || undefined} target="_blank" rel="noreferrer">優先權官方來源</a>}
+                    <p>{item.source.xpath} · SHA-256 {item.source.artifact_sha256}</p>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           <h3>摘要</h3>
           {abstractSections.length ? abstractSections.map((section) => (
             <div className="mb-4" key={section.section_type}>

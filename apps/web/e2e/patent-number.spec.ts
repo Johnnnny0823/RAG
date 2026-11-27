@@ -51,6 +51,12 @@ test("utility model and design expose their actual official content @grant-types
     await expect(page.getByText(`請求項（${claims}）`, { exact: true })).toBeVisible();
     await expect(page.getByText(`說明書段落（${sections}）`, { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: `在智慧財產局查詢公告號 ${number}` })).toBeVisible();
+    if (number === "D246917") {
+      await page.getByText("優先權（1）", { exact: true }).click();
+      await expect(page.getByText("日本 · 2023-011690 · 2023-06-07", { exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "優先權官方來源" })).toHaveAttribute("href", "https://data.gov.tw/dataset/15987");
+      await expect(page.getByText(/tw-patent-grant\[368\].*priority-claim\[1\].*60936a7a/)).toBeVisible();
+    }
     if (number === "M688679") {
       await expect(page.getByRole("heading", { name: "中文摘要" })).toBeVisible();
       await expect(page.getByRole("heading", { name: "英文摘要" })).toBeVisible();

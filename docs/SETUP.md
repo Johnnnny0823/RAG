@@ -98,6 +98,10 @@ docker compose -p $project run --rm --no-deps -v "$($data.FullName):/inputs" mig
 docker compose -p $project run --rm --no-deps -v "$($data.FullName):/inputs:ro" migrate python -m services.ingestion.verify_document I941082 --grant-issue 053028 --objects /inputs/objects
 ```
 
+### 舊公告優先權補入
+
+升至 `0023_patent_priorities` 後，沿用原 Compose 專案、官方公告索引及原匯入參數重跑 `services.ingestion.import_issue`。若批次已存在並顯示 `reused: true`，會從同一筆已登錄的原件及文件定位新增優先權。維持原文件 UUID、原匯入批次及來源雜湊。資料按公告版本呈現。詳見[測試紀錄](TESTING.md#官方公告優先權驗收)。
+
 ### 第二期增量匯入
 
 在原本的資料卷和原始檔目錄追加第二期。使用下列指令可將該期 URL 與索引雜湊寫入資料庫。第一次應新增 25 筆書目，重跑同一匯入命令應回傳 `reused: true`。

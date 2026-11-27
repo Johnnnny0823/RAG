@@ -17,6 +17,7 @@ CORPUS_TABLES = (
     "gazette_pdf_pages",
     "document_artifacts",
     "patent_classifications",
+    "patent_priorities",
     "patent_sections",
     "patent_claims",
     "claim_dependencies",

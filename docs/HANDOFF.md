@@ -2715,3 +2715,22 @@
 - Uncommitted changes / file ownership warnings: 只更新整合工作樹的驗收文件，未改動日常資料庫。
 - Next 1–3 concrete actions: 人工相關性複核完成後重跑正式評估，並在目標環境驗收外部部署。選用的公報 PDF 到可正常取件的環境重驗。
 - Exact reproduction steps: 在 GitHub `Official patent E2E` 選 `coverage=full`、`gazette_pdf=false`。檢查語意索引、官方搜尋 API、Playwright 各組與部署限流結果。
+
+## 官方公告優先權
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `b2041a0`。
+- Current milestone and status: 官源優先權儲存、回溯和瀏覽器操作通過隔離驗收。整體交付 IN_PROGRESS。
+- Goal of this session: 補齊 Goal 的優先權資料模型，核對真實來源並透過專利詳情呈現。
+- Files changed (with purpose): `0023_patent_priorities.py`、`patentpub.py`、`grant_index.py`、`import_issue.py` 從公告匯入；`patents.py`、`provision_db_role.py` 與 `research.tsx` 提供讀取及呈現；擴充公告解析、PostgreSQL 權限及官源 Playwright 測試；更新來源、資料模型、操作、API 及驗收文件。
+- Database migrations added/applied: `0023_patent_priorities` 接在 `0022_legal_event_grant_types` 後。驗證空白及既有隔離資料庫。回填同一批次保持文件 UUID，降版會保護已匯入的優先權。
+- API/Schema changes: 專利詳情新增 `priorities`，含國別、日期、號碼、官方來源、精確 XPath 及 SHA-256。
+- Commands actually run and results: Ruff 格式、靜態檢查、前端 lint、型別及正式建置通過。Pytest 147 通過、11 預設跳過，另啟用隔離 PostgreSQL 後 11 項通過，均有既有 Starlette 警告。第 053028 期發明、新型及設計合計 15 筆優先權與原始 XML 相符。封裝部署官源 Playwright 5 項通過，涵蓋三種 Chromium 尺寸及桌面 Firefox、WebKit。
+- Tests NOT run and reason: 本次未重跑完整模型及官源工作。新增驗收聚焦公告優先權及其遷移。正式主機仍待。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 以已驗證雜湊的[第 053028 期官源 XML](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index.xml)核對。授權、格式及原檔規模見[來源紀錄](DATA_SOURCES.md#公告優先權)。
+- Known bugs / risks / blockers: 補入既有優先權須重跑相同公告匯入參數。第 024019 期公開索引未供應相同欄位。尚待正式環境與 34 組人工複核。
+- Decisions made (ADR links): 優先權依公告版本及來源保存，維持官方國別原文。使用文件與原件複合外鍵驗證來源關聯，未改動檢索及既有文件指紋。
+- Uncommitted changes / file ownership warnings: 本次測試使用獨立 Compose 專案和資料卷，日常資料庫未改動。
+- Next 1–3 concrete actions: 驗證新版一般 CI 及官源流程。取得人工標註與目標主機後完成相關性重評及部署。
+- Exact reproduction steps: 依 [官方公告優先權驗收](TESTING.md#官方公告優先權驗收)重跑。

@@ -18,7 +18,7 @@
 | Goal 項目 | 原始碼、文件與驗收範圍 |
 | --- | --- |
 | 1–2 前後端 | [React 入口](../apps/web/src/main.tsx)、[FastAPI 入口](../services/api/main.py)。`d397c41` 的 [CI](https://github.com/Johnnnny0823/RAG/actions/runs/45974697044) 通過正式打包及核心流程。 |
-| 3 PostgreSQL、遷移 | [資料庫設計](DATABASE.md)、[遷移](../database/migrations/versions)。空白隔離庫已遷移至 `0022_legal_event_grant_types`，並用第 053033 期原件驗證舊庫回填與降版保護。`b234a6e` 的一般 CI 通過 11 項 PostgreSQL 整合測試。 |
+| 3 PostgreSQL、遷移 | [資料庫設計](DATABASE.md)、[遷移](../database/migrations/versions)。空白隔離庫已遷移至 `0023_patent_priorities`。用第 053028 期官方原件驗證優先權 API、舊批次補入及降版保護。第 053033 期法律事件的舊庫回填與降版保護見 [測試](TESTING.md)。`b234a6e` 的一般 CI 通過 11 項 PostgreSQL 整合測試。 |
 | 4 TIPO 匯入 | [來源範圍](DATA_SOURCES.md)、[固定官方樣本](TESTING.md#自動建立固定官方樣本)及[公報 PDF 驗收](TESTING.md#官方公報-pdf-回歸)。固定發明公開、公告、選定異動卷期及新型、設計書目與各一件個案文字已有驗收。新型與設計各一張官方圖式已核對。第 053033 期的消滅與更正可匯入三類證書，並已驗證兩筆新型及設計更正能在詳情開啟原始來源。 兩筆更正已通過[官方來源工作流程](https://github.com/Johnnnny0823/RAG/actions/runs/46024203767)。兩筆消滅事件亦已通過 [894e229 來源 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46025212381)，涵蓋新型及衍生設計的完整申請號。 新型與設計可各別設定定期選取，第 053028 期已核對兩類公告各一件個案全文。以 053028–053029 期官方快照驗證兩類各自續跑，包含四個全文版本、書目日期、兩個卷期之檢查點及重跑略過。四個全文版本已建 83 條本機向量。 |
 | 5–6 Hybrid RAG 與比對 | [檢索程式](../services/retrieval)、[引文 E2E](../apps/web/e2e/patent-versions.spec.ts)。`a303f44` 的[完整官源 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46077504467)重建 117 個官方文件版本的 1,624 筆向量，通過語意、混合、重排、跨版引文、私人報告及新型與設計異動。 |
 | 7–8 研究管理與報告 | [工作台 E2E](../apps/web/e2e/workspace.spec.ts)、[報告與引文 E2E](../apps/web/e2e/tipo-research.spec.ts)。隔離流程已驗證帳號、歷史、引文及繁中 PDF。桌面及手機模擬已驗證重新登入後接續並完成同一官源搜尋。[基本鍵盤操作](TESTING.md#研究工作台鍵盤操作)涵蓋登入後焦點與用鍵盤建立研究專案，已通過 Chromium、Firefox 與 WebKit。 |
@@ -210,3 +210,5 @@
 - [x] 新型 `M688679` 及設計 `D247328` 各新增一件實取的官方原圖。API 核對 JPEG 位元、SHA-256、同版 XPath、重跑去重及跨版 404。[來源](DATA_SOURCES.md#新型與設計個案圖式) · [重現](TESTING.md#官方公告圖式回歸)
 - [x] 官方第 053028 期書目可補新型與設計日期，並為 `D246917` 保存第 15 版 LOC `13-99`。詞彙、語意、混合檢索、五項 Playwright、私人搜尋保存及 PDF 均驗證此條件。[來源](DATA_SOURCES.md#新型與設計日期及-loc-分類) · [測試](TESTING.md#設計-loc-篩選回歸)
 - [x] 原設計 `D246928`／`114302318` 和衍生設計 `D246929`／`114302318D01` 各有獨立書目與個案版。官方日期、LOC 與原文逐案驗證，且原設計無法讀取衍生設計圖式。[原件](DATA_SOURCES.md#原設計及衍生設計的編號與來源) · [回歸](TESTING.md#衍生設計申請號回歸)
+
+- [x] 公告優先權隨文件版本保存。以第 053028 期發明、新型與設計公告核對 15 筆 API 與 XML，舊批次補入不變更文件 UUID。詳見 [官方公告優先權驗收](TESTING.md#官方公告優先權驗收)。

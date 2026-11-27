@@ -226,6 +226,40 @@ def link_artifact(conn, document_id, artifact_id, locator):
     )
 
 
+def store_priorities(conn, document_id, artifact_id, record: PatentPublication):
+    if record.priorities:
+        conn.exec_driver_sql(
+            """INSERT INTO patent_priorities
+               (document_id, artifact_id, record_locator, ordinal, country, priority_no, priority_date)
+               VALUES (%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING""",
+            [
+                (
+                    document_id,
+                    artifact_id,
+                    record.locator,
+                    item.ordinal,
+                    item.country,
+                    item.number,
+                    item.date,
+                )
+                for item in record.priorities
+            ],
+        )
+
+
+def backfill_priorities(conn, batch_id, index_checksum, records):
+    by_locator = {record.locator: record for record in records if record.priorities}
+    if not by_locator:
+        return
+    for document_id, artifact_id, locator in conn.exec_driver_sql(
+        """SELECT da.document_id, da.artifact_id, da.record_locator
+           FROM ingestion_artifacts ia JOIN document_artifacts da ON da.artifact_id = ia.id
+           WHERE ia.batch_id = %s AND ia.checksum = %s AND da.record_locator = ANY(%s)""",
+        (batch_id, index_checksum, list(by_locator)),
+    ):
+        store_priorities(conn, document_id, artifact_id, by_locator[locator])
+
+
 def import_issue(args):
     store = LocalObjectStore(args.objects)
     data = read_xml(
@@ -344,10 +378,11 @@ def import_issue(args):
         ).scalar_one_or_none()
         if batch_id is None:
             result = conn.exec_driver_sql(
-                """SELECT status, counts_jsonb FROM ingestion_batches WHERE dataset_id = %s
+                """SELECT id, status, counts_jsonb FROM ingestion_batches WHERE dataset_id = %s
                    AND batch_key = %s AND checksum = %s AND parser_version = %s""",
                 batch_key,
             ).one()
+            backfill_priorities(conn, result.id, index_raw.checksum, records)
             return {"status": result.status, "reused": True, **result.counts_jsonb}
 
         issue_errors = [f"{issue.locator}: {issue.message}" for issue in issues]
@@ -396,6 +431,7 @@ def import_issue(args):
                 spec = Specification(index_raw, [], grant_claims[record.publication_no])
             document_id = store_document(conn, record, jurisdiction, spec, stage=stage)
             link_artifact(conn, document_id, index_id, record.locator)
+            store_priorities(conn, document_id, index_id, record)
             if spec is None:
                 metadata += 1
             elif spec.sections:

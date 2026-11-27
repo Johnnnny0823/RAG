@@ -13,6 +13,14 @@ APPLICATION_NUMBER_PATTERN = r"(?:[0-9]{9}|[0-9]{3}3[0-9]{5}D(?:0[1-9]|[1-9][0-9
 
 
 @dataclass(frozen=True)
+class PriorityClaim:
+    ordinal: int
+    country: str
+    number: str
+    date: date
+
+
+@dataclass(frozen=True)
 class PatentPublication:
     locator: str
     application_no: str
@@ -27,6 +35,7 @@ class PatentPublication:
     source_hash: str
     abstract_zh: str | None = None
     abstract_en: str | None = None
+    priorities: tuple[PriorityClaim, ...] = ()
 
 
 @dataclass(frozen=True)

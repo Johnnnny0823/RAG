@@ -1,9 +1,12 @@
+from datetime import date
+
 import pytest
 
 from services.ingestion.artifacts import MAX_XML_BYTES
 from services.ingestion.grant_index import (
     discover_grant_issue,
     parse_grant,
+    parse_priorities,
     parse_selected_grants,
 )
 from services.ingestion.patentpub import parse_xml
@@ -27,11 +30,27 @@ def test_grant_preserves_separate_certificate_and_application_identifiers():
     grant, [claim] = parse_grant(GRANT, "053028", "I000001")
     assert grant.publication_no == "I000001"
     assert grant.application_no == "000000001"
+    assert grant.priorities == ()
     assert claim.text == "DEMO exact text"
     assert claim.independent is None
     assert claim.locator == "/tw-patent-grants/tw-patent-grant[1]/claims/claim[1]"
     with pytest.raises(ValueError, match="requested issue"):
         parse_grant(GRANT, "053029", "I000001")
+
+
+def test_priority_keeps_verbatim_country_number_and_xpath_position():
+    data = b"""<bibliography><priority-claims>
+      <priority-claim sequence="7"><country>DEMO</country><doc-number>00/01,2</doc-number><date>20240229</date></priority-claim>
+    </priority-claims></bibliography>"""
+    [priority] = parse_priorities(parse_xml(data))
+    assert (priority.ordinal, priority.country, priority.number, priority.date) == (
+        1,
+        "DEMO",
+        "00/01,2",
+        date(2024, 2, 29),
+    )
+    with pytest.raises(ValueError, match="Invalid TIPO priority date"):
+        parse_priorities(parse_xml(data.replace(b"20240229", b"20230229")))
 
 
 def test_selected_grants_bind_each_publication_to_its_own_claims():

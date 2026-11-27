@@ -380,3 +380,11 @@ npx playwright test --reporter=list
 依[輪替步驟](SETUP.md#輪替-postgresql-執行帳號密碼)，切換初始密碼至第二組，再用初始測試密碼驗證回復。兩次切換後都從 API 與背景程序容器以新連線查核 `current_user = 'patentscope_api'`，並確認上一組密碼已被 PostgreSQL 拒絕。每次只重建 API 與背景程序，PostgreSQL 及 Nginx 的容器 ID 相同。
 
 初始、輪替與回復三階段均通過同源就緒檢查，同一個登入憑證可讀取原私人專案，實際背景工作均產出可下載的 PDF，並帶有 `Cache-Control: private, no-store`。案例結束後刪除測試帳號並停止隔離服務。此驗收涵蓋 Compose 執行帳號輪替，正式主機與管理帳號的輪替另行驗收。
+
+## 官方公告優先權驗收
+
+2026-11-28，以全新隔離資料卷升至 `0023_patent_priorities`。使用第 053028 期[官方公告索引](DATA_SOURCES.md#公告優先權)，以 `--verified-tipo --batch 053028 --index <grant.xml> --index-source-url <官方 FTPS 索引>` 匯入 `I940474`、`M687994`、`D246917` 及 `M687984`。各公告透過 `GET /api/v1/patents?number_type=grant&number=...` 查得 UUID，再用專利詳情查 `priorities`。發明 `I940474` 有 13 筆，新型 `M687994` 與設計 `D246917` 各 1 筆，新型 `M687984` 未提供優先權。15 筆國別、號碼、日期、XPath 與雜湊均對上原始 XML。
+
+另以舊版匯入 `I940474` 後升版，在同一個隔離庫用原參數重跑兩次。既有批次維持 1 筆、文件 UUID 相同、優先權維持 13 筆。資料存在時降版受到保護，遷移仍為 `0023_patent_priorities`。
+
+設定 `PATENTSCOPE_E2E_TIPO=grant-types`、`PATENTSCOPE_E2E_CROSS_BROWSER=1` 及 `PATENTSCOPE_E2E_URL`，執行 `npm run test:e2e --prefix apps/web -- patent-number.spec.ts`。Chromium 桌面／平板／手機、Firefox、WebKit 五項通過，核對 `D246917` 的日本優先權、日期及官方資料集和 XML 定位。API 專用角色的 PostgreSQL 測試另外確認可讀優先權、無刪除權限。

@@ -286,6 +286,15 @@ class PatentLegalEvent(BaseModel):
     record_locator: str
 
 
+class PatentPriority(BaseModel):
+    country: str
+    priority_no: str
+    priority_date: date
+    source_url: str | None
+    dataset_url: str | None
+    source: SourceLocation
+
+
 class PatentDetail(PatentVersion):
     abstract_zh: str | None
     abstract_en: str | None
@@ -297,6 +306,7 @@ class PatentDetail(PatentVersion):
     sources: list[SourceArtifact]
     sections: list[PatentSection]
     legal_events: list[PatentLegalEvent]
+    priorities: list[PatentPriority]
 
 
 class PatentClaim(BaseModel):
@@ -968,6 +978,24 @@ def patent_detail(document_id: UUID):
                 .all()
             )
             sources = document_sources(conn, document_id)
+            priorities = (
+                conn.exec_driver_sql(
+                    """SELECT p.country, p.priority_no, p.priority_date, ia.source_locator,
+                              s.official_url, ia.checksum AS artifact_sha256,
+                              p.record_locator || '/tw-bibliographic-data-grant/priority-claims/priority-claim['
+                                || p.ordinal || ']' AS xpath
+                       FROM patent_priorities p
+                       JOIN ingestion_artifacts ia ON ia.id = p.artifact_id
+                       JOIN ingestion_batches b ON b.id = ia.batch_id
+                       JOIN source_datasets s ON s.id = b.dataset_id
+                       WHERE p.document_id = %s AND NOT s.is_demo AND s.dataset_key = 'TIPO-15987'
+                         AND ia.status = 'parsed' AND b.status IN ('partial', 'complete')
+                       ORDER BY p.ordinal, p.priority_date, p.country, p.priority_no""",
+                    (document_id,),
+                )
+                .mappings()
+                .all()
+            )
             events = (
                 conn.exec_driver_sql(
                     """SELECT e.kind,e.certificate_no,e.effective_on,e.detail,e.record_locator,
@@ -997,6 +1025,18 @@ def patent_detail(document_id: UUID):
             "classifications": classifications,
             "sections": sections,
             "sources": sources,
+            "priorities": [
+                {
+                    **priority,
+                    "source_url": source_url(priority["source_locator"]),
+                    "dataset_url": source_url(priority["official_url"]),
+                    "source": {
+                        "xpath": priority["xpath"],
+                        "artifact_sha256": priority["artifact_sha256"],
+                    },
+                }
+                for priority in priorities
+            ],
             "legal_events": [
                 {
                     **event,

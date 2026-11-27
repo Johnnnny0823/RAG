@@ -209,3 +209,7 @@
 | `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053029/patent.xml` | `f9697f387ae35c46f9fc00af0aae8812a74ce7dbdf92be64993410cff42bd7d2` | 兩案公告日 2026-10-11 |
 | `ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053029/5329M688333/114206477-A0305.xml` | `840a63d3319265d51a323879277a3b64736e9215dad0ed952515416317b182d4` | 9,377 bytes，新型 10 項請求項、19 段說明書 |
 | `ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053029/5329D247113/113302416-A0305.xml` | `ae4f9b68c7d227afc3c9335d656ee666a0fdfee1a6a5f35f8cfd00a7473af229` | 1,362 bytes，設計 2 段說明書 |
+
+## 公告優先權
+
+2026-11-28 重讀先前由官方 FTPS 取得的[第 053028 期公告索引](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index.xml)。整檔 15,597,462 bytes，SHA-256 `60936a7ab763fbb8bd79b8a3071aa89d43da3ffe4ef65928734a9ddc70827a4a`。在 `tw-bibliographic-data-grant/priority-claims/priority-claim` 讀取 `country`、`doc-number`、`date`，日期格式為公曆 `YYYYMMDD`。該期完整索引共見發明 1,023 筆、新型 30 筆及設計 101 筆優先權節點。這是原檔節點計數，匯入僅涵蓋操作員選定的公告。固定第 024019 期發明公開索引沒有同形優先權節點，未用公告回填公開版本。授權及更新條件沿用[官方資料集 15987](https://data.gov.tw/dataset/15987)。
