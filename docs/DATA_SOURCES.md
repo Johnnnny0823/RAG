@@ -44,7 +44,11 @@
 
 2026-11-27 實測發明網路公報個案請求。官方回應列出民國 115 年第 24 卷第 19 期、公開號 `202639611`、申請號 `113133932` 及 PDF 網址。直連回應為 `application/pdf`，5,824 bytes、1 頁，SHA-256 為 `cf6992639675e797291b4024b86b28c05550f1827d0af30993d0c67c010a7d1a`。用 pypdf 核對首頁欄標下的號碼。這是公報書目頁，可補充原件回溯，原本的請求項及說明書仍以個案 XML 為來源。[公報個案資料](https://cloud.tipo.gov.tw/S220/gazette/api/patents/laid-opens/cases/pubsud01/113133932) · [官方 PDF](https://cloud.tipo.gov.tw/S220/downloads/invention/pub024019/pdfdata/113133932.pdf)
 
-採用單案、人工指定版本的匯入方式。公報站按近期卷期開放，個案網址的保存期限、下載配額、長期批次介接及其他階段的 PDF 欄位未確認。公開前端連結直接指向 TIPO。以政府網站資料開放宣告所列的出處標註、例外與個資條件為準，程式不推定所有專利說明書或圖式可再散布。[智財局政府網站資料開放宣告](https://www.tipo.gov.tw/tw/tipo1/36-17871.html)
+採用單案、人工指定版本的匯入方式。公報站按近期卷期開放，個案網址的保存期限、下載配額與長期批次介接待確認。公開前端連結直接指向 TIPO。使用時應依智財局政府網站資料開放宣告查核出處標註、例外與個資條件。[智財局政府網站資料開放宣告](https://www.tipo.gov.tw/tw/tipo1/36-17871.html)
+
+### 發明公告公報個案 PDF
+
+2026-11-27 核對同一申請案 `114106690` 的公開和公告兩份官方個案。公開 `202640162` 為第 24 卷第 19 期、2 頁、22,539 bytes、SHA-256 `20df47fe2d746383732d7d4878537c153919338c5735a267cf797bcce09f4dee`。公告 `I941082` 為第 53 卷第 28 期、9 頁、1,349,889 bytes、SHA-256 `7b9fd5dcb190a7108770a812999e556b5126f2d0333dcf3a914ed20c91f1a615`。公告首頁另外帶有公開編號，匯入時以公報類型及證書號欄標判定。此驗收實測發明公告，掃描辨識、其他專利種類及後續全文檢索仍待。[公開 PDF](https://cloud.tipo.gov.tw/S220/downloads/invention/pub024019/pdfdata/114106690.pdf) · [公告個案資料](https://cloud.tipo.gov.tw/S220/gazette/api/patents/grants/cases/sud00_1/114106690) · [公告 PDF](https://cloud.tipo.gov.tw/S220/downloads/patent/isu053028/pdfdata/114106690.pdf)
 
 ## 公報書目的申請日、公開日與公告日
 

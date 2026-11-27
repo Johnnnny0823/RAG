@@ -1030,7 +1030,7 @@ export function Research() {
             <a href={tipoLookupUrl} target="_blank" rel="noreferrer">在智慧財產局查詢{stage[selected.hit.document_stage]}號 {selected.hit.publication_no}</a>
             <span> · 到官方頁面輸入此號碼。</span>
           </p>
-          <ul className="mb-4">
+          <ul className="mb-4" key={selected.hit.document_id}>
             {selected.detail.sources.map((source, index) => <li key={index} className="my-2">
               {source.publisher} · {source.dataset_name} · {source.batch_key} · 匯入 {source.ingested_at.slice(0, 10)}（UTC）
               {source.source_url && <a className="ml-2" href={source.source_url} target="_blank" rel="noreferrer">{source.source_url.endsWith(".pdf") ? "官方公報 PDF" : "官方原始檔"}</a>}

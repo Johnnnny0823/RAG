@@ -1,4 +1,4 @@
-"""Verify and attach a TIPO publication gazette PDF to an existing version."""
+"""Verify and attach a TIPO invention gazette PDF to its exact document version."""
 
 import argparse
 import hashlib
@@ -6,6 +6,7 @@ import io
 import json
 import re
 import unicodedata
+from dataclasses import dataclass
 from http.client import HTTPException, HTTPSConnection
 from uuid import UUID
 
@@ -18,9 +19,47 @@ from services.ingestion.artifacts import LocalObjectStore, add_objects_argument
 from services.ingestion.import_issue import link_artifact
 
 HOST = "cloud.tipo.gov.tw"
-GAZETTE = f"https://{HOST}/S220/gazette/invention"
-PARSER_VERSION = "tipo-publication-gazette-pdf-v1"
 MAX_PDF_BYTES = 2 * 1024 * 1024
+
+
+@dataclass(frozen=True)
+class Gazette:
+    stage: str
+    catalog: str
+    case_endpoint: str
+    file_directory: str
+    number_key: str
+    pdf_heading: str
+    number_label: str
+    xml_dataset: str
+    pdf_dataset: str
+    pdf_dataset_name: str
+
+
+PUBLICATION = Gazette(
+    stage="publication",
+    catalog="invention",
+    case_endpoint="laid-opens/cases/pubsud01",
+    file_directory="invention/pub",
+    number_key="publicationNo",
+    pdf_heading="【12】發明公開公報(A)",
+    number_label="公開編號",
+    xml_dataset="TIPO-15996",
+    pdf_dataset="TIPO-INVENTION-GAZETTE-PDF",
+    pdf_dataset_name="發明公開公報個案 PDF",
+)
+GRANT = Gazette(
+    stage="grant",
+    catalog="patent",
+    case_endpoint="grants/cases/sud00_1",
+    file_directory="patent/isu",
+    number_key="certificateNo",
+    pdf_heading="【12】專利公報(B)",
+    number_label="證書號數",
+    xml_dataset="TIPO-15987",
+    pdf_dataset="TIPO-GRANT-GAZETTE-PDF",
+    pdf_dataset_name="發明公告公報個案 PDF",
+)
 
 
 def fetch(path: str, media_type: str, limit: int) -> bytes:
@@ -38,18 +77,20 @@ def fetch(path: str, media_type: str, limit: int) -> bytes:
         conn.close()
 
 
-def checked_pdf_path(metadata, application: str, publication: str, issue: str) -> str:
+def checked_pdf_path(
+    metadata, application: str, number: str, issue: str, gazette: Gazette = PUBLICATION
+) -> str:
     case = metadata.get("patentDoc") if isinstance(metadata, dict) else None
-    path = f"/S220/downloads/invention/pub{issue}/pdfdata/{application}.pdf"
+    path = f"/S220/downloads/{gazette.file_directory}{issue}/pdfdata/{application}.pdf"
     if not isinstance(case, dict) or (
         case.get("applicationNo"),
-        case.get("publicationNo"),
+        case.get(gazette.number_key),
         case.get("vol"),
         case.get("no"),
         case.get("pdfUrl"),
     ) != (
         application,
-        publication,
+        number,
         int(issue[:3]),
         int(issue[3:]),
         f"https://{HOST}{path}",
@@ -58,7 +99,9 @@ def checked_pdf_path(metadata, application: str, publication: str, issue: str) -
     return path
 
 
-def verify_pdf(data: bytes, application: str, publication: str) -> int:
+def verify_pdf(
+    data: bytes, application: str, number: str, gazette: Gazette = PUBLICATION
+) -> int:
     if len(data) > MAX_PDF_BYTES or not data.startswith(b"%PDF-"):
         raise ValueError("Invalid or oversized gazette PDF")
     reader = PdfReader(io.BytesIO(data), strict=True)
@@ -67,14 +110,17 @@ def verify_pdf(data: bytes, application: str, publication: str) -> int:
     page = unicodedata.normalize("NFKC", reader.pages[0].extract_text())
     page = re.sub(r"\s+", "", page)
     if not (
-        re.search(rf"公開編號:{re.escape(publication)}(?![0-9])", page)
+        gazette.pdf_heading in page
+        and re.search(rf"{gazette.number_label}:{re.escape(number)}(?![0-9])", page)
         and re.search(rf"申請案號:{re.escape(application)}(?![0-9])", page)
     ):
         raise ValueError("Gazette PDF first-page identity does not match")
     return len(reader.pages)
 
 
-def attach_pdf(store, data, document_id, application, publication, issue, url, pages):
+def attach_pdf(
+    store, data, document_id, application, number, issue, url, pages, gazette
+):
     with engine.begin() as conn:
         existing = conn.exec_driver_sql(
             """SELECT d.id FROM patent_documents d
@@ -84,23 +130,33 @@ def attach_pdf(store, data, document_id, application, publication, issue, url, p
                JOIN ingestion_batches b ON b.id = ia.batch_id
                JOIN source_datasets s ON s.id = b.dataset_id
                WHERE d.id=%s AND d.jurisdiction='TW' AND p.jurisdiction='TW'
-                 AND d.document_stage='publication' AND d.publication_no=%s
-                 AND p.application_no=%s AND b.batch_key=%s AND s.dataset_key='TIPO-15996'
+                 AND d.document_stage=%s AND d.publication_no=%s
+                 AND p.application_no=%s AND b.batch_key=%s AND s.dataset_key=%s
                  AND NOT s.is_demo AND ia.status IN ('parsed', 'partial')
                  AND b.status IN ('complete', 'partial') LIMIT 1""",
-            (document_id, publication, application, issue),
+            (
+                document_id,
+                gazette.stage,
+                number,
+                application,
+                issue,
+                gazette.xml_dataset,
+            ),
         ).scalar_one_or_none()
         if existing is None:
-            raise ValueError("No matching official publication version in this issue")
+            raise ValueError("No matching official document version in this issue")
         raw = store.put(data)
         dataset_id = conn.exec_driver_sql(
             """INSERT INTO source_datasets
                    (dataset_key, name, publisher, official_url, checked_at, is_demo)
-               VALUES ('TIPO-INVENTION-GAZETTE-PDF', '發明公開公報個案 PDF',
-                       '經濟部智慧財產局', %s, now(), false)
+               VALUES (%s, %s, '經濟部智慧財產局', %s, now(), false)
                ON CONFLICT (dataset_key) DO UPDATE SET checked_at=excluded.checked_at
                RETURNING id""",
-            (GAZETTE,),
+            (
+                gazette.pdf_dataset,
+                gazette.pdf_dataset_name,
+                f"https://{HOST}/S220/gazette/{gazette.catalog}",
+            ),
         ).scalar_one()
         batch_id = conn.exec_driver_sql(
             """INSERT INTO ingestion_batches
@@ -109,7 +165,13 @@ def attach_pdf(store, data, document_id, application, publication, issue, url, p
                ON CONFLICT (dataset_id,batch_key,checksum,parser_version) DO UPDATE
                    SET counts_jsonb=excluded.counts_jsonb
                RETURNING id""",
-            (dataset_id, issue, raw.checksum, PARSER_VERSION, Jsonb({"pages": pages})),
+            (
+                dataset_id,
+                issue,
+                raw.checksum,
+                f"tipo-{gazette.stage}-gazette-pdf-v1",
+                Jsonb({"pages": pages}),
+            ),
         ).scalar_one()
         artifact_id = conn.exec_driver_sql(
             """INSERT INTO ingestion_artifacts
@@ -125,30 +187,32 @@ def attach_pdf(store, data, document_id, application, publication, issue, url, p
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--application", required=True)
-    parser.add_argument("--publication", required=True)
+    number_group = parser.add_mutually_exclusive_group(required=True)
+    number_group.add_argument("--publication")
+    number_group.add_argument("--grant", help="Invention grant certificate number")
     parser.add_argument("--issue", required=True)
     parser.add_argument(
         "--apply-to", type=UUID, help="Attach to this existing document version"
     )
     add_objects_argument(parser)
     args = parser.parse_args()
-    for value, length in (
-        (args.application, 9),
-        (args.publication, 9),
-        (args.issue, 6),
+    gazette = GRANT if args.grant is not None else PUBLICATION
+    number = args.grant.upper() if gazette is GRANT else args.publication
+    pattern = r"I[0-9]{6,}" if gazette is GRANT else r"[0-9]{9}"
+    if not (
+        re.fullmatch(r"[0-9]{9}", args.application)
+        and re.fullmatch(r"[0-9]{6}", args.issue)
+        and re.fullmatch(pattern, number)
     ):
-        if not re.fullmatch(rf"[0-9]{{{length}}}", value):
-            parser.error("Invalid application, publication or issue number")
+        parser.error("Invalid application, document or issue number")
     try:
         catalog_path = (
-            f"/S220/gazette/api/patents/laid-opens/cases/pubsud01/{args.application}"
+            f"/S220/gazette/api/patents/{gazette.case_endpoint}/{args.application}"
         )
         metadata = json.loads(fetch(catalog_path, "application/json", 1024 * 1024))
-        path = checked_pdf_path(
-            metadata, args.application, args.publication, args.issue
-        )
+        path = checked_pdf_path(metadata, args.application, number, args.issue, gazette)
         data = fetch(path, "application/pdf", MAX_PDF_BYTES)
-        pages = verify_pdf(data, args.application, args.publication)
+        pages = verify_pdf(data, args.application, number, gazette)
         url = f"https://{HOST}{path}"
         if args.apply_to:
             attach_pdf(
@@ -156,10 +220,11 @@ def main() -> None:
                 data,
                 args.apply_to,
                 args.application,
-                args.publication,
+                number,
                 args.issue,
                 url,
                 pages,
+                gazette,
             )
     except (OSError, ValueError, HTTPException, PyPdfError) as error:
         parser.exit(1, f"{error}\n")

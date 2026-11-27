@@ -174,16 +174,17 @@ docker compose run --rm migrate python -m services.ingestion.gazette_dates --sta
 
 程式下載官方固定卷期 XML，核對階段、卷期、申請號及文件號，將缺少的日期與其來源在同一資料庫交易保存。若同案已有不同日期，該交易會回滾，需核對來源。再次執行相同檔案不會新增版本或重複來源連結。既有檢索索引可繼續使用，日期篩選從 PostgreSQL 欄位讀取。公開及公告的來源見 [資料來源](DATA_SOURCES.md#公報書目的申請日公開日與公告日)。
 
-### 附加發明公開公報個案 PDF
+### 附加發明公報個案 PDF
 
-用相同的 Compose 專案與官方 XML 資料庫。先預覽公報 PDF 的來源、頁數和雜湊，再從對應公開號的詳情或號碼查詢 API 取得要附加的文件版本 UUID。加上 `--apply-to` 只在該版本符合申請號、公開號、卷期及官方出處時建立連結。
+用相同的 Compose 專案與官方 XML 資料庫。先預覽公報 PDF 的來源、頁數和雜湊，再從對應公開或公告號的詳情或號碼查詢 API 取得要附加的文件版本 UUID。加上 `--apply-to` 只在該版本符合文件階段、申請號、公開或公告號、卷期及官方出處時建立連結。
 
 ```powershell
 docker compose @deployArgs run --rm --no-deps migrate python -m services.ingestion.gazette_pdf --application 113133932 --publication 202639611 --issue 024019
+docker compose @deployArgs run --rm --no-deps migrate python -m services.ingestion.gazette_pdf --application 114106690 --grant I941082 --issue 053028
 # Repeat with --apply-to followed by the verified document version UUID.
 ```
 
-驗收後，專利詳情的來源批次會顯示官方 PDF、雜湊及首頁定位。重跑相同 PDF 會重用已保存來源。此指令目前支援有可讀繁中書目首頁的近期發明公開公報，全文索引仍使用已驗證的 XML。
+驗收後，專利詳情的來源批次會顯示官方 PDF、雜湊及首頁定位。重跑相同 PDF 會重用已保存來源。此指令目前支援有可讀繁中書目首頁的近期發明公開及公告公報，檔案上限 2 MiB、32 頁。全文索引仍使用已驗證的 XML。
 
 ## 匯入官方異動公報
 

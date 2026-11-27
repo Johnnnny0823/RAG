@@ -22,6 +22,13 @@ test("official identifier lookup opens the correct publication and grant version
   await expect(page.getByRole("heading", { name: "專利詳情" })).toBeVisible();
   await expect(page.getByText("請求項（13）", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "在智慧財產局查詢公告號 I941082" })).toHaveAttribute("href", "https://tiponet.tipo.gov.tw/S092_OUT/2022/out");
+  const sourceDisclosures = page.locator("details").filter({ has: page.getByText("原檔雜湊與定位", { exact: true }) });
+  await sourceDisclosures.first().getByText("原檔雜湊與定位", { exact: true }).click();
+  await expect(sourceDisclosures.first()).toHaveAttribute("open", "");
+  await page.getByRole("button", { name: "查詢同案其他版本" }).click();
+  await page.getByRole("button", { name: "公開 202640162 · 全文", exact: true }).click();
+  await expect(page.getByRole("link", { name: "在智慧財產局查詢公開號 202640162" })).toBeVisible();
+  await expect(sourceDisclosures.first()).not.toHaveAttribute("open", "");
 
   await kind.selectOption("publication");
   await number.fill("２０２６４０１６２");

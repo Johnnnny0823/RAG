@@ -2049,3 +2049,22 @@
 - Uncommitted changes / file ownership warnings: 驗收 PDF 與物件位於本機忽略目錄，正式資料庫未修改。
 - Next 1–3 concrete actions: 核對新版完整官方 E2E，評估已確認的公告 PDF 案例及人工標註。
 - Exact reproduction steps: 依 SETUP 執行 `gazette_pdf` 預覽，指定已驗證的公開版本 UUID 後重跑兩次，從專利詳情核對唯一 PDF 來源。
+
+## 公開及公告公報 PDF 分版
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `ecbee6b`。
+- Current milestone and status: 發明公告個案來源通過隔離 PDF 與瀏覽器驗收。掃描檔與全文搜尋仍待。
+- Goal of this session: 支援發明公告 PDF，防止公告首頁出現公開號時將其連到公開版本。
+- Files changed (with purpose): `services/ingestion/gazette_pdf.py` 加入公告官方資料來源與標頭校驗。`tests/test_gazette_pdf.py` 驗證階段與號碼拒絕。前端重開同案版本會重設來源摘要的展開狀態。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無，沿用專利詳情既有來源契約。
+- Commands actually run and results: pytest 134 passed，含 9 項 PostgreSQL 整合測試。Ruff、前端 lint、API 與前端正式映像建置通過。真實 `114106690` 附加公開與公告 PDF，公告重跑後保持一筆。資料庫拒絕將公告 PDF 附加至同案公開版本。Chromium、Firefox 與 WebKit 各驗證兩種 PDF 的網址、雜湊與既有 13 項請求項。Playwright 號碼查詢與同案切換 5 passed。
+- Tests NOT run and reason: 此增量的遠端完整官方 E2E 尚待。起點的一般 CI 已通過，完整官方流程仍在執行。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 核對官方第 24 卷第 19 期公開 PDF 與第 53 卷第 28 期公告 PDF，政府網站資料開放宣告與檔案出處見 DATA_SOURCES。
+- Known bugs / risks / blockers: 手動瀏覽器驗收首次發現切換版本沿用來源展開狀態，已更正。正式 E2E 首輪漏點「查詢同案其他版本」而逾時，修正後重跑。掃描辨識、其他專利種類、人工標註及對外部署尚待。
+- Decisions made (ADR links): 公開與公告使用獨立來源資料集及同版本 XML 證據。只依首頁公報類型與標記過的版本號碼確認 PDF。
+- Uncommitted changes / file ownership warnings: 官方 PDF 與測試資料僅存於隔離環境。
+- Next 1–3 concrete actions: 核對最新整合 CI，接續防止來源漂移的驗收，取得人工標註與部署主機。
+- Exact reproduction steps: 依 SETUP 對已匯入同案的公開、公告文件 UUID 執行 `--publication 202640162` 和 `--grant I941082`，再以號碼查詢切換兩版本。
