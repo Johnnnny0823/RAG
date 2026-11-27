@@ -2277,3 +2277,22 @@
 - Uncommitted changes / file ownership warnings: 只操作整合工作樹與隔離庫。原檔未納入 Git。
 - Next 1–3 concrete actions: 驗證新型摘要向量，確認官方圖式下載及媒體格式，追蹤完整遠端驗收。
 - Exact reproduction steps: 依 TESTING 重新匯入 `M688679` 個案，執行 `verify_document M688679 --grant-issue 053030 --grant-fulltext` 及舊版對照，建立詞彙索引，檢索英文摘要中的片語並用同一段原文比對。
+
+## 新型與設計的語意檢索及引文
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，受驗程式 `03b68df`。
+- Current milestone and status: 兩個官方個案的向量、混合檢索及語意候選引文已驗收，整體 IN_PROGRESS。
+- Goal of this session: 用本機模型及真實新型與設計個案驗證完整的語意索引、檢索與比對。
+- Files changed (with purpose): `scripts/smoke_grant_types_semantic.py` 加入兩個真實案的可重跑驗收，`docs/TESTING.md`、`EVALUATION.md`、`PROGRESS.md`、`HANDOFF.md` 記錄方式、結果與限制。
+- Database migrations added/applied: 新隔離庫從空白遷移至 `0021_gazette_pdf_search`，無新增遷移。四份來源版本建立 243 個詞彙片段、244 個 1,024 維向量。
+- API/Schema changes: 無變更，沿用語意、混合與技術比對 API。
+- Commands actually run and results: Ruff 格式及 lint 通過。`index_semantic --batch-size 24 --request-timeout 180` 首輪建立 244 向量，重跑新增 0。`scripts/smoke_grant_types_semantic.py --api http://127.0.0.1:18180` 通過，兩案在限定全文範圍的語意與混合結果均為第 1 名，語意比對引文通過同版原件雜湊、XPath 與逐字偏移核對。英文摘要的前 1,000 字元重嵌入後，最近向量對應該摘要視窗，距離為 0。`03b68df` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45978238586)通過。
+- Tests NOT run and reason: 本輪新增測試腳本與文件，以上以實際隔離庫及 API 驗收。未重跑瀏覽器。先前啟動的[完整官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)仍在執行全文、引文、歷史及 PDF 步驟。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 重用 DATA_SOURCES 中第 053030 期固定官方原件及已驗證雜湊。
+- Known bugs / risks / blockers: 排名只涵蓋兩個候選個案，正式人工關聯性複核、圖式、目標主機驗收尚待。
+- Decisions made (ADR links): 以全新固定四版本語料量測，保留 S01 與個案版的獨立向量及來源證據。
+- Uncommitted changes / file ownership warnings: 隔離服務使用專用 `patentscope-grant-types-semantic` 專案。原檔及索引未納入 Git。
+- Next 1–3 concrete actions: 查核遠端完整驗收的終態。繼續驗證官方個案圖式及可取得的設計分類來源。
+- Exact reproduction steps: 按 TESTING 的新型與設計語意驗收重建四版本，執行詞彙與語意索引後，以腳本驗證排名與原文。

@@ -166,3 +166,9 @@ python scripts/smoke_patents.py --official-e2e --expanded-corpus --api http://12
 ```powershell
 python -m scripts.explain_search --gazette-pdf --repetitions 7 --output gazette-pdf-plans.json
 ```
+
+## 2026-11-27 新型與設計語意驗收
+
+以全新隔離庫匯入第 053030 期的新型 `M688679`、設計 `D247328`，各有一個 S01 版本與一個個案版本。`qwen3-embedding:0.6b` 建立 244 個 1,024 維向量。重跑索引新增 0 筆。新型新版的中文摘要有一個視窗，英文摘要有兩個視窗，唯讀查詢核對對應字元區間。重嵌入英文摘要的前 1,000 字元時，最近向量指向同版同一視窗，餘弦距離為 0。
+
+限定公告、全文範圍後，兩組改寫查詢皆在語意及混合 API 排名第一。使用 `qwen2.5:1.5b` 的比對流程為兩案取得語意候選。新型引用 `mode-for-invention`，設計引用 `description-of-drawings`；程式驗證引文逐字與同版原件相符。這組已知案件驗收只涵蓋兩個候選全文，人工相關性評分仍待完成。[測試指令](TESTING.md#新型與設計公告回歸)

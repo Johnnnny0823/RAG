@@ -93,6 +93,12 @@ python scripts/smoke_semantic.py --official-e2e --api http://127.0.0.1:8000
 
 新型 `M688679` 個案的中英文摘要使用解析版 `tipo-issue-2`，重新匯入會建立獨立版本。`verify_document M688679 --grant-issue 053030 --grant-fulltext` 預設核對新版；舊版使用 `--parser-version tipo-issue-1`。前述個案 Playwright 也會核對新版顯示兩種語言的摘要。
 
+語意與比對驗收使用一個全新的隔離資料庫，只匯入第 053030 期的 `M688679`、`D247328`，各保留一份 S01 及一份個案版，共四個版本。依 [模型設定](SETUP.md#m3-本機技術特徵驗收)設定本機 Qwen 嵌入及分析模型，依序執行詞彙、語意索引，再從主機執行下列命令。腳本核對改寫查詢在限定個案全文範圍的語意與混合順位、程式回查原檔雜湊，以及比對引文的 XPath 和 Unicode 字元區間。
+
+```powershell
+python scripts/smoke_grant_types_semantic.py --api http://127.0.0.1:18180
+```
+
 ### 官方公報 PDF 回歸
 
 以獨立 Compose 專案匯入上述固定官方語料後，可驗證同案的公開及公告 PDF。此測試先驗證錯版的附件請求在連線前遭拒。兩份 PDF 各實取一次，後續透過 `--replay-stored` 重跑，再用 API 核對去重及 XML 請求項來源。若智財局拒絕下載，首次取件關卡會依實際 HTTP 狀態回報失敗。
