@@ -352,3 +352,9 @@ npx playwright test --reporter=list
 ## 依賴公告查核
 
 2026-11-28 執行 `npm audit --prefix apps/web --json`，前端鎖檔回報 0 項。執行 `uvx pip-audit --strict --requirement requirements-dev.txt` 時，pytest 9.0.2 的報告重複列出同一則 CVE-2025-71176。依 [pytest 官方修正說明](https://github.com/pytest-dev/pytest/releases/tag/9.0.3) 將開發依賴固定至 9.0.3。以相同指令重掃，當時解析到的 Python 執行與開發依賴均無已知公告。兩次掃描涵蓋套件依賴，容器 OS 與目標主機另需驗收。
+
+## 隔離 HTTPS 換證及回復
+
+2026-11-28 以 `92b76ce` 的乾淨快照啟動隔離 Compose，新資料卷遷移到 `0022_legal_event_grant_types`。使用私有測試 CA 簽發兩張含 `127.0.0.1` IP SAN 的不同金鑰憑證。以 `--ca-file` 將測試根憑證提供給冒煙腳本，憑證信任設定限於測試程序。Windows Docker Desktop 掛載 D 槽的 Nginx 設定失敗後，以相同提交的 C 槽快照成功重跑。
+
+先以初始憑證啟動並建立測試帳號和私人專案。修改 `TLS_CERTIFICATE_FILE` 與 `TLS_KEY_FILE` 後執行 `docker compose @tlsArgs up -d --no-deps --force-recreate --wait web`，再改回原憑證重跑。三階段都通過驗證憑證鏈、IP SAN、TLS 冒煙、API 代理、pgvector 就緒、封裝首頁及安全標頭。實際回傳的憑證序號依序為 `1001`、`1002`、`1001`，均協商 TLS 1.3。每次只更換 Web 容器，API 和 DB 容器 ID 相同，原登入憑證與私人專案仍可用。外部 DNS、公開 CA 自動續期及對外主機驗收待確認。

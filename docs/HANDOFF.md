@@ -2620,3 +2620,22 @@
 - Uncommitted changes / file ownership warnings: 只修改整合工作樹。本機原開發虛擬環境未更新。
 - Next 1–3 concrete actions: 查核本提交的 CI 及既有官源工作，待人工標註與目標環境就緒後做最後驗收。
 - Exact reproduction steps: 依 [依賴公告查核](TESTING.md#依賴公告查核) 重掃。以 `uv run --no-project --python 3.12 --with-requirements requirements-dev.txt python -m pytest -q` 執行預設套件，依 TESTING 設定 PostgreSQL 旗標後執行整合測試。
+
+## 隔離 HTTPS 換證及回復
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，驗收基準 `92b76ce`。
+- Current milestone and status: 換證及回復隔離驗收通過。整體交付 IN_PROGRESS。
+- Goal of this session: 核對既有部署能切換及回復憑證，同時保留原登入和私人研究資料。
+- Files changed (with purpose): `docs/SETUP.md`、`docs/TESTING.md`、`docs/PROGRESS.md`、`docs/HANDOFF.md` 記錄操作及驗收證據。
+- Database migrations added/applied: 無新增。隔離新資料庫升至 `0022_legal_event_grant_types`。
+- API/Schema changes: 無。
+- Commands actually run and results: `openssl verify` 驗證兩張測試憑證。以標準 Compose 重建 Web，搭配 `scripts/smoke.py --deployment --ca-file` 三階段通過。核對憑證序號 `1001`、`1002`、`1001`，原登入憑證與私人專案維持可用，API 和 DB 容器 ID 相同。`92b76ce` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46077953334)全數通過。
+- Tests NOT run and reason: 本次只有文件異動，本機未另跑單元或瀏覽器套件。尚無可驗收的外部目標主機及公開 CA 設定。
+- Data sources checked (exact URL/date) and license/access notes: 本次沒有新增 TIPO 取件或官方語料驗收。
+- Known bugs / risks / blockers: Docker Desktop 的 D 槽繫結失敗，改用 C 槽乾淨快照成功。外部目標環境及 34 組人工評分仍待確認。
+- Decisions made (ADR links): 在現有 HTTPS 覆蓋檔下驗收，使用每次測試指定的私有 CA。
+- Uncommitted changes / file ownership warnings: 測試憑證與腳本保存在工作樹外或 Git 忽略的本機目錄。日常開發資料庫未動。
+- Next 1–3 concrete actions: 查核官源 CI 最終結果。在目標主機驗證外部 HTTPS 及還原。收齊人工評分後重跑相關性評估。
+- Exact reproduction steps: 依 [隔離 HTTPS 換證及回復](TESTING.md#隔離-https-換證及回復) 重跑。

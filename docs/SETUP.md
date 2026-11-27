@@ -53,7 +53,7 @@ $tlsArgs = $deployArgs + @('-f', 'docker-compose.tls.yml')
 docker compose @tlsArgs up -d --build --wait --wait-timeout 180
 ```
 
-預設只將 HTTPS 發布在 `127.0.0.1:18443`。對外部署時設定 `TLS_BIND_ADDRESS` 為指定對外介面、`TLS_PORT` 為對外連接埠，並依憑證網域及連接埠執行 `scripts/smoke.py --deployment`。如果由內部 CA 簽發，可加 `--ca-file <CA 憑證>` 進行憑證及主機名稱驗證。API、資料庫和工作程序沒有主機連接埠，API 僅信任隔離容器網路上的代理標頭。憑證續期後以相同參數執行 `docker compose @tlsArgs up -d --no-deps --force-recreate web`，再重跑 HTTPS 冒煙。外部網域、公開 CA 續期與防火牆仍須在目標主機驗證。
+預設只將 HTTPS 發布在 `127.0.0.1:18443`。對外部署時設定 `TLS_BIND_ADDRESS` 為指定對外介面、`TLS_PORT` 為對外連接埠，並依憑證網域及連接埠執行 `scripts/smoke.py --deployment`。如果由內部 CA 簽發，可加 `--ca-file <CA 憑證>` 進行憑證及主機名稱驗證。API、資料庫和工作程序沒有主機連接埠，API 僅信任隔離容器網路上的代理標頭。憑證續期後更新憑證和私鑰路徑，執行 `docker compose @tlsArgs up -d --no-deps --force-recreate --wait web`，再重跑 HTTPS 冒煙。若需回復，使用上一組仍有效的憑證和私鑰，重跑相同命令。此操作會重建 Web 容器。見[換證及回復驗收](TESTING.md#隔離-https-換證及回復)。外部網域、公開 CA 續期與防火牆仍須在目標主機驗證。
 
 正式語料驗收時加上 `--require-official-index`，確認同源閘道可取得官方 corpus 狀態，以及詞彙與向量索引都有涵蓋文件。此檢查為唯讀。還需依部署語料另選已知的官方案號，透過語意與混合檢索驗證模型可用及結果回溯。只有在獨立測試站驗證限流時才加 `--deployment-rate-limit`，因為它會短暫用盡該來源 IP 的配額。
 
