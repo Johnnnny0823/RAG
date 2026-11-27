@@ -51,7 +51,7 @@ type Detail = {
   inventors: Party[];
   classifications: { scheme: string; code: string }[];
   sections: { ordinal: number; section_type: string; original_text: string; source: SourceLocation }[];
-  sources: { dataset_name: string; publisher: string; dataset_url: string | null; source_url: string | null; batch_key: string; ingested_at: string }[];
+  sources: { dataset_name: string; publisher: string; dataset_url: string | null; source_url: string | null; batch_key: string; ingested_at: string; artifact_sha256: string; record_locator: string }[];
   legal_events: {
     kind: "extinguishment" | "gazette_correction";
     certificate_no: string;
@@ -106,6 +106,7 @@ export type Comparison = {
 type ComparedDocument = { document: PatentVersion; comparison: Comparison };
 
 const stage: Record<string, string> = { publication: "公開", grant: "公告" };
+const tipoLookupUrl = "https://tiponet.tipo.gov.tw/S092_OUT/2022/out";
 const scope: Record<string, string> = {
   fulltext: "全文",
   metadata_and_abstract: "書目與摘要",
@@ -1025,11 +1026,26 @@ export function Research() {
             </li>)}
           </ul> : <p className="mb-4 text-sm text-slate-700">目前索引沒有這筆申請案的異動公報紀錄。</p>}
           <h3>來源批次</h3>
+          <p className="my-2 text-sm">
+            <a href={tipoLookupUrl} target="_blank" rel="noreferrer">在智慧財產局查詢{stage[selected.hit.document_stage]}號 {selected.hit.publication_no}</a>
+            <span> · 到官方頁面輸入此號碼。</span>
+          </p>
           <ul className="mb-4">
             {selected.detail.sources.map((source, index) => <li key={index} className="my-2">
               {source.publisher} · {source.dataset_name} · {source.batch_key} · 匯入 {source.ingested_at.slice(0, 10)}（UTC）
               {source.source_url && <a className="ml-2" href={source.source_url} target="_blank" rel="noreferrer">官方原始檔</a>}
               {source.dataset_url && source.dataset_url !== source.source_url && <a className="ml-2" href={source.dataset_url} target="_blank" rel="noreferrer">官方資料集</a>}
+              <details className="mt-1 text-sm">
+                <summary>原檔雜湊與定位</summary>
+                <dl className="my-2 grid gap-2">
+                  <div><dt>SHA-256</dt><dd className="break-all">{source.artifact_sha256}</dd></div>
+                  <div><dt>原文位置</dt><dd className="break-all">{source.record_locator}</dd></div>
+                </dl>
+                {source.source_url?.startsWith("ftps://") && <label className="research-field">
+                  FTPS 位址（可複製到 FTPS 用戶端）
+                  <input type="text" readOnly value={source.source_url} onFocus={(event) => event.currentTarget.select()} />
+                </label>}
+              </details>
             </li>)}
           </ul>
           {session && projects.length > 0 && <div className="mb-4">

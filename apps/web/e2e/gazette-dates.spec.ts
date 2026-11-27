@@ -31,9 +31,14 @@ test("official gazette dates filter a publication and link its source @gazette",
   await expect(page.getByText(/搜尋涵蓋範圍.*最新文件日期 2026-10-01/)).toBeVisible();
   await publication.getByRole("button").click();
   await expect(page.getByText("2024-09-06", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "在智慧財產局查詢公開號 202639611" })).toHaveAttribute("href", "https://tiponet.tipo.gov.tw/S092_OUT/2022/out");
   const source = page.getByRole("listitem").filter({ hasText: "發明公開公報書目" });
   await expect(source.getByRole("link", { name: "官方資料集" })).toHaveAttribute("href", "https://data.gov.tw/dataset/9683");
   await expect(source.getByRole("link", { name: "官方原始檔" })).toHaveAttribute("href", /\/PatentPubRegXMLB_024019\/pubinvention\.xml$/);
+  await source.getByText("原檔雜湊與定位", { exact: true }).click();
+  await expect(source.getByText("5eb3c531a3795e685f802289195da4f1779b8ca9eefef3e2f13ea8a85e634558")).toBeVisible();
+  await expect(source.getByText("/tw-patent-applications/tw-patent-application[1]/tw-bibliographic-data-application", { exact: true })).toBeVisible();
+  await expect(source.getByLabel(/FTPS 位址/)).toHaveValue("ftps://ftp.tipo.gov.tw/PatentPubRegXMLB/115/PatentPubRegXMLB_024019/pubinvention.xml");
   await start.fill("2026-10-02");
   await end.fill("2026-10-02");
   await search.click();

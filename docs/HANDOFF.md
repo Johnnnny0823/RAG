@@ -2011,3 +2011,22 @@
 - Uncommitted changes / file ownership warnings: 只修改整合工作樹。驗收憑證與容器未納入版本庫。
 - Next 1–3 concrete actions: 確認遠端官方工作流程、公開主機前置條件及人工標註。
 - Exact reproduction steps: 依 SETUP 對已匯入官方語料的測試網站執行 `scripts/smoke.py --deployment --require-official-index`。HTTPS 測試載入測試 CA，限流檢查只在隔離網站執行。
+
+## 官方原文查閱入口
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `1179bf9`。
+- Current milestone and status: 官方原文回查通過隔離驗收，PDF 匯入及整體交付仍待。
+- Goal of this session: 讓使用者可經瀏覽器回查已索引案件，保留精確原始檔追溯資料。
+- Files changed (with purpose): `apps/web/src/research.tsx` 提供官方查詢頁、應輸入的文件號與每份已儲存原檔的雜湊及定位。官方日期與號碼測試核對畫面。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。前端開始顯示 detail API 既有的 `artifact_sha256` 與 `record_locator`。
+- Commands actually run and results: 前端 lint、正式 Nginx 容器 build、部署及官方索引冒煙通過。固定公報在五個 Playwright 瀏覽器專案通過，公告號碼查詢再通過三個 Chromium 尺寸。補上 XPath 精確核對後另重跑桌面用例通過。起點一般 [CI 45939258288](https://github.com/Johnnnny0823/RAG/actions/runs/45939258288) 通過。
+- Tests NOT run and reason: 本輪僅改 UI 及其驗收，未重跑 Python 及 PostgreSQL pytest。瀏覽器回歸不送出第三方查詢，官方入口另以讀取官方導覽與首頁確認。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 核對[官方查詢入口](https://tiponet.tipo.gov.tw/S092_OUT/2022/out)、[網站導覽](https://tiponet.tipo.gov.tw/S092_OUT/2022/sitemap)及[TIPO 下載方式](https://cloud.tipo.gov.tw/S220/opdata/information/ftp)。既有公開案與公告案來源見 DATA_SOURCES。
+- Known bugs / risks / blockers: 官方查詢結果沒有固定網址列表，使用者須在入口輸入文件號。公報 PDF 匯入及站內解析未實作。人工標註與公開主機驗收仍待。
+- Decisions made (ADR links): 使用官方導覽提供的 HTTPS 首頁。保留現有官方原檔連結，另提供可選取的 FTPS 位址以供支援的用戶端。
+- Uncommitted changes / file ownership warnings: 變更限整合工作樹。
+- Next 1–3 concrete actions: 核對完整官方 E2E，確認 PDF 的可用檔案取得與使用條件，取得人工標註。
+- Exact reproduction steps: 使用同一套 117 版本固定官方語料，依 TESTING 執行 `dates` 及 `versions` 的 `patent-number.spec.ts`。

@@ -21,6 +21,7 @@ test("official identifier lookup opens the correct publication and grant version
   await grant.getByRole("button").click();
   await expect(page.getByRole("heading", { name: "專利詳情" })).toBeVisible();
   await expect(page.getByText("請求項（13）", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "在智慧財產局查詢公告號 I941082" })).toHaveAttribute("href", "https://tiponet.tipo.gov.tw/S092_OUT/2022/out");
 
   await kind.selectOption("publication");
   await number.fill("２０２６４０１６２");
