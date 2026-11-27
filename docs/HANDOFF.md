@@ -2315,3 +2315,22 @@
 - Uncommitted changes / file ownership warnings: 只在整合工作樹操作，兩份官方 JPEG 與測試產物留在隔離環境。
 - Next 1–3 concrete actions: 核對本次新版一般 CI。查核設計分類的官方資料映射與法律異動來源，接續可驗證部分。
 - Exact reproduction steps: 依 TESTING 的公告圖式回歸建立第 053030 期隔離庫，執行 `scripts.smoke_grant_drawings`，再以 `PATENTSCOPE_E2E_GRANT_DRAWINGS=1` 執行 Playwright。
+
+## 設計 LOC 及新型與設計公告日期
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `30e85c6`。
+- Current milestone and status: 固定新型和設計已有官方日期、設計有 LOC 及端到端篩選，整體 IN_PROGRESS。
+- Goal of this session: 以第 053028 期完整官方書目補入日期及 LOC，從三種檢索、私人紀錄與 PDF 驗證分類。
+- Files changed (with purpose): `gazette_dates.py` 串接書目、個案身份及 LOC，`patents.py` 提供精確 `loc`，`reports.py` 保存篩選條件於 PDF，`research.tsx` 顯示候選及詳情分類，Playwright、pytest、來源及產品文件增加驗收。
+- Database migrations added/applied: 無新增。沿用 `patent_classifications` 的 `LOC` 分類及版次，書目與原始物件皆可追溯。
+- API/Schema changes: 三種搜尋與保存搜尋接受選填 `loc`，混合候選新增 `loc_codes`，有來源的設計詳情可回傳 `scheme=LOC` 及版次。
+- Commands actually run and results: 真實 FTPS CLI 在第一個隔離庫補入 3 個版本，原件雜湊與固定樣本一致。第二個隔離庫以已驗證原件重跑兩次，兩筆重用同一來源。核對 `D246917` 的 LOC `13-99`、版次 15、兩案官方日期、三種檢索及私人保存與 PDF。首次 PDF 驗收誤將註冊結果當作登入憑證，改先登入後成功，合成帳號已清理。候選單元測試的資料庫替身補齊 `loc_codes` 並維持原排序斷言，重跑 pytest 139 項通過、9 跳過。Ruff、前端 lint、型別檢查與建置通過。五項 Playwright 通過。`30e85c6` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46019435437)通過。
+- Tests NOT run and reason: 本機未執行九項獨立 PostgreSQL pytest，另用兩個隔離庫實跑官源及 API。自動補期與衍生設計匯入未驗收。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 查核 https://data.gov.tw/dataset/15972，實取 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053028/patent.xml`，23,778,073 bytes。SHA-256、書目數量及授權條件見 DATA_SOURCES。
+- Known bugs / risks / blockers: 12 筆衍生設計的 `D01` 申請號保留於解析結果，現有匯入與九位精確申請號查詢尚未支援。人工評分、正式主機驗收、新型及設計法律異動待驗證。
+- Decisions made (ADR links): 工具以明確選項擴充新型、設計書目，既有發明排程依舊使用原範圍。LOC 保留官方分類版次。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹和隔離庫操作。
+- Next 1–3 concrete actions: 確認新版一般 CI，接續衍生設計身份與新型、設計的異動來源驗證。
+- Exact reproduction steps: 依 TESTING 設計 LOC 篩選回歸，先匯入第 053028 期指定案件，再跑 `gazette_dates --include-other-grants` 與 `PATENTSCOPE_E2E_TIPO=loc`。

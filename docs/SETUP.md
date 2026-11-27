@@ -165,6 +165,8 @@ python scripts/smoke_hybrid.py
 
 ## 從官方公報書目補齊日期
 
+如已匯入同一期的新型及設計公告，可對獨立專案執行 `python -m services.ingestion.gazette_dates --stage grant --year 115 --issue 053028 --include-other-grants`。程式從官方封存書目核對公告號、申請號和卷期，再補入日期、可取得的 LOC 及版次。預設公告排程仍採已驗證的發明模式。[LOC 來源](DATA_SOURCES.md#新型與設計日期及-loc-分類)
+
 先匯入指定卷期的官方公開或公告文件，再執行日期補齊。操作員需使用具有匯入權限的 Compose `migrate` 服務。下列指令以固定驗收語料的兩個卷期為例，可用同一 Compose 專案重跑。
 
 ```powershell

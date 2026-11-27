@@ -57,6 +57,44 @@ def test_roc_date_uses_the_real_calendar():
         roc_date("114/02/29")
 
 
+def test_design_gazette_classification_is_bound_to_the_certificate_and_edition():
+    # Synthetic fixture modeling a grant bibliography with LOC edition metadata.
+    design = (
+        PUBLICATION.replace(b"tw-patent-application", b"tw-patent-grant")
+        .replace(b"tw-bibliographic-data-application", b"tw-bibliographic-data-grant")
+        .replace(b"invention-public", b"design")
+        .replace(
+            b"<doc-number>000000001</doc-number>", b"<doc-number>D000001</doc-number>"
+        )
+        .replace(
+            b"</publication-reference>",
+            b"""</publication-reference>
+            <certificate-number><document-id><doc-number>D000001</doc-number></document-id></certificate-number>
+            <classification-locarno><main-classification edition="15">13-99</main-classification></classification-locarno>""",
+        )
+    )
+    record = parse_gazette(design, "grant", "115", "024019", include_other_grants=True)[
+        "D000001"
+    ]
+    assert record.loc == (("13-99", "15"),)
+    assert record.application_no == "000000002"
+    derived = design.replace(b"000000002", b"000000002D01")
+    assert (
+        parse_gazette(derived, "grant", "115", "024019", include_other_grants=True)[
+            "D000001"
+        ].application_no
+        == "000000002D01"
+    )
+    with pytest.raises(ValueError, match="application type disagree"):
+        parse_gazette(
+            design.replace(b'"design"', b'"model"'),
+            "grant",
+            "115",
+            "024019",
+            include_other_grants=True,
+        )
+
+
 def test_latest_issue_previews_verified_dates_and_applies_only_after_import(
     monkeypatch, tmp_path, capsys
 ):

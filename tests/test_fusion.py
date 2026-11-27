@@ -106,6 +106,7 @@ def test_hybrid_api_sorts_dates_before_pagination_and_keeps_fusion_ranks(monkeyp
                 "abstract_excerpt": row["publication_no"],
                 "applicants": [{"zh": "DEMO applicant"}],
                 "ipc_codes": ["G01R27/02"],
+                "loc_codes": [],
             }
             for row in rows
         ]
@@ -140,6 +141,7 @@ def test_hybrid_api_sorts_dates_before_pagination_and_keeps_fusion_ranks(monkeyp
     assert first["abstract_excerpt"] == "DEMO-4"
     assert first["applicants"] == [{"zh": "DEMO applicant", "en": None}]
     assert first["ipc_codes"] == ["G01R27/02"]
+    assert first["loc_codes"] == []
     assert first["lexical_match_fields"] == ["title_zh", "claim"]
     assert first["official_source_url"] == "https://data.gov.tw/dataset/15987"
     assert second["official_source_url"] is None

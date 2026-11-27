@@ -52,6 +52,12 @@
 
 圖式目前由操作員逐頁附加，支援符合已驗證路徑與格式、大小不超過 2 MiB 的 JPEG。圖式尚未納入向量索引及模型比對。
 
+### 新型與設計日期及 LOC 分類
+
+2026-11-27 核對第 053028 期的[官方完整書目](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053028/patent.xml)，23,778,073 bytes，SHA-256 `836c3c9db01099dfe38fa1d15e9e1d3116180126c02f5179ebcf17542c7bd5c8`。書目含 1,095 筆發明、349 筆新型及 196 筆設計。每一筆設計都提供 `classification-locarno/main-classification`，樣本版次皆為 `15`。來源為智財局發布，目錄列免費、每月更新及政府資料開放授權條款第 1 版。[官方資料集 15972](https://data.gov.tw/dataset/15972)
+
+固定驗收的 `D246917`／`112306158` 的申請日為 `2023-11-29`、公告日為 `2026-10-01`、LOC `13-99`；新型 `M687984`／`114206949` 的申請日為 `2025-07-02`、公告日同為 `2026-10-01`。有 12 筆設計書目的申請號帶 `D01`，解析保留尾碼。此輪驗收未將衍生設計匯入，既有九位申請號查詢契約仍適用。
+
 ## 公告期別的固定封存檔
 
 2026-11-10 以匿名 FTPS 列出官方目錄，確認 `專利說明書(1案1XML檔)` 的各期封存位於 `/PatentIsuRegSpecXMLA/<民國年>/PatentIsuRegSpecXMLA_<卷期>/`，115 年目錄當日有第 53 卷第 1 至 31 期。[第 53 卷第 28 期封存索引](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index.xml) 回傳 `226`，15,597,462 bytes 符合 `SIZE`，SHA-256 `60936a7ab763fbb8bd79b8a3071aa89d43da3ffe4ef65928734a9ddc70827a4a`。

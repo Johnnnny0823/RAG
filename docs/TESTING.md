@@ -114,6 +114,12 @@ npm run test:e2e --prefix apps/web -- patent-number.spec.ts
 
 API 冒煙覆蓋錯版附加拒絕、官方取件、重跑去重、JPEG 原始位元校驗及跨版 404。瀏覽器驗證圖像實際解碼及同版 XPath 顯示。
 
+### 設計 LOC 篩選回歸
+
+在隔離庫匯入 `D246917`、`M687984` 的第 053028 期 S01 書目，依 [SETUP](SETUP.md#從官方公報書目補齊日期) 用同一期完整書目補入日期和 LOC。建立詞彙及向量索引，再以 `PATENTSCOPE_E2E_TIPO=loc` 執行 `npm run test:e2e --prefix apps/web -- gazette-dates.spec.ts`。案例輸入全形 `１３－９９`，確認候選、日期與詳情 LOC 顯示，改用 `00-00` 則呈現空結果。
+
+隔離 API 驗收另以 `{"query":"載具","loc":"13-99"}` 跑詞彙、語意及混合檢索，三種模式皆回傳同一設計。保存搜尋後，回查 `request.loc` 並下載 PDF，驗證報告保留代碼 `13-99`。
+
 ### 官方公報 PDF 回歸
 
 以獨立 Compose 專案匯入上述固定官方語料後，可驗證同案的公開及公告 PDF。此測試先驗證錯版的附件請求在連線前遭拒。兩份 PDF 各實取一次，後續透過 `--replay-stored` 重跑，再用 API 核對去重及 XML 請求項來源。若智財局拒絕下載，首次取件關卡會依實際 HTTP 狀態回報失敗。

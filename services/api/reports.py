@@ -137,6 +137,7 @@ def build_report(run: RunDetails, sources: dict[UUID, list[SourceArtifact]]) -> 
     paragraph(run.request.query)
     filters = [
         ("IPC", run.request.ipc),
+        ("LOC", run.request.loc),
         ("日期起日", run.request.published_from),
         ("日期迄日", run.request.published_to),
         ("申請人", run.request.applicant),

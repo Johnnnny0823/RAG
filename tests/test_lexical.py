@@ -17,8 +17,12 @@ def test_bilingual_tokenizer_preserves_traditional_chinese_and_normalizes_ascii(
     assert tokenize("電，阻") == ["h0096fb", "h00963b"]
 
 
-def test_lexical_endpoint_rejects_unsearchable_query_and_invalid_ipc():
-    for payload in [{"query": "?! 😅"}, {"query": "電阻", "ipc": "G01R27"}]:
+def test_lexical_endpoint_rejects_unsearchable_query_and_invalid_classifications():
+    for payload in [
+        {"query": "?! 😅"},
+        {"query": "電阻", "ipc": "G01R27"},
+        {"query": "電阻", "loc": "13"},
+    ]:
         response = client.post("/api/v1/patents/search", json=payload)
         assert response.status_code == 422
         assert response.json()["error"]["code"] == "INVALID_REQUEST"

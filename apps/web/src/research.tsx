@@ -38,6 +38,7 @@ type Hit = PatentVersion & {
   abstract_excerpt?: string | null;
   applicants?: Party[];
   ipc_codes?: string[];
+  loc_codes?: string[];
   official_source_url?: string | null;
   lexical_match_fields?: string[];
 };
@@ -67,6 +68,7 @@ type Detail = {
 };
 type Claim = { claim_number: number; text: string; referenced_claim_numbers: number[]; source: SourceLocation };
 type SearchFilters = {
+  loc: string;
   published_from: string;
   published_to: string;
   document_stage: string;
@@ -75,7 +77,7 @@ type SearchFilters = {
 };
 type Search = { query: string; ipc: string | null; features: Feature[]; rerank: boolean; offset: number; sort_by?: SearchSort } &
   { [Key in keyof SearchFilters]?: string | null };
-const emptyFilters: SearchFilters = { published_from: "", published_to: "", document_stage: "", content_scope: "", applicant: "" };
+const emptyFilters: SearchFilters = { loc: "", published_from: "", published_to: "", document_stage: "", content_scope: "", applicant: "" };
 type CorpusCoverage = {
   observed_at: string;
   lexical_versions: number;
@@ -594,6 +596,7 @@ export function Research() {
     }
     const payload = {
       query: query.trim(), ipc: ipc.trim() || null, features, rerank, offset: 0, sort_by: sortBy,
+      loc: filters.loc.trim() || null,
       published_from: filters.published_from || null,
       published_to: filters.published_to || null,
       document_stage: filters.document_stage || null,
@@ -916,6 +919,9 @@ export function Research() {
               <label className="research-field mt-5">IPC 篩選（選填）
                 <input value={ipc} maxLength={24} onChange={(event) => setIpc(event.target.value)} />
               </label>
+              <label className="research-field">LOC 設計分類（選填）
+                <input value={filters.loc} maxLength={12} onChange={(event) => setFilters({ ...filters, loc: event.target.value })} />
+              </label>
               <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-2">
                 <label className="research-field">公開／公告起日
                   <input type="date" value={filters.published_from} onChange={(event) => setFilters({ ...filters, published_from: event.target.value })} />
@@ -960,7 +966,7 @@ export function Research() {
           {searchRemoved && <p role="status" className="my-2 text-sm text-teal-900">已刪除保存的搜尋紀錄與比對。</p>}
           {!results && <p className="mt-3 text-slate-700">完成搜尋後，這裡會顯示候選文件與排序資訊。</p>}
           {search && results && <>
-            <p className="my-3 break-words text-slate-700">{saved ? "已保存的查詢" : "本次查詢"} · {search.query}{search.ipc && ` · IPC ${search.ipc}`}</p>
+            <p className="my-3 break-words text-slate-700">{saved ? "已保存的查詢" : "本次查詢"} · {search.query}{search.ipc && ` · IPC ${search.ipc}`}{search.loc && ` · LOC ${search.loc}`}</p>
             {results.corpus_coverage ? <p className="mb-3 text-sm text-slate-700">
               搜尋涵蓋範圍（依篩選） · 詞彙索引 {results.corpus_coverage.lexical_versions} 個文件版本 · 向量索引 {results.corpus_coverage.semantic_versions} 個文件版本 · 最新文件日期 {results.corpus_coverage.latest_document_date ?? "未提供"} · <time dateTime={results.corpus_coverage.observed_at}>{new Date(results.corpus_coverage.observed_at).toLocaleString("zh-TW")}</time>
             </p> : saved && <p className="mb-3 text-sm text-slate-700">這筆搜尋未記錄當時的索引涵蓋範圍。</p>}
@@ -1009,7 +1015,7 @@ export function Research() {
                 <li key={hit.document_id} className="py-3">
                   <p className="text-sm font-medium text-teal-800">第 {results.offset + index + 1} 筆 · {stage[hit.document_stage] ?? hit.document_stage} {hit.publication_no} {hit.kind_code} · {scope[hit.content_scope]}</p>
                   <button className="mt-1 text-left" type="button" disabled={!!busy} onClick={() => void run("正在載入專利詳情…", () => openPatent(hit))}>{title(hit)}</button>
-                  <p className="mt-1 break-words text-sm text-slate-700">申請人 {names(hit.applicants ?? [])} · 文件日期 {hit.publication_date ?? "未提供"}{hit.ipc_codes?.length ? ` · IPC ${hit.ipc_codes.join("、")}` : ""}</p>
+                  <p className="mt-1 break-words text-sm text-slate-700">申請人 {names(hit.applicants ?? [])} · 文件日期 {hit.publication_date ?? "未提供"}{hit.ipc_codes?.length ? ` · IPC ${hit.ipc_codes.join("、")}` : ""}{hit.loc_codes?.length ? ` · LOC ${hit.loc_codes.join("、")}` : ""}</p>
                   {hit.abstract_excerpt && <p className="mt-1 line-clamp-3 break-words text-sm text-slate-700">{hit.abstract_excerpt}</p>}
                   <p className="mt-1 text-sm text-slate-700">相關原因 · {retrievalReason(hit)}</p>
                   <p className="mt-1 text-sm text-slate-700">詞彙 {hit.lexical_rank ?? "—"} · 語意 {hit.semantic_rank ?? "—"} · 融合 {hit.fusion_rank}{hit.rerank_rank && ` · 重排 ${hit.rerank_rank}`}</p>

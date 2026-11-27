@@ -1,5 +1,23 @@
 import { expect, test } from "@playwright/test";
 
+test("filters a real design by its official Locarno class @loc", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel(/^構想描述（最多 /).fill("載具");
+  const loc = page.getByLabel("LOC 設計分類（選填）");
+  const submit = page.getByRole("button", { name: "搜尋臺灣專利", exact: true });
+  const candidate = page.getByRole("listitem").filter({ hasText: "公告 D246917" });
+  await loc.fill("１３－９９");
+  await submit.click();
+  await expect(candidate.getByText(/文件日期 2026-10-01.*LOC 13-99/)).toBeVisible({ timeout: 40_000 });
+  await candidate.getByRole("button").click();
+  await expect(page.getByText("LOC 13-99", { exact: true })).toBeVisible();
+
+  await loc.fill("00-00");
+  await submit.click();
+  await expect(page.getByText("已索引的資料中沒有符合這次條件的結果。")).toBeVisible({ timeout: 40_000 });
+  await expect(candidate).toHaveCount(0);
+});
+
 test("official gazette dates filter a publication and link its source @gazette", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("API、資料庫與向量擴充功能已就緒。")).toBeVisible();

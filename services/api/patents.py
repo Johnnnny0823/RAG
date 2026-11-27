@@ -161,6 +161,7 @@ class LexicalSearchResults(BaseModel):
 class RankedSearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=160)
     ipc: str | None = Field(default=None, max_length=24)
+    loc: str | None = Field(default=None, max_length=12)
     published_from: date | None = None
     published_to: date | None = None
     document_stage: DocumentStage | None = None
@@ -205,6 +206,7 @@ class HybridPatentHit(PatentVersion):
     abstract_excerpt: str | None = None
     applicants: list[PartyName] = Field(default_factory=list)
     ipc_codes: list[str] = Field(default_factory=list)
+    loc_codes: list[str] = Field(default_factory=list)
     official_source_url: str | None = None
     lexical_match_fields: list[str] = Field(default_factory=list)
 
@@ -387,6 +389,10 @@ SEARCH_FILTERS = """
         WHERE strpos(lower(applicant.entry->>'zh'), lower(%s)) > 0
            OR strpos(lower(applicant.entry->>'en'), lower(%s)) > 0
     ))
+    AND (%s::text IS NULL OR EXISTS (
+        SELECT 1 FROM patent_classifications c
+        WHERE c.document_id=d.id AND c.scheme='LOC' AND c.code=%s
+    ))
 """
 
 # Versions of one publication share title and abstract, so their scores can tie.
@@ -492,6 +498,11 @@ def normalize_ipc(value: str | None) -> str | None:
 
 def search_filter_params(request: RankedSearchRequest) -> tuple:
     ipc = normalize_ipc(request.ipc)
+    loc = None
+    if request.loc is not None:
+        loc = unicodedata.normalize("NFKC", request.loc).strip()
+        if not re.fullmatch(r"[0-9]{2}-[0-9]{2}", loc):
+            raise ValueError("LOC 格式不符，例如 13-99。")
     if (
         request.published_from
         and request.published_to
@@ -505,6 +516,8 @@ def search_filter_params(request: RankedSearchRequest) -> tuple:
         *((request.document_stage,) * 2),
         *((request.content_scope,) * 2),
         *((request.applicant,) * 3),
+        loc,
+        loc,
     )
 
 
@@ -663,7 +676,12 @@ def add_candidate_previews(conn: Connection, ranked: list[dict]) -> None:
                     SELECT DISTINCT c.code FROM patent_classifications c
                     WHERE c.document_id = d.id AND c.scheme = 'IPC'
                     ORDER BY c.code LIMIT 4
-                  ) AS ipc_codes
+                  ) AS ipc_codes,
+                  ARRAY(
+                    SELECT DISTINCT c.code FROM patent_classifications c
+                    WHERE c.document_id = d.id AND c.scheme = 'LOC'
+                    ORDER BY c.code LIMIT 4
+                  ) AS loc_codes
            FROM patent_documents d WHERE d.id = ANY(%s::uuid[])""",
         (ids,),
     ).mappings()
@@ -681,6 +699,7 @@ def add_candidate_previews(conn: Connection, ranked: list[dict]) -> None:
             abstract_excerpt=row["abstract_excerpt"],
             applicants=row["applicants"] or [],
             ipc_codes=row["ipc_codes"],
+            loc_codes=row["loc_codes"],
             official_source_url=next(
                 (
                     url
