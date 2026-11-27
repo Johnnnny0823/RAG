@@ -47,6 +47,56 @@ def verify_deployment(web: str) -> None:
         with urlopen(f"{expected}/", timeout=5) as response:
             if response.url != expected or json.load(response) != {"status": "ok"}:
                 raise ValueError("API redirect did not preserve the HTTPS origin")
+    verify_pwa_assets(web)
+
+
+def verify_pwa_assets(web: str) -> None:
+    with urlopen(f"{web}/manifest.webmanifest", timeout=5) as response:
+        if response.headers.get_content_type() != "application/manifest+json":
+            raise ValueError("Unexpected PWA manifest media type")
+        manifest = json.load(response)
+        if (
+            manifest.get("start_url"),
+            manifest.get("scope"),
+            manifest.get("display"),
+        ) != (
+            "/",
+            "/",
+            "standalone",
+        ):
+            raise ValueError("Unexpected PWA entry or scope")
+    with urlopen(f"{web}/sw.js", timeout=5) as response:
+        directives = {
+            item.strip().lower()
+            for item in response.headers.get("Cache-Control", "").split(",")
+        }
+        if response.headers.get_content_type() not in {
+            "application/javascript",
+            "text/javascript",
+        } or directives.isdisjoint({"no-cache", "no-store"}):
+            raise ValueError("Unexpected service worker media type or cache policy")
+    if '<html lang="zh-Hant">' not in read(f"{web}/offline.html"):
+        raise ValueError("Unexpected offline entry page")
+
+
+def verify_official_index(web: str) -> None:
+    with urlopen(f"{web}/api/v1/corpus/status", timeout=5) as response:
+        coverage = json.load(response)
+        directives = {
+            item.strip().lower()
+            for item in response.headers.get("Cache-Control", "").split(",")
+        }
+        if "no-store" not in directives:
+            raise ValueError("Official corpus status must disable response caching")
+    total = coverage.get("documents_total")
+    indexed = [
+        coverage.get(key)
+        for key in ("lexical_indexed_documents", "semantic_indexed_documents")
+    ]
+    if type(total) is not int or not all(
+        type(count) is int and 0 < count <= total for count in indexed
+    ):
+        raise ValueError("Official corpus has no usable lexical or semantic coverage")
 
 
 def verify_rate_limits(web: str) -> None:
@@ -97,6 +147,11 @@ if __name__ == "__main__":
     parser.add_argument("--deployment", action="store_true")
     parser.add_argument("--deployment-rate-limit", action="store_true")
     parser.add_argument(
+        "--require-official-index",
+        action="store_true",
+        help="Require nonempty official lexical and semantic corpus coverage",
+    )
+    parser.add_argument(
         "--ca-file", help="Trust an additional CA certificate for HTTPS"
     )
     args = parser.parse_args()
@@ -124,6 +179,11 @@ if __name__ == "__main__":
             if args.deployment:
                 print("Deployment smoke passed: packaged frontend and security headers")
             break
+    if args.require_official_index:
+        verify_official_index(args.web)
+        print(
+            "Official corpus smoke passed: lexical and semantic coverage via web proxy"
+        )
     if args.deployment_rate_limit:
         verify_rate_limits(args.web)
         print("Rate limit smoke passed: API error contract and unaffected status reads")

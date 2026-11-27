@@ -1992,3 +1992,22 @@
 - Uncommitted changes / file ownership warnings: 變更限整合工作樹。
 - Next 1–3 concrete actions: 核對遠端官方工作流程，取得人工標註與正式主機配置。
 - Exact reproduction steps: 啟動 117 版本固定官方語料與 Ollama。在正式 Nginx 測試站用 `dates` 執行公報套件，再用 `versions` 執行 `search-rerank.spec.ts`。
+
+## 部署版 PWA 與官方索引就緒驗收
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `dd779a6`。
+- Current milestone and status: 隔離環境驗收通過，公開部署 IN_PROGRESS。
+- Goal of this session: 分別驗證部署的靜態入口、PWA 配置與真實專利索引的可用狀態。
+- Files changed (with purpose): `apps/web/nginx.conf` 提供正確的 manifest 媒體類型。`scripts/smoke.py` 檢查正式 PWA 及官方索引。官方工作流程在語意檢索通過後追加官方索引就緒檢查，`tests/test_smoke.py` 增加正反向驗證。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。冒煙沿用 `/api/v1/corpus/status`。
+- Commands actually run and results: Ruff 通過，pytest 122 passed、9 skipped。Nginx 正式映像以空庫及 117 版本庫分別驗證，空庫的官方索引檢查如預期失敗。回環 HTTPS 合併執行部署、官方覆蓋與限流檢查通過。實際語意 API 的 `202640162`、`202639611` 測試各排第一。包裝版 PWA Chromium 3 passed。
+- Tests NOT run and reason: 本輪未重跑 PostgreSQL pytest 整合套件，已由實際部署使用隔離 PostgreSQL 驗收。公開 DNS、外部 CA、目標主機與實體裝置待驗證。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 使用第 024019／053028 期已核對的固定官方資料。來源及授權見 DATA_SOURCES。
+- Known bugs / risks / blockers: 舊映像回傳 `application/octet-stream`，已修正。回環 TLS 首次因 D 槽無法掛載，改以 Windows 暫存路徑成功。手動 API 測試容器補上與 Compose 相同的代理設定後才保持 HTTPS 重新導向。合併限流測試首次得到 429，已將語料檢查移到觸發限流前。
+- Decisions made (ADR links): 日常 readiness 可通過空庫，對外語料驗收以額外參數要求詞彙與向量涵蓋大於零。模型與查詢品質仍由真實檢索和人工資料集驗證。
+- Uncommitted changes / file ownership warnings: 只修改整合工作樹。驗收憑證與容器未納入版本庫。
+- Next 1–3 concrete actions: 確認遠端官方工作流程、公開主機前置條件及人工標註。
+- Exact reproduction steps: 依 SETUP 對已匯入官方語料的測試網站執行 `scripts/smoke.py --deployment --require-official-index`。HTTPS 測試載入測試 CA，限流檢查只在隔離網站執行。

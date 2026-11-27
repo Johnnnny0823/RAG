@@ -233,3 +233,5 @@ npx playwright test --reporter=list
 ```
 
 2026-11-27 通過 5 項，涵蓋桌面、平板與手機 Chromium，以及桌面 Firefox 與 WebKit。測試連線時核對語料狀態 API 由網路回應，斷線時核對提示與 API 無法讀取，恢復後再次取得 200。官方來源工作流程在啟動正式映像後先跑桌面 Chromium，再匯入官方語料。
+
+部署冒煙的 `--deployment` 也會驗證 manifest 的媒體類型與作用範圍、Service Worker 的腳本媒體類型與快取政策，以及離線頁。完整官方工作流程在向量索引及語意 API 驗收後，再以 `--require-official-index` 檢查公開語料狀態。測試站若同時驗收限流，會在觸發限流前查詢語料狀態。
