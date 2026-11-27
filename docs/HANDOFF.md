@@ -2467,3 +2467,22 @@
 - Uncommitted changes / file ownership warnings: 驗收於隔離工作樹、本機 Compose 與唯讀原件快照進行。
 - Next 1–3 concrete actions: 收取人工標註及指定部署環境後執行重評與部署驗收。
 - Exact reproduction steps: 依 [跨兩期驗收](TESTING.md#跨兩期全文與索引) 取件校驗、使用隔離庫與每輪一卷期設定，再核對 `archive_refresh_checkpoints`、原文及向量。
+
+## 人工評估版本計分
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `1a751de`。本節隨變更提交。
+- Current milestone and status: M5 IN_PROGRESS。評估只對人工固定的文件版本計分。候選池仍待人工複核。
+- Goal of this session: 防止只命中同號其他版本時繼承正式人工分數。驗收本機複核檔的草稿與完成檔流程。
+- Files changed (with purpose): `scripts/evaluate_search.py` 以當前語料解析出的固定文件 ID 計分，`tests/test_evaluate_search.py` 覆蓋書目排首、全文排次與重複全文。更新評估規則與進度。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無 REST 變更。評估 JSON 新增 `judgment_identity`，記錄人工版本或種子號碼計分。
+- Commands actually run and results: 新回歸先重現 MRR 1.0，修正版得到 0.5，原名次維持。pytest 145 項通過、9 預設跳過、1 既有 Starlette 警告。Ruff 格式、lint、Git diff 通過。Playwright 用 DEMO 樣本驗證完成驗條件、草稿與完成檔下載、同版匯入及不同雜湊拒絕。CLI 確認正式待複核池在請求 API 前中止。實際複核 HTML 與正式候選池 JSON 一致，34 組皆空白。起點[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46044407824)通過。
+- Tests NOT run and reason: 無真實人工分數，未重跑正式評估。此修改限離線計分與報告格式，未重跑本機 PostgreSQL 或產品 Playwright 套件。
+- Data sources checked (exact URL/date) and license/access notes: 本次沿用已驗證的官方候選池，未新增官源。瀏覽器操作使用獨立 DEMO 檔。
+- Known bugs / risks / blockers: 尚待 34 組人工複核和目標部署環境確認。
+- Decisions made (ADR links): 未複核版本占原名次並歸入未標註。後續若出現正確版本，以其實際名次計分。種子集原基線照舊。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹修改評估器及文件，正式標註池內容未變更。
+- Next 1–3 concrete actions: 收到人工分數後在固定語料重評，依確認的目標部署環境做交付驗收。
+- Exact reproduction steps: `python -m pytest -q tests/test_evaluate_search.py`。正式標註格式與重跑指令見 [評估說明](EVALUATION.md)。

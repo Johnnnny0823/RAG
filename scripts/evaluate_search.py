@@ -31,17 +31,21 @@ def request(api, path, payload=None):
         return json.load(response)
 
 
-def score(items, labels):
-    # Alternate versions of one publication consume their original rank.
-    # Only the first occurrence earns credit.
+def score(items, labels, *, reviewed_ids=None):
+    # Unreviewed versions still occupy their original rank. Among eligible hits,
+    # only the first occurrence of a publication earns credit.
     seen = set()
     grades = []
     judged = 0
     for item in items[:K]:
         key = (item["document_stage"], item["publication_no"])
-        judged += key in labels
-        grades.append(labels.get(key, 0) if key not in seen else 0)
-        seen.add(key)
+        eligible = key in labels and (
+            reviewed_ids is None or item["document_id"] == reviewed_ids[key]
+        )
+        judged += eligible
+        grades.append(labels[key] if eligible and key not in seen else 0)
+        if eligible:
+            seen.add(key)
     matched = sum(grade > 0 for grade in grades)
     ideal = sorted(labels.values(), reverse=True)[:K]
     relevant = sum(grade > 0 for grade in labels.values())
@@ -125,11 +129,13 @@ def evaluate(api, dataset, repeats):
     modes = {mode: [] for mode in MODES}
     for case in dataset["cases"]:
         labels = case_labels[case["id"]]
+        reviewed_ids = {} if human_reviewed else None
         for row in case["judgments"]:
             stage, number = row["stage"], row["number"]
             versions = version_details(api, stage, number)
-            if human_reviewed:
-                check_reviewed_version(api, row, versions)
+            if reviewed_ids is not None:
+                detail = check_reviewed_version(api, row, versions)
+                reviewed_ids[(stage, number)] = detail["document_id"]
             elif next(versions, None) is None:
                 raise ValueError(
                     f"Required evaluation document missing: {stage}/{number}"
@@ -145,7 +151,7 @@ def evaluate(api, dataset, repeats):
                     {
                         "case": case["id"],
                         "latency_ms": latency,
-                        "metrics": score(items, labels),
+                        "metrics": score(items, labels, reviewed_ids=reviewed_ids),
                         "results": [
                             {
                                 field: item[field]
@@ -192,6 +198,7 @@ def evaluate(api, dataset, repeats):
     ).encode("utf-8")
     return {
         "label_status": dataset["label_status"],
+        "judgment_identity": "pinned_version" if human_reviewed else "publication",
         "dataset_sha256": hashlib.sha256(dataset_bytes).hexdigest(),
         "corpus_status": corpus,
         "summary": summary,

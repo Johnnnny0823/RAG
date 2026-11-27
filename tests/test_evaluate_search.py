@@ -33,7 +33,9 @@ def test_unjudged_and_missing_documents_do_not_earn_credit():
 
 def test_reviewed_case_with_no_relevant_documents_remains_in_evaluation(monkeypatch):
     monkeypatch.setattr(evaluate_search, "version_details", lambda *_: iter(()))
-    monkeypatch.setattr(evaluate_search, "check_reviewed_version", lambda *_: None)
+    monkeypatch.setattr(
+        evaluate_search, "check_reviewed_version", lambda *_: {"document_id": "demo"}
+    )
     corpus = {"documents_total": 1, "semantic_indexed_documents": 1}
 
     def request(_api, path, *_args):
@@ -164,3 +166,54 @@ def test_pending_pool_does_not_produce_scores():
             {"label_status": "pending_human_review", "cases": [{"id": "example"}]},
             1,
         )
+
+
+def test_human_review_scores_only_the_pinned_result_version(monkeypatch):
+    stages = (
+        ("grant", "DEMO", "summary", "metadata_and_abstract"),
+        ("grant", "DEMO", "reviewed", "fulltext"),
+        ("grant", "DEMO", "reviewed", "fulltext"),
+    )
+    hits = [
+        dict(
+            document_stage=stage,
+            publication_no=number,
+            document_id=document_id,
+            content_scope=scope,
+        )
+        for stage, number, document_id, scope in stages
+    ]
+    row = {
+        "stage": "grant",
+        "number": "DEMO",
+        "grade": 2,
+        "basis": "DEMO test-only evidence",
+        "content_scope": "fulltext",
+        "document_sha256": "a" * 64,
+        "parser_version": "demo-v1",
+    }
+
+    def request(_api, path, *_args):
+        if path == "/corpus/status":
+            return {"documents_total": 2}
+        if path.startswith("/patents?"):
+            return {"items": hits[:2], "has_more": False}
+        if path == "/patents/reviewed":
+            return {**row, "document_id": "reviewed"}
+        assert path.startswith("/patents/search")
+        return {"items": hits}
+
+    monkeypatch.setattr(evaluate_search, "request", request)
+    dataset = {
+        "label_status": "human_reviewed",
+        "reviewer": "DEMO reviewer",
+        "cases": [{"id": "DEMO", "query": "DEMO query", "judgments": [row]}],
+    }
+
+    evaluation = evaluate("", dataset, 1)
+    assert evaluation["judgment_identity"] == "pinned_version"
+    for result in evaluation["runs"].values():
+        [run] = result
+        assert run["metrics"]["reciprocal_rank"] == 0.5
+        assert run["metrics"]["unjudged_returned"] == 1
+        assert run["metrics"]["precision_at_10_lower_bound"] == 0.1
