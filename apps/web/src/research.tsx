@@ -179,20 +179,23 @@ async function request<T>(path: string, payload?: object, token?: string, method
 
 type GazettePdfPage = { page_number: number; extracted_text: string };
 type GazettePdfHit = PatentVersion & { artifact_sha256: string; page_number: number; source_url: string };
-type GazettePdfResults = { items: GazettePdfHit[]; has_more: boolean };
+type GazettePdfResults = { items: GazettePdfHit[]; has_more: boolean; limit: number; offset: number };
+type GazettePdfFilters = { query: string; document_stage: "publication" | "grant" | null };
 
 function GazettePdfSearch({ busy, open }: { busy: boolean; open: (hit: GazettePdfHit) => void }) {
   const [query, setQuery] = useState("");
+  const [documentStage, setDocumentStage] = useState<"publication" | "grant" | "">("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<GazettePdfResults | null>(null);
+  const [submitted, setSubmitted] = useState<{ filters: GazettePdfFilters; page: GazettePdfResults } | null>(null);
   const [error, setError] = useState("");
+  const results = submitted?.page;
 
-  async function search() {
+  async function search(filters: GazettePdfFilters, offset: number) {
     setLoading(true);
     setError("");
-    setResults(null);
     try {
-      setResults(await request<GazettePdfResults>("/patents/gazette-pdfs/search", { query: query.trim() }));
+      const page = await request<GazettePdfResults>("/patents/gazette-pdfs/search", { ...filters, offset });
+      setSubmitted({ filters, page });
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "公報檢索失敗。");
     } finally {
@@ -205,10 +208,17 @@ function GazettePdfSearch({ busy, open }: { busy: boolean; open: (hit: GazettePd
     <p className="my-2 text-sm">搜尋已匯入的公報文字層。掃描圖像請查閱官方 PDF。</p>
     <form onSubmit={(event) => {
       event.preventDefault();
-      if (!loading && query.trim()) void search();
+      if (!loading && query.trim()) void search({ query: query.trim(), document_stage: documentStage || null }, 0);
     }}>
       <label className="research-field">公報檢索詞
         <input value={query} onChange={(event) => setQuery(event.target.value)} maxLength={120} />
+      </label>
+      <label className="research-field">公報階段
+        <select value={documentStage} onChange={(event) => setDocumentStage(event.target.value as typeof documentStage)}>
+          <option value="">全部</option>
+          <option value="publication">公開</option>
+          <option value="grant">公告</option>
+        </select>
       </label>
       <button type="submit" disabled={loading || !query.trim()}>{loading ? "正在搜尋公報…" : "搜尋公報 PDF"}</button>
     </form>
@@ -220,7 +230,10 @@ function GazettePdfSearch({ busy, open }: { busy: boolean; open: (hit: GazettePd
         <a className="ml-2 text-sm" href={`${hit.source_url}#page=${hit.page_number}`} target="_blank" rel="noreferrer">開啟官方 PDF 第 {hit.page_number} 頁</a>
       </li>)}
     </ul> : <p role="status">已匯入的公報文字中沒有符合的頁面。</p>)}
-    {results?.has_more && <p className="text-sm">顯示前 20 筆，可縮小檢索詞範圍。</p>}
+    {submitted && results && (results.has_more || results.offset > 0) && <nav className="mt-2 flex gap-3" aria-label="公報搜尋分頁">
+      <button type="button" disabled={loading || !results.offset} onClick={() => void search(submitted.filters, Math.max(0, results.offset - results.limit))}>上一頁</button>
+      <button type="button" disabled={loading || !results.has_more} onClick={() => void search(submitted.filters, results.offset + results.limit)}>下一頁</button>
+    </nav>}
   </section>;
 }
 

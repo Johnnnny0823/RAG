@@ -320,6 +320,8 @@ class GazettePdfPages(BaseModel):
 class GazettePdfQuery(BaseModel):
     query: str = Field(min_length=1, max_length=120)
     document_stage: DocumentStage | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+    offset: int = Field(default=0, ge=0, le=10000)
 
 
 class GazettePdfHit(PatentVersion):
@@ -331,6 +333,8 @@ class GazettePdfHit(PatentVersion):
 class GazettePdfResults(BaseModel):
     items: list[GazettePdfHit]
     has_more: bool
+    limit: int
+    offset: int
 
 
 SUMMARY_FIELDS = """
@@ -1003,9 +1007,16 @@ def search_gazette_pdfs(request: GazettePdfQuery):
                           WHEN 'publication' THEN 'TIPO-INVENTION-GAZETTE-PDF'
                           WHEN 'grant' THEN 'TIPO-GRANT-GAZETTE-PDF'
                       END
-                    ORDER BY score DESC, d.publication_no, d.id, ia.checksum, p.page_number
-                    LIMIT 21""",
-                    (terms, request.document_stage, request.document_stage),
+                    ORDER BY score DESC, d.publication_no, d.id, ia.checksum,
+                             p.page_number, ia.id, da.record_locator
+                    LIMIT %s OFFSET %s""",
+                    (
+                        terms,
+                        request.document_stage,
+                        request.document_stage,
+                        request.limit + 1,
+                        request.offset,
+                    ),
                 )
                 .mappings()
                 .all()
@@ -1016,7 +1027,12 @@ def search_gazette_pdfs(request: GazettePdfQuery):
     for row in rows:
         if (url := source_url(row["source_locator"])) is not None:
             items.append(GazettePdfHit.model_validate({**row, "source_url": url}))
-    return GazettePdfResults(items=items[:20], has_more=len(items) > 20)
+    return GazettePdfResults(
+        items=items[: request.limit],
+        has_more=len(rows) > request.limit and request.offset + request.limit <= 10000,
+        limit=request.limit,
+        offset=request.offset,
+    )
 
 
 @router.get(

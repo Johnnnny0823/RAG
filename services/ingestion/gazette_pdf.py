@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import re
+import time
 import unicodedata
 from dataclasses import dataclass
 from http.client import HTTPException, HTTPSConnection
@@ -65,18 +66,25 @@ GRANT = Gazette(
 
 
 def fetch(path: str, media_type: str, limit: int) -> bytes:
-    conn = HTTPSConnection(HOST, timeout=20)
-    try:
-        conn.request("GET", path)
-        response = conn.getresponse()
-        if response.status != 200 or response.headers.get_content_type() != media_type:
-            raise ValueError(f"TIPO did not return the expected {media_type}")
-        payload = response.read(limit + 1)
-        if not payload or len(payload) > limit:
-            raise ValueError("TIPO response is empty or exceeds the size limit")
-        return payload
-    finally:
-        conn.close()
+    for attempt in range(3):
+        conn = HTTPSConnection(HOST, timeout=12)
+        try:
+            conn.request("GET", path)
+            response = conn.getresponse()
+            if response.status not in {500, 502, 503, 504} or attempt == 2:
+                content_type = response.headers.get_content_type()
+                if response.status != 200 or content_type != media_type:
+                    raise ValueError(
+                        f"TIPO returned HTTP {response.status} ({content_type}); expected HTTP 200 ({media_type})"
+                    )
+                payload = response.read(limit + 1)
+                if not payload or len(payload) > limit:
+                    raise ValueError("TIPO response is empty or exceeds the size limit")
+                return payload
+        finally:
+            conn.close()
+        time.sleep(2**attempt)
+    raise AssertionError("Unreachable TIPO retry state")
 
 
 def checked_pdf_path(

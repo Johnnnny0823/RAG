@@ -1,8 +1,24 @@
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
 from services.ingestion import gazette_pdf
+
+
+def test_temporary_tipo_server_error_is_retried(monkeypatch):
+    pending = Mock(status=503)
+    ready = Mock(status=200)
+    ready.headers.get_content_type.return_value = "application/json"
+    ready.read.return_value = b"{}"
+    connection = Mock()
+    connection.getresponse.side_effect = [pending, ready]
+    monkeypatch.setattr(gazette_pdf, "HTTPSConnection", Mock(return_value=connection))
+    delay = Mock()
+    monkeypatch.setattr(gazette_pdf.time, "sleep", delay)
+    assert gazette_pdf.fetch("/gazette", "application/json", 1024) == b"{}"
+    assert connection.request.call_count == 2
+    delay.assert_called_once_with(1)
 
 
 def test_gazette_pdf_requires_requested_official_case_and_issue():

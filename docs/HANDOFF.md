@@ -2125,3 +2125,22 @@
 - Uncommitted changes / file ownership warnings: 官方 PDF 和測試資料留在隔離環境。
 - Next 1–3 concrete actions: 驗證新提交的官方遠端流程，接續人工標註及主機驗收。
 - Exact reproduction steps: 依 TESTING 建立隔離官方語料，執行 `scripts.smoke_gazette_pdfs` 及 `PATENTSCOPE_E2E_GAZETTE_PDFS=1` 的號碼查詢測試。
+
+## 公報查詢分頁及下載重試
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `a7c63f7`。
+- Current milestone and status: 公報查詢分頁已驗收，整體交付進行中。
+- Goal of this session: 支援分頁、階段篩選，並提高官方 PDF 下載的可診斷性。
+- Files changed (with purpose): `patents.py` 加入分頁，`research.tsx` 保留送出的詞與階段。公報下載器為 500、502、503、504 增加有限重試，回傳錯誤附 HTTP 狀態與媒體類型。
+- Database migrations added/applied: 無新增。
+- API/Schema changes: 公報搜尋加入 `limit`、`offset`，維持預設顯示 20 筆。
+- Commands actually run and results: pytest 127 passed、9 skipped。Playwright 5 passed，三種 Chromium 尺寸核對翻頁，五個瀏覽器專案核對階段篩選。WebKit 的測試請求覆寫未生效，改測通用篩選並將覆寫的分頁測試留在 Chromium。Windows 本機重取公告 PDF，SHA-256 一致。上一版一般 CI 通過。
+- Tests NOT run and reason: 本機 pytest 未啟用 PostgreSQL 整合測試。新版遠端官方來源模式待查。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 重新核對公告 `I941082` 固定 PDF，來源見 DATA_SOURCES。
+- Known bugs / risks / blockers: [上一版遠端 PDF](https://github.com/Johnnnny0823/RAG/actions/runs/45971523665) 因官方個案端點回應類型或狀態不符而失敗，舊紀錄缺 HTTP 狀態碼。本機 Playwright 首輪在新請求未完成時即判讀既有結果，補上數量等待後重跑。人工標註、OCR 與對外主機仍待。
+- Decisions made (ADR links): 短暫伺服器錯誤最多重試兩次，其他狀態保留原始診斷。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹修改，正式資料未動。
+- Next 1–3 concrete actions: 核對新版來源模式回應，接續人工標註及主機驗收。
+- Exact reproduction steps: 啟動固定官方 XML 與 PDF 的隔離站，執行 `PATENTSCOPE_E2E_GAZETTE_PDFS=1` 的號碼查詢測試。

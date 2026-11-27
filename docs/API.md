@@ -63,7 +63,7 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 `GET /api/v1/patents/{document_id}/gazette-pdfs/{artifact_sha256}/pages` 回傳目前文件版本已附加的官方 PDF 文字層。回應帶版本 UUID、PDF 雜湊及依原始頁碼排序的 `pages`，各頁含 `page_number` 與 `extracted_text`。查詢其他版本的 PDF 回傳 404。既有附件尚未擷取文字時回傳空陣列，重跑原件匯入可補齊。詳情在瀏覽器內查找這些文字，原文對照可開啟同一份官方 PDF。
 
-`POST /api/v1/patents/gazette-pdfs/search` 接受 `query`（最多 120 字）及選填 `document_stage`。各斷詞必須出現在同一頁，以詞彙相關性回傳前 20 筆，並附 `has_more`、文件版本、文件號、頁碼、原檔雜湊及官方網址。查詢範圍為已擷取文字的官方公報頁面。
+`POST /api/v1/patents/gazette-pdfs/search` 接受 `query`（最多 120 字）、選填 `document_stage`、`limit`（預設 20，上限 100）及 `offset`（預設 0，上限 10,000）。各斷詞必須出現在同一頁。結果依詞彙相關性排序，同分按文件與頁碼排序，並附分頁欄位及官方來源。工作台翻頁沿用上次成功送出的關鍵詞及階段。
 
 混合請求可加 `"rerank":true`，由本機分析模型根據標題與摘要重排融合後的前 8 筆候選。回傳原 `fusion_rank`、`rerank_rank` 及重排模型資訊。未啟用、候選少於兩筆或在重排範圍外時，對應欄位為 `null`。重排版本 `ollama-listwise-v2` 會依候選數量限定模型輸出的編號與陣列長度。後端獨立驗證每個候選恰好出現一次，驗證失敗回傳 503。分頁在重排後套用，跨請求的排序尚無持久化快照。
 

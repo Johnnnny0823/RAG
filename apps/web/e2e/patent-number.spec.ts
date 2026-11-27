@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("official identifier lookup opens the correct publication and grant versions @versions", async ({ page }) => {
+test("official identifier lookup opens the correct publication and grant versions @versions", async ({ page, browserName }) => {
   await page.goto("/");
   const lookup = page.getByRole("region", { name: "專利號碼查詢" });
   const kind = lookup.getByLabel("號碼類型");
@@ -80,5 +80,25 @@ test("official identifier lookup opens the correct publication and grant version
     await expect(grant.getByRole("link")).toHaveAttribute("href", /\/patent\/isu053028\/pdfdata\/114106690\.pdf#page=1$/);
     await publication.getByRole("button").click();
     await expect(page.getByRole("link", { name: "在智慧財產局查詢公開號 202640162" })).toBeVisible();
+
+    await search.getByLabel("公報階段").selectOption("grant");
+    await search.getByRole("button", { name: "搜尋公報 PDF" }).click();
+    await expect(search.getByRole("listitem")).toHaveCount(2);
+    await expect(search.getByText(/公開 202640162/)).toHaveCount(0);
+    if (browserName !== "chromium") return;
+
+    // Chromium supports overriding this request body to exercise the small corpus.
+    await page.route("**/api/v1/patents/gazette-pdfs/search", (route) =>
+      route.continue({ postData: JSON.stringify({ ...route.request().postDataJSON(), limit: 1 }) }),
+    );
+    await search.getByRole("button", { name: "搜尋公報 PDF" }).click();
+    await expect(search.getByRole("listitem")).toHaveCount(1);
+    await expect(search.getByRole("listitem")).toHaveText(/公告 I941082 · 第 2 頁/);
+    await search.getByLabel("公報檢索詞").fill("另一個檢索詞");
+    await search.getByRole("button", { name: "下一頁" }).click();
+    await expect(search.getByRole("listitem")).toHaveText(/公告 I941082 · 第 1 頁/);
+    await expect(search.getByRole("button", { name: "下一頁" })).toBeDisabled();
+    await search.getByRole("button", { name: "上一頁" }).click();
+    await expect(search.getByRole("listitem")).toHaveText(/公告 I941082 · 第 2 頁/);
   }
 });
