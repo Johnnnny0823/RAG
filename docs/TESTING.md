@@ -340,3 +340,7 @@ npx playwright test --reporter=list
 ## 背景搜尋程序中斷回歸
 
 在 PostgreSQL 整合環境執行 `python -m pytest -q tests/integration -k background_search`，驗證舊程序交回結果時無法寫入歷史、同一工作重新認領只保存一筆、取消後不建立歷史及逾期後刪除暫存請求。另在已有官源與本機向量的隔離 Compose 建立背景搜尋，以時間欄位模擬中斷，再啟動新工作程序查核原工作 ID、唯一的歷史、官方候選和跨帳號 404。
+
+### 工作台查看及取消既有背景搜尋
+
+在隔離 Compose 啟動 `db`、`api`、`web`，保持 `search-worker` 停止。設定 `PATENTSCOPE_E2E_URL` 和 `PATENTSCOPE_E2E_PENDING_SEARCH=1` 後執行 `npm run test:e2e --prefix apps/web -- search-resume.spec.ts`。測試用真實 API 建立合成帳號與待處理工作，再從新瀏覽器登入。構想欄空白時仍可查看並取消原工作，取消不會新增歷史。CI 在背景程序啟動前先執行此案例。

@@ -43,6 +43,11 @@ jobs:
           PATENTSCOPE_PG_ADMIN_USER: patentscope
           PATENTSCOPE_PG_ADMIN_PASSWORD: dev_only_change_me
       - run: python scripts/smoke.py
+      - name: Verify pending search can be reopened before worker starts
+        run: npm run test:e2e --prefix apps/web -- search-resume.spec.ts
+        env:
+          PATENTSCOPE_E2E_PENDING_SEARCH: "1"
+          PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
       - run: docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build --wait search-worker
       - run: npm run test:e2e --prefix apps/web
         env:

@@ -2563,3 +2563,22 @@
 - Uncommitted changes / file ownership warnings: 只使用整合工作樹和隔離資料庫。
 - Next 1–3 concrete actions: 確認此修訂的 CI 及執行中的官源流程。取得人工標註與部署環境後完成重評和交付。
 - Exact reproduction steps: 依 [背景搜尋程序中斷回歸](TESTING.md#背景搜尋程序中斷回歸) 執行 PostgreSQL 套件，再用隔離 Compose 真實官源執行背景搜尋。
+
+## 工作台接續背景搜尋
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `b234a6e`。
+- Current milestone and status: 工作台可查看與取消原有背景搜尋，整體驗收 IN_PROGRESS。
+- Goal of this session: 允許使用者重新登入後接續既有工作，構想欄可維持空白。
+- Files changed (with purpose): `research.tsx` 增加查看入口和無背景工作的提示。Playwright 與一般 CI 新增工作程序啟動前的回歸。
+- Database migrations added/applied: 無新增。空白隔離庫使用現有遷移。
+- API/Schema changes: 沿用 `/search-jobs/active`、狀態及取消路由。
+- Commands actually run and results: 舊版單一瀏覽器重現缺少入口而逾時。新增入口後，Chromium 三尺寸、Firefox、WebKit 共 5 項通過。既有桌面工作台 2 項通過。Oxlint、TypeScript、Vite 建置與 Git diff 通過。
+- Tests NOT run and reason: 本次無後端變更，未重跑本機 PostgreSQL 套件。此瀏覽器案例涵蓋真實佇列、接續與取消，模型及搜尋完成另有既有官源驗收。
+- Data sources checked (exact URL/date) and license/access notes: 使用合成帳號及 DEMO 查詢，故無新增官源。
+- Known bugs / risks / blockers: 34 組人工複核與正式主機驗收待確認，新增 CI 關卡待遠端核對。
+- Decisions made (ADR links): 讓使用者主動查看，沿用現有輪詢及取消行為。CI 先驗證佇列狀態，再啟動工作程序。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹與隔離 Compose 操作，瀏覽器輸出未入 Git。
+- Next 1–3 concrete actions: 確認新增 CI 關卡與既有官源完整 E2E，待人工評分及目標主機就緒後做最終驗收。
+- Exact reproduction steps: 依 [工作台查看及取消既有背景搜尋](TESTING.md#工作台查看及取消既有背景搜尋) 執行。

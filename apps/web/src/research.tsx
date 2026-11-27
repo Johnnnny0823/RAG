@@ -340,6 +340,7 @@ export function Research() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [busy, setBusy] = useState("");
   const [searchJob, setSearchJob] = useState<SearchJob | null>(null);
+  const [searchJobMessage, setSearchJobMessage] = useState("");
   const [error, setError] = useState("");
   const [search, setSearch] = useState<Search | null>(null);
   const [results, setResults] = useState<Results | null>(null);
@@ -377,6 +378,7 @@ export function Research() {
   function leaveAccount() {
     setSession(null);
     setIngestionJobs(null);
+    setSearchJobMessage("");
     setAccountDeleted(false);
     setHistory(null);
     setHistoryOffset(0);
@@ -604,6 +606,7 @@ export function Research() {
       applicant: filters.applicant.trim() || null,
     };
     if (save && session) {
+      setSearchJobMessage("");
       const active = await request<SearchJob | null>("/search-jobs/active", undefined, session.token);
       await followSearchJob(
         active ?? await request<SearchJob>("/search-jobs", payload, session.token),
@@ -613,6 +616,16 @@ export function Research() {
       return;
     }
     await loadResults(payload, true);
+  }
+
+  async function resumeSearch(token: string) {
+    setSearchJobMessage("");
+    const active = await request<SearchJob | null>("/search-jobs/active", undefined, token);
+    if (!active) {
+      setSearchJobMessage("目前沒有背景搜尋。");
+      return;
+    }
+    await followSearchJob(active, token, true);
   }
 
   async function followSearchJob(initial: SearchJob, token: string, resumed: boolean) {
@@ -813,6 +826,7 @@ export function Research() {
             </div>}
           </section>}
           <div className="flex flex-wrap gap-2">
+            <button disabled={!!busy} onClick={() => void run("正在查看背景搜尋…", () => resumeSearch(session.token))}>查看背景搜尋</button>
             <button disabled={!!busy} onClick={() => void run("正在讀取歷史…", () => loadHistory(session.token))}>載入搜尋歷史</button>
             <button disabled={!!busy} onClick={() => void run("正在匯出私人研究資料…",
               () => downloadPrivate("/me/export", "patentscope-research.json", session.token, "目前無法匯出研究資料。"),
@@ -822,6 +836,7 @@ export function Research() {
               leaveAccount();
             })}>登出此頁</button>
           </div>
+          {searchJobMessage && <p className="my-2 text-sm" role="status">{searchJobMessage}</p>}
           <details className="my-3">
             <summary>刪除帳號與私人資料</summary>
             <p className="my-2 text-sm">此操作會永久刪除帳號、研究專案、搜尋、收藏與 AI Session，並撤銷所有登入。已下載的 PDF 和部署者備份須在各自位置管理。</p>
