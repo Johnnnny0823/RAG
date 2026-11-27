@@ -2106,3 +2106,22 @@
 - Uncommitted changes / file ownership warnings: 使用隔離測試庫及本機官方 PDF 物件。
 - Next 1–3 concrete actions: 核對新版 CI、確認需納入 PDF 全文索引的頁型及檢索基線、取得人工標註。
 - Exact reproduction steps: 依 TESTING 建立隔離固定語料，執行 `scripts.smoke_gazette_pdfs`，再以 `PATENTSCOPE_E2E_GAZETTE_PDFS=1` 執行號碼查詢用例。
+
+## 跨公報 PDF 頁面檢索
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `61a87bb`。
+- Current milestone and status: 官方 PDF 詞彙檢索已在隔離環境驗證。整體交付 IN_PROGRESS。
+- Goal of this session: 可跨公報搜尋現有文字層並追到確切版本及頁碼。
+- Files changed (with purpose): `0021_gazette_pdf_search` 回填頁面索引，`gazette_pdf.py` 在匯入時索引，`patents.py` 提供搜尋 API，`research.tsx` 加上公報搜尋。官方驗收核對版本、頁碼和連結。
+- Database migrations added/applied: 由已有 11 頁官方文字的隔離資料庫副本升級 `0020` 至 `0021`。
+- API/Schema changes: `POST /api/v1/patents/gazette-pdfs/search`，可選公開或公告階段。回傳前 20 筆官方結果。
+- Commands actually run and results: pytest 126 passed、9 skipped，Ruff、Oxlint、Vite 與 Docker 建置通過。真實查詢「動態導通電阻」命中公告第 1、2 頁及公開第 1 頁，五項 Playwright 通過。重新匯入 `202639611` 後可搜尋該公報首頁。上一版[官方 PDF 來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45942984872)及更早的[完整官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45940600508)均通過。
+- Tests NOT run and reason: 本輪未啟用 PostgreSQL pytest 套件，另以隔離 PostgreSQL 及真實 API 驗證遷移、回填與新匯入。大規模 PDF 索引效能和 OCR 待測。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 沿用固定 `202640162`、`I941082`，重新下載並核對 `202639611`，來源見 DATA_SOURCES。
+- Known bugs / risks / blockers: 詞彙結果受原始 PDF 可擷取文字及排版影響。人工標註、OCR 及對外主機驗收仍待。
+- Decisions made (ADR links): PDF 檢索獨立回傳原件頁碼；同版本 XML 繼續供混合檢索及引文比對。
+- Uncommitted changes / file ownership warnings: 官方 PDF 和測試資料留在隔離環境。
+- Next 1–3 concrete actions: 驗證新提交的官方遠端流程，接續人工標註及主機驗收。
+- Exact reproduction steps: 依 TESTING 建立隔離官方語料，執行 `scripts.smoke_gazette_pdfs` 及 `PATENTSCOPE_E2E_GAZETTE_PDFS=1` 的號碼查詢測試。

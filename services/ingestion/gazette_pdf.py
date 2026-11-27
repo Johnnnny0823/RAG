@@ -17,6 +17,7 @@ from pypdf.errors import PyPdfError
 from services.api.db import engine
 from services.ingestion.artifacts import SHA256, LocalObjectStore, add_objects_argument
 from services.ingestion.import_issue import link_artifact
+from services.retrieval.lexical import tokenize
 
 HOST = "cloud.tipo.gov.tw"
 MAX_PDF_BYTES = 2 * 1024 * 1024
@@ -188,9 +189,13 @@ def attach_pdf(
         ).scalar_one()
         link_artifact(conn, document_id, artifact_id, "PDF page 1")
         conn.exec_driver_sql(
-            """INSERT INTO gazette_pdf_pages (artifact_id, page_number, extracted_text)
-               VALUES (%s, %s, %s) ON CONFLICT DO NOTHING""",
-            [(artifact_id, number, text) for number, text in enumerate(pages, 1)],
+            """INSERT INTO gazette_pdf_pages
+                   (artifact_id, page_number, extracted_text, search_tokens)
+               VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING""",
+            [
+                (artifact_id, number, text, " ".join(tokenize(text)))
+                for number, text in enumerate(pages, 1)
+            ],
         )
 
 

@@ -8,6 +8,8 @@ PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 
 
 `0020_gazette_pdf_pages` 依原檔及頁碼保存 PDF 文字層，以 `(artifact_id, page_number)` 為主鍵。每頁上限 20,000 字元，允許空文字層。API 角色僅可讀。查閱時需依 `document_artifacts` 核對該版本與 PDF SHA-256 的關聯。降版移除衍生文字頁，原始公報與既有專利版本可供重新擷取。
 
+`0021_gazette_pdf_search` 以現有繁中雙字詞分詞建立 GIN，升版會回填既有擷取頁。新匯入 PDF 同步建立頁面詞彙索引。降版移除衍生索引欄位，保留 PDF 文字層。
+
 主鍵多為 UUID（`gen_random_uuid()`），時間欄位為 `timestamptz`，只知道日期時用 `date`。
 
 ## 資料表關係

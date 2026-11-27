@@ -317,6 +317,22 @@ class GazettePdfPages(BaseModel):
     pages: list[GazettePdfPage]
 
 
+class GazettePdfQuery(BaseModel):
+    query: str = Field(min_length=1, max_length=120)
+    document_stage: DocumentStage | None = None
+
+
+class GazettePdfHit(PatentVersion):
+    artifact_sha256: str
+    page_number: int
+    source_url: str
+
+
+class GazettePdfResults(BaseModel):
+    items: list[GazettePdfHit]
+    has_more: bool
+
+
 SUMMARY_FIELDS = """
     d.id AS document_id, a.application_no, d.publication_no, d.document_stage,
     NULLIF(d.kind_code, '') AS kind_code, a.filing_date, d.publication_date,
@@ -958,6 +974,49 @@ def patent_detail(document_id: UUID):
             ],
         }
     )
+
+
+@router.post("/gazette-pdfs/search", response_model=GazettePdfResults)
+def search_gazette_pdfs(request: GazettePdfQuery):
+    terms = " & ".join(dict.fromkeys(tokenize(request.query)))
+    if not terms:
+        return api_error(422, "INVALID_REQUEST", "請輸入可檢索的公報文字。")
+    try:
+        with engine.connect() as conn:
+            rows = (
+                conn.exec_driver_sql(
+                    f"""WITH q AS (SELECT to_tsquery('simple', %s) AS terms)
+                    SELECT {SUMMARY_FIELDS}, p.page_number, ia.checksum AS artifact_sha256,
+                           ia.source_locator, ts_rank(p.search_terms, q.terms) AS score
+                    {DOCUMENTS_FROM}
+                    JOIN document_artifacts da ON da.document_id = d.id
+                    JOIN ingestion_artifacts ia ON ia.id = da.artifact_id
+                    JOIN ingestion_batches b ON b.id = ia.batch_id
+                    JOIN source_datasets s ON s.id = b.dataset_id
+                    JOIN gazette_pdf_pages p ON p.artifact_id = ia.id
+                    CROSS JOIN q
+                    WHERE p.search_terms @@ q.terms
+                      AND d.jurisdiction='TW' AND a.jurisdiction='TW'
+                      AND (%s::text IS NULL OR d.document_stage=%s)
+                      AND NOT s.is_demo AND ia.status='parsed' AND b.status='complete'
+                      AND s.dataset_key = CASE d.document_stage
+                          WHEN 'publication' THEN 'TIPO-INVENTION-GAZETTE-PDF'
+                          WHEN 'grant' THEN 'TIPO-GRANT-GAZETTE-PDF'
+                      END
+                    ORDER BY score DESC, d.publication_no, d.id, ia.checksum, p.page_number
+                    LIMIT 21""",
+                    (terms, request.document_stage, request.document_stage),
+                )
+                .mappings()
+                .all()
+            )
+    except SQLAlchemyError:
+        return unavailable()
+    items = []
+    for row in rows:
+        if (url := source_url(row["source_locator"])) is not None:
+            items.append(GazettePdfHit.model_validate({**row, "source_url": url}))
+    return GazettePdfResults(items=items[:20], has_more=len(items) > 20)
 
 
 @router.get(

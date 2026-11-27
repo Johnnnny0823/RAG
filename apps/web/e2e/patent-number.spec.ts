@@ -69,4 +69,16 @@ test("official identifier lookup opens the correct publication and grant version
   await submit.click();
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(lookup.getByRole("status")).toHaveCount(0);
+
+  if (checkPdfs) {
+    const search = page.getByRole("region", { name: "公報 PDF 檢索" });
+    await search.getByLabel("公報檢索詞").fill("動態導通電阻");
+    await search.getByRole("button", { name: "搜尋公報 PDF" }).click();
+    const publication = search.getByRole("listitem").filter({ hasText: "公開 202640162 · 第 1 頁" });
+    const grant = search.getByRole("listitem").filter({ hasText: "公告 I941082 · 第 1 頁" });
+    await expect(publication.getByRole("link")).toHaveAttribute("href", /\/invention\/pub024019\/pdfdata\/114106690\.pdf#page=1$/);
+    await expect(grant.getByRole("link")).toHaveAttribute("href", /\/patent\/isu053028\/pdfdata\/114106690\.pdf#page=1$/);
+    await publication.getByRole("button").click();
+    await expect(page.getByRole("link", { name: "在智慧財產局查詢公開號 202640162" })).toBeVisible();
+  }
 });

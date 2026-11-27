@@ -159,6 +159,20 @@ def smoke(api: str, project: str) -> None:
         raise ValueError(
             "The grant PDF pages must be inaccessible through the publication version"
         )
+    for case, document_id in zip(CASES, (publication, grant), strict=True):
+        result = request(
+            api,
+            "/patents/gazette-pdfs/search",
+            {"query": case.number, "document_stage": case.stage},
+        )
+        if not any(
+            (item["document_id"], item["artifact_sha256"], item["page_number"])
+            == (document_id, case.checksum, 1)
+            for item in result["items"]
+        ) or any(item["document_stage"] != case.stage for item in result["items"]):
+            raise ValueError(
+                f"PDF search did not locate the correct page for {case.number}"
+            )
 
 
 if __name__ == "__main__":

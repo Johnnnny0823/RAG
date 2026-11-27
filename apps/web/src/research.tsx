@@ -178,6 +178,51 @@ async function request<T>(path: string, payload?: object, token?: string, method
 }
 
 type GazettePdfPage = { page_number: number; extracted_text: string };
+type GazettePdfHit = PatentVersion & { artifact_sha256: string; page_number: number; source_url: string };
+type GazettePdfResults = { items: GazettePdfHit[]; has_more: boolean };
+
+function GazettePdfSearch({ busy, open }: { busy: boolean; open: (hit: GazettePdfHit) => void }) {
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<GazettePdfResults | null>(null);
+  const [error, setError] = useState("");
+
+  async function search() {
+    setLoading(true);
+    setError("");
+    setResults(null);
+    try {
+      setResults(await request<GazettePdfResults>("/patents/gazette-pdfs/search", { query: query.trim() }));
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "公報檢索失敗。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return <section className="research-panel mt-6" aria-labelledby="gazette-search-heading">
+    <h2 id="gazette-search-heading">公報 PDF 檢索</h2>
+    <p className="my-2 text-sm">搜尋已匯入的公報文字層。掃描圖像請查閱官方 PDF。</p>
+    <form onSubmit={(event) => {
+      event.preventDefault();
+      if (!loading && query.trim()) void search();
+    }}>
+      <label className="research-field">公報檢索詞
+        <input value={query} onChange={(event) => setQuery(event.target.value)} maxLength={120} />
+      </label>
+      <button type="submit" disabled={loading || !query.trim()}>{loading ? "正在搜尋公報…" : "搜尋公報 PDF"}</button>
+    </form>
+    {error && <p role="alert">{error}</p>}
+    {results && (results.items.length ? <ul className="my-3 divide-y divide-slate-200">
+      {results.items.map((hit) => <li key={`${hit.document_id}-${hit.artifact_sha256}-${hit.page_number}`} className="py-2">
+        <p>{stage[hit.document_stage]} {hit.publication_no} · 第 {hit.page_number} 頁</p>
+        <button type="button" disabled={busy} onClick={() => open(hit)}>{title(hit)}</button>
+        <a className="ml-2 text-sm" href={`${hit.source_url}#page=${hit.page_number}`} target="_blank" rel="noreferrer">開啟官方 PDF 第 {hit.page_number} 頁</a>
+      </li>)}
+    </ul> : <p role="status">已匯入的公報文字中沒有符合的頁面。</p>)}
+    {results?.has_more && <p className="text-sm">顯示前 20 筆，可縮小檢索詞範圍。</p>}
+  </section>;
+}
 
 function GazettePdfReader({ documentId, checksum }: { documentId: string; checksum: string }) {
   const [pages, setPages] = useState<GazettePdfPage[] | null>(null);
@@ -962,6 +1007,7 @@ export function Research() {
           </>}
         </section>
       </div>
+      <GazettePdfSearch busy={!!busy} open={(hit) => void run("正在載入專利詳情…", () => openPatent(hit, false))} />
       <section className="research-panel mt-6" aria-labelledby="patent-number-heading">
         <h2 id="patent-number-heading">專利號碼查詢</h2>
         <form onSubmit={(event) => {
