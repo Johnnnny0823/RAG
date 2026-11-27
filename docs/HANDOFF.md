@@ -2639,3 +2639,22 @@
 - Uncommitted changes / file ownership warnings: 測試憑證與腳本保存在工作樹外或 Git 忽略的本機目錄。日常開發資料庫未動。
 - Next 1–3 concrete actions: 查核官源 CI 最終結果。在目標主機驗證外部 HTTPS 及還原。收齊人工評分後重跑相關性評估。
 - Exact reproduction steps: 依 [隔離 HTTPS 換證及回復](TESTING.md#隔離-https-換證及回復) 重跑。
+
+## 研究工作台鍵盤驗收
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `08cb324`。
+- Current milestone and status: 工作台鍵盤操作驗收通過。整體交付 IN_PROGRESS。
+- Goal of this session: 確認鍵盤使用者可在註冊或登入後接續操作工作台。
+- Files changed (with purpose): `apps/web/src/research.tsx` 登入成功後將焦點移至「私人搜尋歷史」；`apps/web/e2e/workspace.spec.ts` 以鍵盤建立專案與重新登入；更新 TESTING、PROGRESS、HANDOFF。
+- Database migrations added/applied: 無新增。隔離新資料卷套用既有遷移至 `0022_legal_event_grant_types`。
+- API/Schema changes: 無。
+- Commands actually run and results: `npm run lint --prefix apps/web` 和 `npm run build --prefix apps/web` 通過。修正前桌面 Chromium 重現登入後焦點未移動。修正後 Nginx 封裝版工作台 3 項、開發測試設定預設 Playwright 12 項、Firefox 與 WebKit 工作台各 1 項通過。第一次 PostgreSQL 整合測試因未停止背景程序，報告接手案例受同一佇列影響。停止背景程序並依 CI 順序重跑，11 項全數通過，1 則既有 Starlette 警告。
+- Tests NOT run and reason: 本次未測實體手機、平板及螢幕閱讀器。最新官源 E2E 仍在執行。
+- Data sources checked (exact URL/date) and license/access notes: 本次以合成測試帳號驗證操作，沒有新增 TIPO 資料。
+- Known bugs / risks / blockers: 完整套件需依 CI 使用開發測試設定。第一次將限流案例與多裝置登入一起跑在正式 Nginx 上，部分登入遇到代理的共用速率限制；正式封裝後續獨立跑工作台案例，三項均通過。正式主機及 34 組人工評分仍待確認。
+- Decisions made (ADR links): 沿用既有原生表單和折疊區，以工作台標題作為登入後焦點。
+- Uncommitted changes / file ownership warnings: 只修改整合工作樹。測試資料使用獨立 Compose 專案與資料卷。
+- Next 1–3 concrete actions: 確認最新官源 CI。人工複核完成後重跑評估，取得目標主機後完成對外驗收。
+- Exact reproduction steps: 依 [研究工作台鍵盤操作](TESTING.md#研究工作台鍵盤操作) 重跑。

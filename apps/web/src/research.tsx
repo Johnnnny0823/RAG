@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ComparisonMatrix, EvidenceLocator, verdicts } from "./comparison-matrix";
 import { ResearchSessions } from "./research-sessions";
 import { MAX_INVENTION_LENGTH } from "./invention";
@@ -348,6 +348,10 @@ export function Research() {
   const [selected, setSelected] = useState<{ hit: PatentVersion; detail: Detail; claims: Claim[]; fromResults: boolean } | null>(null);
   const [previewComparisons, setPreviewComparisons] = useState<ComparedDocument[]>([]);
   const [session, setSession] = useState<{ token: string; email: string; canMonitorIngestion: boolean } | null>(null);
+  const workspaceHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (session) workspaceHeading.current?.focus();
+  }, [session]);
   const [ingestionJobs, setIngestionJobs] = useState<IngestionJob[] | null>(null);
   const [accountDeleted, setAccountDeleted] = useState(false);
   const [registering, setRegistering] = useState(false);
@@ -711,7 +715,7 @@ export function Research() {
       {searchJob && <button type="button" onClick={() => void cancelSearchJob()}>取消背景搜尋</button>}
       {error && <p className="mb-4 rounded-lg bg-red-50 p-3 text-red-900" role="alert">{error}</p>}
       <section className="research-panel mb-6">
-        <h2>私人搜尋歷史</h2>
+        <h2 ref={workspaceHeading} tabIndex={-1}>私人搜尋歷史</h2>
         {accountDeleted && <p role="status" className="my-2 text-sm text-teal-900">帳號與伺服器上的私人研究資料已刪除。</p>}
         {session ? <>
           <p className="my-2 break-all text-sm">目前帳號 · {session.email}</p>

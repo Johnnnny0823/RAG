@@ -55,9 +55,16 @@ test("workspace uses the live API and persists project changes", async ({ page, 
     await button("註冊並登入").click();
     await expect(page.getByText(`目前帳號 · ${email}`)).toBeVisible();
 
-    await page.getByText("建立研究專案", { exact: true }).click();
-    await page.getByLabel("專案名稱", { exact: true }).fill("瀏覽器測試專案");
-    await button("新增研究專案").click();
+    const workspaceHeading = page.getByRole("heading", { name: "私人搜尋歷史" });
+    await expect(workspaceHeading).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByText("建立研究專案", { exact: true })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Tab");
+    const projectName = page.getByLabel("專案名稱", { exact: true });
+    await expect(projectName).toBeFocused();
+    await projectName.fill("瀏覽器測試專案");
+    await page.keyboard.press("Enter");
     const project = page.getByLabel("依研究專案篩選");
     await expect(project.getByRole("option", { name: "瀏覽器測試專案" })).toBeAttached();
     await project.selectOption({ label: "瀏覽器測試專案" });
@@ -80,8 +87,9 @@ test("workspace uses the live API and persists project changes", async ({ page, 
     await button("登出此頁").click();
     await page.getByLabel("電子郵件").fill(email);
     await page.getByLabel("密碼（至少 12 字元）").fill(password);
-    await button("登入").click();
+    await page.getByLabel("密碼（至少 12 字元）").press("Enter");
     await expect(page.getByText(`目前帳號 · ${email}`)).toBeVisible();
+    await expect(workspaceHeading).toBeFocused();
     await expect(project.getByRole("option", { name: "已更新的測試專案" })).toBeAttached();
     await project.selectOption({ label: "已更新的測試專案" });
     await page.getByText("管理研究專案", { exact: true }).click();

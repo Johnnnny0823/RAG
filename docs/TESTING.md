@@ -358,3 +358,9 @@ npx playwright test --reporter=list
 2026-11-28 以 `92b76ce` 的乾淨快照啟動隔離 Compose，新資料卷遷移到 `0022_legal_event_grant_types`。使用私有測試 CA 簽發兩張含 `127.0.0.1` IP SAN 的不同金鑰憑證。以 `--ca-file` 將測試根憑證提供給冒煙腳本，憑證信任設定限於測試程序。Windows Docker Desktop 掛載 D 槽的 Nginx 設定失敗後，以相同提交的 C 槽快照成功重跑。
 
 先以初始憑證啟動並建立測試帳號和私人專案。修改 `TLS_CERTIFICATE_FILE` 與 `TLS_KEY_FILE` 後執行 `docker compose @tlsArgs up -d --no-deps --force-recreate --wait web`，再改回原憑證重跑。三階段都通過驗證憑證鏈、IP SAN、TLS 冒煙、API 代理、pgvector 就緒、封裝首頁及安全標頭。實際回傳的憑證序號依序為 `1001`、`1002`、`1001`，均協商 TLS 1.3。每次只更換 Web 容器，API 和 DB 容器 ID 相同，原登入憑證與私人專案仍可用。外部 DNS、公開 CA 自動續期及對外主機驗收待確認。
+
+## 研究工作台鍵盤操作
+
+以隔離 Compose 啟動 Web 與 API，設定 `PATENTSCOPE_E2E_URL`，在 `apps/web` 執行 `npx playwright test workspace.spec.ts -g "persists project changes"`。案例註冊合成帳號並核對焦點移至「私人搜尋歷史」標題。用 Tab 和 Enter 開啟「建立研究專案」，移至「專案名稱」並用 Enter 提交。登出後在密碼欄按 Enter 重新登入，核對焦點回到工作台及先前專案仍可讀取。案例結尾刪除合成帳號。
+
+2026-11-28，修正前桌面 Chromium 重現登入後工作台標題未取得焦點。修正後封裝前端通過桌面、平板及手機 Chromium 三項，開發測試設定通過全部 12 項預設 Playwright。另設 `PATENTSCOPE_E2E_CROSS_BROWSER=1`，使用 `--project=desktop-firefox --project=desktop-webkit`，兩個瀏覽器均通過工作台案例。平板與手機屬模擬環境，尚未進行實體裝置或螢幕閱讀器測試。
