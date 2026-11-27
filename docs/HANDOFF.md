@@ -2506,3 +2506,22 @@
 - Uncommitted changes / file ownership warnings: 備份、測試帳號及憑證均留在隔離環境。Git 只保存文件。
 - Next 1–3 concrete actions: 收到人工評分檔後以固定語料重評，在指定主機執行部署及復原驗收。
 - Exact reproduction steps: 依 [備份還原驗收](TESTING.md#隔離部署的備份還原驗收) 執行，再以 `scripts/smoke.py --deployment` 檢查目的端。
+
+## 分散原件的官方 PDF 備份還原
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `6d254c2`。本節隨變更提交。
+- Current milestone and status: M5 與交付驗收 IN_PROGRESS。官方 PDF 附件與頁面索引已通過本機隔離還原。
+- Goal of this session: 驗證官方 PDF、文字層及頁面索引可隨資料庫還原，支援舊原件分散儲存時的完整備份。
+- Files changed (with purpose): `services/ingestion/sync_objects.py` 新增可重複的唯讀來源參數 `--fallback-objects`。`tests/test_ingestion_artifacts.py` 驗證主目錄缺檔可補及主目錄損毀仍會失敗。更新 SETUP、TESTING、PROGRESS 與 HANDOFF。
+- Database migrations added/applied: 無新增遷移。來源 `0021_gazette_pdf_search` 還原至空白隔離庫後升到 `0022_legal_event_grant_types`，兩份 PDF 的 11 頁均保留。
+- API/Schema changes: 無。
+- Commands actually run and results: 首輪備份從主卷找不到舊 XML，補上兩個唯讀舊目錄後逐筆驗證 30 份原件。兩份原始 PDF 的 SHA-256 與既有來源一致。還原及離線重跑後，頁面、詞彙檢索、兩版本各 13 項 XML 請求項與引文資料均與來源一致，錯版請求仍回傳 404。部署冒煙、Ruff、Git diff 和 pytest 通過，pytest 146 通過、9 預設跳過、1 項既有警告。起點 [一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46045680433) 通過。
+- Tests NOT run and reason: 未重新向智財局索取 PDF，還原目標使用已核對的既有原件。未在本機重跑完整 Playwright，API 與部署冒煙已實跑。
+- Data sources checked (exact URL/date) and license/access notes: 本次離線使用既有官源 `https://cloud.tipo.gov.tw/S220/downloads/invention/pub024019/pdfdata/114106690.pdf` 及 `https://cloud.tipo.gov.tw/S220/downloads/patent/isu053028/pdfdata/114106690.pdf`，對照 [來源紀錄](DATA_SOURCES.md#發明公告公報個案-pdf)。
+- Known bugs / risks / blockers: 34 組人工相關性複核與正式目標環境待確認。此輪還原涵蓋兩份官源附件，未驗收私人報告背景工作復原。
+- Decisions made (ADR links): 只有主路徑缺檔才回查指定舊目錄。路徑、雜湊、大小與既有損毀偵測依舊生效。
+- Uncommitted changes / file ownership warnings: 原件及備份留在隔離專案與暫存目錄，未入 Git。
+- Next 1–3 concrete actions: 核對本提交的遠端結果。依人工評分與目標部署環境跑最終驗收。
+- Exact reproduction steps: 依 [分散原件的官方 PDF](TESTING.md#分散原件的官方-pdf) 從來源合併複製，還原到新資料庫，核對 PDF 頁面 API，再對兩案離線重跑。

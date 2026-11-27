@@ -328,3 +328,7 @@ npx playwright test --reporter=list
 在來源隔離庫匯入第 053028–053029 期驗收語料和向量，以兩個 DEMO 帳號驗證私人資料。建立第一個帳號的研究專案與一筆官方專利收藏及備註，保存來源 API 的版本、雜湊及向量查詢結果。關閉來源 Web 與 API，再依 [SETUP 的備份還原命令](SETUP.md#原始-xml-持久保存備份及還原) 備份，還原到第二個 Compose 專案的新資料庫。
 
 核對 Alembic 版本、原件 SHA-256、四份全文、向量筆數及其 API 結果順序。啟動目的端後，確認原有效憑證與重新登入都可使用，專案及備註內容一致，第二個帳號讀取專案返回 404。查核 `patentscope_api` 能讀取官方資料、能寫入其工作台，並欠缺官方文件的 UPDATE 權限。封裝前端及就緒狀態可用 `scripts/smoke.py --deployment` 驗證。
+
+### 分散原件的官方 PDF
+
+使用既有[官源 PDF 驗收](TESTING.md#官方公報-pdf-回歸)的公開 `202640162` 及公告 `I941082`。舊版來源的原件可分散於 Compose 資料卷和其他目錄。若 XML 位在舊目錄，在備份複製的 `docker compose run` 加上 `-v <legacy>:/legacy:ro`，並傳入 `--fallback-objects /legacy`。使用兩個舊目錄時重複指定。把合併備份還原到空白隔離庫後，核對兩份附檔的 SHA-256、2 與 9 頁文字層、各 13 項 XML 請求項與頁面檢索。兩筆個案以 `gazette_pdf --replay-stored` 離線重跑後，頁數、索引結果及同案錯版拒絕應維持。

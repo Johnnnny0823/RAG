@@ -24,7 +24,7 @@
 | 7–8 研究管理與報告 | [工作台 E2E](../apps/web/e2e/workspace.spec.ts)、[報告與引文 E2E](../apps/web/e2e/tipo-research.spec.ts)。隔離流程已驗證帳號、歷史、引文及繁中 PDF。 |
 | 9–10 Playwright、Pytest | [測試方式](TESTING.md)、[瀏覽器套件](../apps/web/e2e)與[整合測試](../tests/integration/test_postgresql.py)。`d397c41` 的一般 CI 通過 128 項預設 pytest、12 項 Playwright 與 9 項獨立 PostgreSQL 整合測試。 |
 | 11 RAG 評估 | [固定資料及結果](EVALUATION.md)。已有詞彙、向量、混合加重排、引文及效能基線。人工評分已依複核的文件版本計分，未複核版本保留原名次。34 組候選的人工複核與正式相關性重評仍待完成。 |
-| 12–13 CI、Compose | [一般 CI](../.github/workflows/ci.yml)、[官方 E2E](../.github/workflows/tipo-e2e.yml)、[部署覆蓋檔](../docker-compose.deploy.yml)及 [HTTPS](SETUP.md#使用自備憑證啟用-https)。隔離 HTTPS 與[備份還原](TESTING.md#隔離部署的備份還原驗收)已驗收。外部目標主機的網域、憑證續期及還原仍待確認。 |
+| 12–13 CI、Compose | [一般 CI](../.github/workflows/ci.yml)、[官方 E2E](../.github/workflows/tipo-e2e.yml)、[部署覆蓋檔](../docker-compose.deploy.yml)及 [HTTPS](SETUP.md#使用自備憑證啟用-https)。隔離 HTTPS 與[備份還原](TESTING.md#隔離部署的備份還原驗收)已驗收，涵蓋官方 PDF 及其頁面索引。外部目標主機的網域、憑證續期及還原仍待確認。 |
 | 14–16 文件、交接、Demo | [API](API.md)、[資料庫](DATABASE.md)、[架構](ARCHITECTURE.md)、[測試](TESTING.md)、[交接](HANDOFF.md)與[官方語料 Demo](DEMO.md)。Demo 依固定來源及本機模型重建。 |
 
 ## 歷史執行紀錄
