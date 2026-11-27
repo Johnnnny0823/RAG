@@ -1,9 +1,11 @@
 """Read-only endpoints for indexed Taiwanese patent document versions."""
 
 import logging
+import os
 import re
 import unicodedata
 from datetime import date, datetime
+from pathlib import Path as FilesystemPath
 from time import perf_counter
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
@@ -11,7 +13,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Path, Query
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy.engine import Connection
@@ -21,6 +23,7 @@ from services.api.activity import record_activity
 from services.api.db import engine
 from services.api.identity import IdentityError, IdentityUnavailable
 from services.api.model_limits import ModelBusy, model_slot
+from services.ingestion.artifacts import LocalObjectStore, RawArtifact
 from services.retrieval.embeddings import (
     EmbeddingError,
     LocalEmbeddingModel,
@@ -1037,6 +1040,46 @@ def search_gazette_pdfs(request: GazettePdfQuery):
         has_more=len(rows) > request.limit and request.offset + request.limit <= 10000,
         limit=request.limit,
         offset=request.offset,
+    )
+
+
+@router.get(
+    "/{document_id}/drawings/{artifact_sha256}",
+    responses={
+        200: {"content": {"image/jpeg": {}}, "description": "Verified official JPEG"}
+    },
+    response_class=Response,
+)
+def patent_drawing(
+    document_id: UUID,
+    artifact_sha256: Annotated[str, Path(pattern=r"^[0-9a-f]{64}$")],
+):
+    try:
+        with engine.connect() as conn:
+            row = conn.exec_driver_sql(
+                """SELECT DISTINCT ia.checksum, ia.object_key, ia.size_bytes
+                   FROM document_artifacts da
+                   JOIN patent_documents d ON d.id=da.document_id
+                   JOIN ingestion_artifacts ia ON ia.id=da.artifact_id
+                   JOIN ingestion_batches b ON b.id=ia.batch_id
+                   JOIN source_datasets s ON s.id=b.dataset_id
+                   WHERE d.id=%s AND d.jurisdiction='TW' AND d.document_stage='grant'
+                     AND ia.checksum=%s AND ia.size_bytes BETWEEN 1 AND 2097152
+                     AND ia.status='parsed' AND b.status='complete' AND NOT s.is_demo
+                     AND s.dataset_key='TIPO-15987-DRAWINGS'
+                     AND starts_with(da.record_locator, '/specification/drawings/figure[')""",
+                (document_id, artifact_sha256),
+            ).one_or_none()
+        if row is None:
+            return not_found()
+        root = os.environ.get("PATENT_OBJECTS_DIR")
+        if not root:
+            return unavailable()
+        data = LocalObjectStore(FilesystemPath(root)).read(RawArtifact(*row))
+    except (SQLAlchemyError, OSError, ValueError):
+        return unavailable()
+    return Response(
+        data, media_type="image/jpeg", headers={"X-Content-Type-Options": "nosniff"}
     )
 
 

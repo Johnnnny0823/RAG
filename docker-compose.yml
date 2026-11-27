@@ -78,6 +78,8 @@ services:
         condition: service_completed_successfully
   api:
     <<: *api
+    volumes:
+      - patent-objects:/var/lib/patentscope/objects:ro
     logging:
       driver: json-file
       options:
@@ -86,6 +88,7 @@ services:
     environment:
       <<: *api-env
       INGESTION_ADMIN_USER_IDS: ${INGESTION_ADMIN_USER_IDS:-}
+      PATENT_OBJECTS_DIR: /var/lib/patentscope/objects
     depends_on:
       migrate:
         condition: service_completed_successfully

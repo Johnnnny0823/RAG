@@ -686,6 +686,7 @@ export function Research() {
 
   const abstractSections = selected?.detail.sections.filter((section) => section.section_type.startsWith("abstract-")) ?? [];
   const descriptionSections = selected?.detail.sections.filter((section) => !section.section_type.startsWith("abstract-")) ?? [];
+  const drawings = selected?.detail.sources.filter((source) => source.record_locator.startsWith("/specification/drawings/figure[")) ?? [];
 
   return (
     <>
@@ -1122,6 +1123,16 @@ export function Research() {
           <details className="my-3"><summary>說明書段落（{descriptionSections.length}）</summary>
             {descriptionSections.map((section) => <p id={`section-${section.section_type}-${section.ordinal}`} tabIndex={-1} key={`${section.section_type}-${section.ordinal}`} className="my-2 whitespace-pre-wrap">第 {section.ordinal} 段 · {highlighted(section.original_text, section.source, highlight?.documentId === selected.hit.document_id ? highlight.evidence : null)}</p>)}
           </details>
+          {drawings.length > 0 && <details className="my-3">
+            <summary>官方圖式（{drawings.length}）</summary>
+            {drawings.map((drawing) => {
+              const position = drawing.record_locator.match(/figure\[(\d+)\]/)?.[1];
+              return <figure key={drawing.artifact_sha256 + drawing.record_locator} className="my-4">
+                <img className="max-w-full" loading="lazy" src={`/api/v1/patents/${selected.hit.document_id}/drawings/${drawing.artifact_sha256}`} alt={`官方圖式 ${position ?? ""}`} />
+                <figcaption className="break-all text-sm">{drawing.record_locator} · SHA-256 {drawing.artifact_sha256}</figcaption>
+              </figure>;
+            })}
+          </details>}
           <h3>權利異動公報</h3>
           <p className="mb-2 text-sm text-slate-700">涵蓋已匯入的公報卷期。查詢目前權利狀態時，請以智慧財產局最新資料為準。</p>
           {selected.detail.legal_events.length ? <ul className="mb-4">

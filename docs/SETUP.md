@@ -305,6 +305,8 @@ python scripts/smoke.py --api http://127.0.0.1:18019 --web http://127.0.0.1:1811
 以隔離語料執行 `python scripts/smoke_search_runs.py --api http://127.0.0.1:18017 --pdf-output <驗收路徑.pdf>`，核對擁有者可下載，訪客及其他帳號無法取得。腳本會建立兩個測試帳號及公開測試紀錄。
 ## 原始 XML 持久保存、備份及還原
 
+官方圖式和已驗證的 XML 原件使用同一個 `patent-objects` 資料卷。API 以唯讀方式掛載圖檔，匯入和備份仍由操作員執行。若早期匯入使用另外掛載的 `--objects` 路徑，先使用同一套原件重建隔離資料，或依下列備份及還原步驟讓原始物件與資料庫紀錄一致。[圖式驗收與指令](TESTING.md#官方公告圖式回歸)
+
 Compose 的 `migrate` 容器將原始物件儲存在專案自己的 `patent-objects` 資料卷。依前述步驟準備官方輸入檔，再把檔案目錄掛載至 `/inputs:ro`。匯入和驗證可以省略 `--objects`，容器會使用資料卷。既有流程若明確指定 `--objects`，仍使用指定目錄，適合獨立測試。請保留資料卷，避免使用 `docker compose down -v`。
 
 以下 PowerShell 範例使用已套用遷移的 Compose 專案。將 `$backup` 設成備份裝置上已建立的絕對路徑。備份期間暫停匯入，先將 PostgreSQL 一併備份，再複製原始物件，讓兩份備份可配對。

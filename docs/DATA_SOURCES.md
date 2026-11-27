@@ -39,7 +39,18 @@
 | `M688679`，申請號 `114206535` | [個案 XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330M688679/114206535-A0305.xml)，72,760 bytes，SHA-256 `adef492f39db89c809115dd68d028cbff178a3634fbcf11f38de3ab0739c3093`，DTD `1.0.0`。核對 208 段說明書及 10 項請求項。 |
 | `D247328`，申請號 `113306657` | [個案 XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330D247328/113306657-A0305.xml)，4,689 bytes，SHA-256 `f8c18dc5cb114fc70bd54b38a4cd8ea97b57772adac3568603e88c36c3e83d18`，DTD `2.0.1`。核對 7 段說明書，原檔沒有請求項。 |
 
-兩案都保留獨立的 S01 版本及個案文字版本。`fulltext` 涵蓋本次驗證的個案說明書及來源提供的請求項。`M688679` 的個案 XML 另有 `lang=tw` 及 `lang=en` 的摘要。新版 `tipo-issue-2` 保留原文及 `/specification/abstract[1]/abstract-dtext[1]`、`/specification/abstract[2]/abstract-dtext[1]`，既有版本可繼續回查。圖式內容、新型與設計法律異動及自動補期尚待整合，圖式的實際下載可用性仍待驗證。
+兩案都保留獨立的 S01 版本及個案文字版本。`fulltext` 涵蓋本次驗證的個案說明書及來源提供的請求項。`M688679` 的個案 XML 另有 `lang=tw` 及 `lang=en` 的摘要。新版 `tipo-issue-2` 保留原文及 `/specification/abstract[1]/abstract-dtext[1]`、`/specification/abstract[2]/abstract-dtext[1]`，既有版本可繼續回查。新型與設計法律異動及自動補期尚待整合。
+
+### 新型與設計個案圖式
+
+2026-11-27 從上節個案 XML 的 `drawings/figure/img/@file` 解析個案目錄內的 `IMG-2/Draw` 路徑，經匿名 FTPS 實取下列兩件代表圖式。原檔 XML 標記 `img-format=tif`，實際傳回 JPEG。匯入前核對 JPEG 檔案標記、位元長度及已確認的 SHA-256。圖式沿用 [TIPO 資料集 15987](https://data.gov.tw/dataset/15987) 的更新及授權條件。[智財局 FTP 下載說明](https://cloud.tipo.gov.tw/S220/opdata/information/ftp)
+
+| 公告號 | XML 圖式位置 | 原件 |
+| --- | --- | --- |
+| `M688679` | `/specification/drawings/figure[3]/img[1]` | [JPEG](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330M688679/IMG-2/Draw/114206535-A0305-14-0003-5.JPG)，168,006 bytes，SHA-256 `f8501044f813b2d3881fad354fea3b0ad514776ceeb25eba9f105330c031e091` |
+| `D247328` | `/specification/drawings/figure[1]/img[1]` | [JPEG](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330D247328/IMG-2/Draw/113306657-A0305-14-0001-1.JPG)，50,699 bytes，SHA-256 `b5fccaeee7ef7896fae9e4c6e17408877c07ddcf3c6c55e39b0b10638a26de48` |
+
+圖式目前由操作員逐頁附加，支援符合已驗證路徑與格式、大小不超過 2 MiB 的 JPEG。圖式尚未納入向量索引及模型比對。
 
 ## 公告期別的固定封存檔
 

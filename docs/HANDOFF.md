@@ -2296,3 +2296,22 @@
 - Uncommitted changes / file ownership warnings: 隔離服務使用專用 `patentscope-grant-types-semantic` 專案。原檔及索引未納入 Git。
 - Next 1–3 concrete actions: 查核遠端完整驗收的終態。繼續驗證官方個案圖式及可取得的設計分類來源。
 - Exact reproduction steps: 按 TESTING 的新型與設計語意驗收重建四版本，執行詞彙與語意索引後，以腳本驗證排名與原文。
+
+## 官方公告圖式匯入及顯示
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `f9ada92`。
+- Current milestone and status: 官方新型與設計圖式各一件完成隔離驗收，整體 IN_PROGRESS。
+- Goal of this session: 從同版官方個案 XML 找圖式，安全保存原件並在詳情顯示可追溯的 JPEG。
+- Files changed (with purpose): `services/ingestion/grant_drawing.py` 檢查官方 XML、圖式位置及雜湊，`download.py` 重用有上限的 FTPS 取件，`services/api/patents.py` 提供同版 JPEG，Compose 唯讀掛載原始物件，`research.tsx` 顯示圖式及來源。新增單元測試、API 冒煙、Playwright 與文件。
+- Database migrations added/applied: 無新增。空白隔離庫遷移至 `0021_gazette_pdf_search`。圖式沿用 `source_datasets`、`ingestion_batches`、`ingestion_artifacts` 及 `document_artifacts`，位元保存至原始物件卷。
+- API/Schema changes: 新增 `GET /api/v1/patents/{document_id}/drawings/{artifact_sha256}`。回傳核對過的 JPEG，跨版回傳 404。詳情的 `sources` 會含圖式 XPath、來源及雜湊。
+- Commands actually run and results: Ruff、前端 lint、TypeScript、Vite 建置通過，pytest 138 項通過、9 跳過。`scripts.smoke_grant_drawings` 在新隔離庫驗證兩案拒絕從書目錯附、官方取件、重跑唯一、回傳原件位元及跨版 404。Playwright 在 Chromium 三裝置、Firefox、WebKit 共五項通過。首次重跑遇到原始檔唯一約束及 FTPS 425，修正為驗證後重用同一圖檔，並沿用受限取件重試。已查證 `3458c9e` 的[完整官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)和 `f9ada92` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45978844573)通過。
+- Tests NOT run and reason: 本輪未執行獨立九項 PostgreSQL pytest，已在新隔離庫實跑來源及 API。圖式模型處理與完整官方遠端圖式套件尚待驗證。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 查核政府開放資料目錄 15987 及官方 FTP 說明，實取原始 JPEG。兩案官方完整路徑、位元長度與雜湊見 DATA_SOURCES。
+- Known bugs / risks / blockers: 支援已核對路徑的單張 JPEG，需提供已驗證的圖檔雜湊。批量附加、其他影像格式、設計分類與兩類法律異動尚待。人工相關性複核及正式主機驗收仍待。
+- Decisions made (ADR links): 使用版本關聯及原始物件保存 JPEG，API 僅唯讀載入並再次核對雜湊。UI 公布 XML 圖式位置。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹操作，兩份官方 JPEG 與測試產物留在隔離環境。
+- Next 1–3 concrete actions: 核對本次新版一般 CI。查核設計分類的官方資料映射與法律異動來源，接續可驗證部分。
+- Exact reproduction steps: 依 TESTING 的公告圖式回歸建立第 053030 期隔離庫，執行 `scripts.smoke_grant_drawings`，再以 `PATENTSCOPE_E2E_GRANT_DRAWINGS=1` 執行 Playwright。

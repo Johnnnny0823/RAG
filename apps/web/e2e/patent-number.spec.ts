@@ -5,17 +5,18 @@ test("utility model and design expose their actual official content @grant-types
   const lookup = page.getByRole("region", { name: "專利號碼查詢" });
   await lookup.getByLabel("號碼類型").selectOption("grant");
 
-  const cases = [
+  const indexCases = [
     { number: "M687984", label: "請求項", claims: 16, sections: 0 },
     { number: "D246917", label: "書目與摘要", claims: 0, sections: 0 },
   ];
-  if (process.env.PATENTSCOPE_E2E_GRANT_FULLTEXT === "1") {
-    cases.push(
-      { number: "M688679", label: "全文", claims: 10, sections: 208 },
-      { number: "D247328", label: "全文", claims: 0, sections: 7 },
-    );
-  }
-  for (const { number, label, claims, sections } of cases) {
+  const fulltextCases = [
+    { number: "M688679", label: "全文", claims: 10, sections: 208, position: 3 },
+    { number: "D247328", label: "全文", claims: 0, sections: 7, position: 1 },
+  ];
+  const checkDrawings = process.env.PATENTSCOPE_E2E_GRANT_DRAWINGS === "1";
+  const cases = checkDrawings ? fulltextCases : process.env.PATENTSCOPE_E2E_GRANT_FULLTEXT === "1" ? [...indexCases, ...fulltextCases] : indexCases;
+  for (const item of cases) {
+    const { number, label, claims, sections } = item;
     await lookup.getByLabel("專利號碼").fill(number);
     await lookup.getByRole("button", { name: "查詢專利號碼" }).click();
     const match = lookup.getByRole("listitem").filter({ hasText: new RegExp(`公告 ${number}.*${label}`) });
@@ -27,6 +28,13 @@ test("utility model and design expose their actual official content @grant-types
     if (number === "M688679") {
       await expect(page.getByRole("heading", { name: "中文摘要" })).toBeVisible();
       await expect(page.getByRole("heading", { name: "英文摘要" })).toBeVisible();
+    }
+    if (checkDrawings && "position" in item) {
+      await page.getByText("官方圖式（1）", { exact: true }).click();
+      const drawing = page.getByRole("img", { name: `官方圖式 ${item.position}` });
+      await drawing.scrollIntoViewIfNeeded();
+      await expect.poll(() => drawing.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+      await expect(drawing.locator("..")).toContainText(`/specification/drawings/figure[${item.position}]/img[1]`);
     }
   }
 });

@@ -99,6 +99,21 @@ python scripts/smoke_semantic.py --official-e2e --api http://127.0.0.1:8000
 python scripts/smoke_grant_types_semantic.py --api http://127.0.0.1:18180
 ```
 
+### 官方公告圖式回歸
+
+以名稱獨立的 Compose 專案匯入第 053030 期 `M688679`、`D247328` 的 S01 與個案版本。匯入時使用 Compose 的 `PATENT_OBJECTS_DIR`，若重用已核對的下載快取，先將 `download-cache` 放入同一物件資料卷。圖式指令需指定個案版本 UUID、個案說明書 SHA-256、圖式 XML 序號及預期 JPEG SHA-256。固定樣本的值見 [圖式來源](DATA_SOURCES.md#新型與設計個案圖式)。
+
+```powershell
+python -m scripts.smoke_grant_drawings --api http://127.0.0.1:18181 --compose-project patentscope-official-drawings
+$env:PATENTSCOPE_E2E_URL = 'http://127.0.0.1:18181'
+$env:PATENTSCOPE_E2E_TIPO = 'grant-types'
+$env:PATENTSCOPE_E2E_GRANT_DRAWINGS = '1'
+$env:PATENTSCOPE_E2E_CROSS_BROWSER = '1'
+npm run test:e2e --prefix apps/web -- patent-number.spec.ts
+```
+
+API 冒煙覆蓋錯版附加拒絕、官方取件、重跑去重、JPEG 原始位元校驗及跨版 404。瀏覽器驗證圖像實際解碼及同版 XPath 顯示。
+
 ### 官方公報 PDF 回歸
 
 以獨立 Compose 專案匯入上述固定官方語料後，可驗證同案的公開及公告 PDF。此測試先驗證錯版的附件請求在連線前遭拒。兩份 PDF 各實取一次，後續透過 `--replay-stored` 重跑，再用 API 核對去重及 XML 請求項來源。若智財局拒絕下載，首次取件關卡會依實際 HTTP 狀態回報失敗。

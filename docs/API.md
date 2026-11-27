@@ -23,6 +23,8 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 已驗證的新型個案摘要同時提供 `abstract_zh`／`abstract_en` 預覽，以及 `sections` 內帶 `abstract-zh`／`abstract-en` 類型的原文、XPath 與原檔雜湊。比對可引用該摘要段落。既有書目來源的摘要仍維持原有欄位。
 
+同版官方圖式列於 `sources`，位置形如 `/specification/drawings/figure[3]/img[1]`，並提供官方 FTPS 位址及圖檔雜湊。`GET /api/v1/patents/{document_id}/drawings/{artifact_sha256}` 驗證版本和物件後回傳 `image/jpeg`。錯版或未知雜湊回傳 404，已登錄但物件缺失或毀損時回傳 503。[圖式來源與範圍](DATA_SOURCES.md#新型與設計個案圖式)
+
 詳情的 `legal_events` 列出同一申請案已匯入的官方異動公報。公告版本須再符合事件上的證書號。事件種類目前有 `extinguishment`（消滅公告）與 `gazette_correction`（公報更正），並提供證書號、卷期、匯入時間、已知生效日、來源、雜湊及定位。`effective_on` 僅在來源提供時有值。空陣列表示已匯入語料沒有該案的事件，最新權利狀態仍應查智慧財產局。
 
 查無相符號碼時回傳 HTTP 200 與空清單；未知文件版本回傳 404。格式或參數錯誤為 422，資料庫不可查詢為 503。錯誤均使用 `error.code`、`error.message` 和 `error.request_id`。

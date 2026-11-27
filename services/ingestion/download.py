@@ -89,12 +89,17 @@ def download_ftps_xml(url: str) -> bytes:
         or any(part in {".", ".."} for part in parsed.path.split("/"))
     ):
         raise ValueError("Expected a TIPO patent XML FTPS URL")
-    context = tls_context()
     size_limit = MAX_GAZETTE_XML_BYTES if gazette else MAX_XML_BYTES
+    return download_verified_path(parsed.path, size_limit)
+
+
+def download_verified_path(path: str, size_limit: int) -> bytes:
+    """Transfer a path that the calling importer has already validated."""
+    context = tls_context()
     # A busy passive listener can temporarily refuse otherwise valid transfers.
     for delay in (15, 45):
         try:
-            return _transfer_xml(parsed.path, context, size_limit)
+            return _transfer_xml(path, context, size_limit)
         except error_temp as error:
             if str(error)[:3] != "425":
                 raise
@@ -102,7 +107,7 @@ def download_ftps_xml(url: str) -> bytes:
                 "TIPO FTPS data channel unavailable (425); retry in %ds", delay
             )
             sleep(delay)
-    return _transfer_xml(parsed.path, context, size_limit)
+    return _transfer_xml(path, context, size_limit)
 
 
 def _transfer_xml(path: str, context: ssl.SSLContext, size_limit: int) -> bytes:
