@@ -364,3 +364,11 @@ npx playwright test --reporter=list
 以隔離 Compose 啟動 Web 與 API，設定 `PATENTSCOPE_E2E_URL`，在 `apps/web` 執行 `npx playwright test workspace.spec.ts -g "persists project changes"`。案例註冊合成帳號並核對焦點移至「私人搜尋歷史」標題。用 Tab 和 Enter 開啟「建立研究專案」，移至「專案名稱」並用 Enter 提交。登出後在密碼欄按 Enter 重新登入，核對焦點回到工作台及先前專案仍可讀取。案例結尾刪除合成帳號。
 
 2026-11-28，修正前桌面 Chromium 重現登入後工作台標題未取得焦點。修正後封裝前端通過桌面、平板及手機 Chromium 三項，開發測試設定通過全部 12 項預設 Playwright。另設 `PATENTSCOPE_E2E_CROSS_BROWSER=1`，使用 `--project=desktop-firefox --project=desktop-webkit`，兩個瀏覽器均通過工作台案例。平板與手機屬模擬環境，尚未進行實體裝置或螢幕閱讀器測試。
+
+## 隔離的資料庫執行帳號輪替
+
+2026-11-28，以 `c97d351` 建置 Nginx、FastAPI、背景程序與 PostgreSQL。隔離資料卷從空狀態升至 `0022_legal_event_grant_types`。為本次驗收產生兩組執行帳號密碼，用合成帳號建立私人專案，並在該隔離庫建立標示 `DEMO` 的測試搜尋紀錄供 PDF 工作使用。
+
+依[輪替步驟](SETUP.md#輪替-postgresql-執行帳號密碼)，切換初始密碼至第二組，再用初始測試密碼驗證回復。兩次切換後都從 API 與背景程序容器以新連線查核 `current_user = 'patentscope_api'`，並確認上一組密碼已被 PostgreSQL 拒絕。每次只重建 API 與背景程序，PostgreSQL 及 Nginx 的容器 ID 相同。
+
+初始、輪替與回復三階段均通過同源就緒檢查，同一個登入憑證可讀取原私人專案，實際背景工作均產出可下載的 PDF，並帶有 `Cache-Control: private, no-store`。案例結束後刪除測試帳號並停止隔離服務。此驗收涵蓋 Compose 執行帳號輪替，正式主機與管理帳號的輪替另行驗收。

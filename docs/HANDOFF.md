@@ -2658,3 +2658,22 @@
 - Uncommitted changes / file ownership warnings: 只修改整合工作樹。測試資料使用獨立 Compose 專案與資料卷。
 - Next 1–3 concrete actions: 確認最新官源 CI。人工複核完成後重跑評估，取得目標主機後完成對外驗收。
 - Exact reproduction steps: 依 [研究工作台鍵盤操作](TESTING.md#研究工作台鍵盤操作) 重跑。
+
+## PostgreSQL 執行帳號密碼輪替
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，驗收基準 `c97d351`。
+- Current milestone and status: 執行帳號輪替與回復通過。整體交付 IN_PROGRESS。
+- Goal of this session: 補齊 API 與背景程序共用資料庫帳號的輪替順序，驗證研究資料和背景工作可繼續使用。
+- Files changed (with purpose): `docs/SETUP.md` 更新輪替步驟，`docs/TESTING.md`、`docs/PROGRESS.md`、`docs/HANDOFF.md` 記錄結果。
+- Database migrations added/applied: 無新增。隔離新資料庫遷移至 `0022_legal_event_grant_types`，輪替時只執行現有角色設定程式。
+- API/Schema changes: 無。
+- Commands actually run and results: 在隔離 Compose 停止 API 和背景程序，執行 `docker compose run --rm --no-deps migrate python -m services.api.provision_db_role`，再重建 `api` 及 `search-worker`。輪替及回復各確認一次舊密碼被拒、新密碼由兩容器取得受限角色、DB 和 Web 不重建。三階段均以原登入讀取私人專案、經 Web 代理確認就緒及由背景程序產出私人 PDF。`git diff --check` 通過。驗收基準的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46078981192)通過。
+- Tests NOT run and reason: 本次只改操作文件，未重跑 pytest 與 Playwright。未在目標主機輪替，不涉及 PostgreSQL 管理帳號。
+- Data sources checked (exact URL/date) and license/access notes: 只使用 DEMO 工作及合成帳號，沒有 TIPO 取件或檢索評分。
+- Known bugs / risks / blockers: 單實例 API 在輪替期間暫停。外部部署以及 34 組人工相關性複核仍待。
+- Decisions made (ADR links): 以既有受限角色設定程式重新核發執行帳號密碼，避免輪替同時套用新遷移。
+- Uncommitted changes / file ownership warnings: 隔離測試腳本位於忽略目錄，隨機測試密碼未寫入工作樹。測試帳號已刪除，服務已停止，未改動日常資料庫。
+- Next 1–3 concrete actions: 確認一般及官源 CI 最終結果。待目標主機及人工複核就緒後完成交付驗收。
+- Exact reproduction steps: 依 [輪替步驟](SETUP.md#輪替-postgresql-執行帳號密碼)及[隔離驗收](TESTING.md#隔離的資料庫執行帳號輪替)重跑。

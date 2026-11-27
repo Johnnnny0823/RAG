@@ -347,9 +347,23 @@ API 容器已關閉原始 Uvicorn 存取日誌。Compose 的 API 日誌每檔最
 
 Compose 在遷移完成後建立 `patentscope_api` 並授權。API 使用這個帳號讀取專利與索引，並依功能存取研究資料。遷移與離線匯入則使用 `POSTGRES_USER`。API 的容器環境只取得自己的資料庫密碼。
 
-既有環境須在 `.env` 新增獨立的 `API_DB_PASSWORD`，然後用原專案名稱執行 `docker compose up -d --build --wait`。沿用既有 PostgreSQL 磁碟卷及管理帳密。變更 API 密碼時，先更新設定並執行 `docker compose run --rm migrate`，再重建 API 容器。若宿主機直接啟動 API，`PGUSER` 與 `PGPASSWORD` 應改用對應的執行帳號與密碼。
+既有環境須在 `.env` 新增獨立的 `API_DB_PASSWORD`，然後用原專案名稱執行 `docker compose up -d --build --wait`。沿用既有 PostgreSQL 磁碟卷及管理帳密。若宿主機直接啟動 API，`PGUSER` 與 `PGPASSWORD` 應改用對應的執行帳號與密碼。
 
 使用 `patentscope_api` 作為本專案專用角色。若同一 PostgreSQL 叢集已存在同名帳號，先核對既有角色及授權再執行，因為重新配置會設定該角色的密碼。API 的各使用者資料仍依應用層的所有權檢查及資料庫約束隔離。
+
+### 輪替 PostgreSQL 執行帳號密碼
+
+沿用既有部署的 Compose 覆蓋檔、專案名稱和 `.env`。安排維護窗口，先停止背景程序及 API。待 `stop` 完成後，在部署用 `.env` 更新 `API_DB_PASSWORD`，確認目前 shell 若有同名變數也已更新，再使用遷移容器的管理帳號套用新密碼。只輪替執行帳號時，可執行現有的角色設定程式。
+
+```powershell
+docker compose @deployArgs stop search-worker api
+# Update API_DB_PASSWORD in the deployment environment before continuing.
+docker compose @deployArgs run --rm --no-deps migrate python -m services.api.provision_db_role
+docker compose @deployArgs up -d --no-deps --force-recreate --wait api search-worker
+```
+
+每個命令成功後再繼續。若部署採用 HTTPS，使用同一組 `$tlsArgs`。資料庫與 Web 容器可保留，但 API 在維護期間暫停服務。完成後重跑同源冒煙，並以有授權的測試帳號驗證一次背景搜尋或私人 PDF 工作。若需回復，套用相同程序，使用另一組已知有效且未外洩的密碼。如果舊密碼疑似外洩，換用新的密碼。詳見[隔離輪替驗收](TESTING.md#隔離的資料庫執行帳號輪替)。
+
 ## 背景搜尋工作程序
 
 一般 `docker compose up -d --build --wait` 會啟動 `search-worker`，並在資料庫遷移後開始取件。若只啟動 `api web`，也須執行 `docker compose up -d --build search-worker` 才會處理背景搜尋。工作程序使用與 API 相同的資料庫執行角色與模型設定。
