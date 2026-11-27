@@ -85,7 +85,7 @@ python scripts/smoke_semantic.py --official-e2e --api http://127.0.0.1:8000
 
 ### 官方公報 PDF 回歸
 
-以獨立 Compose 專案匯入上述固定官方語料後，可驗證同案的公開及公告 PDF。此測試會寫入該測試庫，再透過 API 驗證附加、拒絕錯版、重跑去重及 XML 請求項來源未變動。
+以獨立 Compose 專案匯入上述固定官方語料後，可驗證同案的公開及公告 PDF。此測試先驗證錯版的附件請求在連線前遭拒。兩份 PDF 各實取一次，後續透過 `--replay-stored` 重跑，再用 API 核對去重及 XML 請求項來源。若智財局拒絕下載，首次取件關卡會依實際 HTTP 狀態回報失敗。
 
 ```powershell
 python -m scripts.smoke_gazette_pdfs --api http://127.0.0.1:5173 --compose-project patentscope-tipo-e2e

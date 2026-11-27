@@ -51,7 +51,7 @@ CASES = (
 
 
 def import_pdf(
-    project: str, case: Case, document_id: str
+    project: str, case: Case, document_id: str, *, replay: bool = False
 ) -> subprocess.CompletedProcess:
     number_option = "--publication" if case.stage == "publication" else "--grant"
     return subprocess.run(
@@ -79,6 +79,7 @@ def import_pdf(
             case.checksum,
             "--apply-to",
             document_id,
+            *(["--replay-stored"] if replay else []),
         ],
         capture_output=True,
         text=True,
@@ -113,8 +114,8 @@ def smoke(api: str, project: str) -> None:
         original = request(api, path + "/claims")
         if len(original["claims"]) != 13:
             raise ValueError(f"Unexpected claim count for {case.number}")
-        for _ in range(2):
-            imported = import_pdf(project, case, document_id)
+        for replay in (False, True):
+            imported = import_pdf(project, case, document_id, replay=replay)
             if imported.returncode:
                 raise ValueError(
                     f"PDF import failed for {case.number}: {imported.stderr.strip()}"

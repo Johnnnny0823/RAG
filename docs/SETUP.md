@@ -188,6 +188,8 @@ docker compose @deployArgs run --rm --no-deps migrate python -m services.ingesti
 
 可用 `--expected-sha256` 指定先前已核對的官方原檔雜湊。回傳內容不符時，指令會在解析及資料庫寫入前中止。
 
+若資料庫已附加該版本的官方 PDF，可在上述命令保留 `--apply-to`、補上 `--expected-sha256`，並加入 `--replay-stored`。指令會用資料庫內的來源紀錄及同一個原檔目錄重新核對雜湊與首頁識別，補入缺少的 PDF 頁面，無需連線智財局。來源檢查日期仍保留原值。
+
 遷移至 `0020_gazette_pdf_pages` 後，重跑舊版已附加的 PDF 可擷取文字層。詳情展開該 PDF 的來源，按「讀取公報文字」即可在瀏覽器內查找文字並依原始頁碼對照。掃描圖像需查看官方原檔。
 
 ## 匯入官方異動公報

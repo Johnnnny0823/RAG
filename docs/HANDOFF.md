@@ -2144,3 +2144,22 @@
 - Uncommitted changes / file ownership warnings: 只在整合工作樹修改，正式資料未動。
 - Next 1–3 concrete actions: 核對新版來源模式回應，接續人工標註及主機驗收。
 - Exact reproduction steps: 啟動固定官方 XML 與 PDF 的隔離站，執行 `PATENTSCOPE_E2E_GAZETTE_PDFS=1` 的號碼查詢測試。
+
+## 已保存公報 PDF 的離線回填
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `775d65e`。
+- Current milestone and status: 離線回填已在隔離 PostgreSQL 驗證，整體 IN_PROGRESS。
+- Goal of this session: 既有已驗證附件可補齊頁面，並讓錯版本的請求在下載前失敗。
+- Files changed (with purpose): `services/ingestion/gazette_pdf.py` 驗證版本及已保存的官方附件，`scripts/smoke_gazette_pdfs.py` 改為各下載一次再離線重跑，`tests/test_gazette_pdf.py` 補錯版前置檢查，SETUP、TESTING、PROGRESS 更新操作與結果。
+- Database migrations added/applied: 無新增。使用隔離 PostgreSQL 現有 `0021_gazette_pdf_search`。
+- API/Schema changes: API 與資料庫結構無變更，匯入 CLI 增加 `--replay-stored`。
+- Commands actually run and results: `ruff check .`、`ruff format --check .` 通過，pytest 128 通過、9 跳過。隔離庫命令拒絕將 `I941082` 附到公開版本。將官方 `202640162` 及 `I941082` 離線重新解析並寫入空白暫存頁面表，連跑兩次仍分別是 2 頁及 9 頁，且拒絕未保存的雜湊。起點提交的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45972232794)通過。
+- Tests NOT run and reason: 本機 pytest 未啟用九項 PostgreSQL 全套整合測試。此次無前端變更，沿用上輪瀏覽器結果。PDF 掃描辨識未納入此切片。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 使用 DATA_SOURCES 記錄的兩份已驗證官方原檔。此次回填不更新來源檢查日期。
+- Known bugs / risks / blockers: [遠端官方 PDF 來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45972249350)呼叫公告個案端點收到 HTTP 403 與 `text/html`，首次下載仍需官方端點允許取用。人工相關性評分與對外主機驗收待完成。
+- Decisions made (ADR links): 回填只接受同版、同卷期及同官方來源的既有附件，並重新核對 SHA-256 及首頁。回填只補頁面索引。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹作業，官方原件未納入 Git。
+- Next 1–3 concrete actions: 觀察新版一般 CI。官方完整取件從可正常存取的環境執行。匯入人工作業完成的複核表後重跑評估。
+- Exact reproduction steps: 依 SETUP 對已存在的官方附件加入 `--replay-stored` 並帶 `--apply-to`、`--expected-sha256`，再依 TESTING 核對原件、頁碼及 API。

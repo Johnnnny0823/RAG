@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -131,3 +131,31 @@ def test_expected_digest_rejects_changed_pdf_before_parsing(
         gazette_pdf.main()
     assert error.value.code == 1
     assert "does not match its expected SHA-256" in capsys.readouterr().err
+
+
+def test_wrong_attachment_is_rejected_before_network_io(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "gazette_pdf",
+            "--application",
+            "114106690",
+            "--grant",
+            "I941082",
+            "--issue",
+            "053028",
+            "--objects",
+            str(tmp_path),
+            "--apply-to",
+            "00000000-0000-0000-0000-000000000001",
+        ],
+    )
+    database = MagicMock()
+    connection = database.connect.return_value.__enter__.return_value
+    connection.exec_driver_sql.return_value.scalar_one_or_none.return_value = None
+    monkeypatch.setattr(gazette_pdf, "engine", database)
+    monkeypatch.setattr(gazette_pdf, "fetch", lambda *_: pytest.fail("Contacted TIPO"))
+    with pytest.raises(SystemExit) as error:
+        gazette_pdf.main()
+    assert error.value.code == 1
+    assert "No matching official document version" in capsys.readouterr().err

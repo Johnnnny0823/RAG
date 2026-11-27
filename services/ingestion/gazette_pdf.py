@@ -16,7 +16,12 @@ from pypdf import PdfReader
 from pypdf.errors import PyPdfError
 
 from services.api.db import engine
-from services.ingestion.artifacts import SHA256, LocalObjectStore, add_objects_argument
+from services.ingestion.artifacts import (
+    SHA256,
+    LocalObjectStore,
+    RawArtifact,
+    add_objects_argument,
+)
 from services.ingestion.import_issue import link_artifact
 from services.retrieval.lexical import tokenize
 
@@ -87,11 +92,15 @@ def fetch(path: str, media_type: str, limit: int) -> bytes:
     raise AssertionError("Unreachable TIPO retry state")
 
 
+def pdf_path(application: str, issue: str, gazette: Gazette) -> str:
+    return f"/S220/downloads/{gazette.file_directory}{issue}/pdfdata/{application}.pdf"
+
+
 def checked_pdf_path(
     metadata, application: str, number: str, issue: str, gazette: Gazette = PUBLICATION
 ) -> str:
     case = metadata.get("patentDoc") if isinstance(metadata, dict) else None
-    path = f"/S220/downloads/{gazette.file_directory}{issue}/pdfdata/{application}.pdf"
+    path = pdf_path(application, issue, gazette)
     if not isinstance(case, dict) or (
         case.get("applicationNo"),
         case.get(gazette.number_key),
@@ -132,12 +141,9 @@ def verify_pdf(
     return pages
 
 
-def attach_pdf(
-    store, data, document_id, application, number, issue, url, pages, gazette
-):
-    with engine.begin() as conn:
-        existing = conn.exec_driver_sql(
-            """SELECT d.id FROM patent_documents d
+def require_official_version(conn, document_id, application, number, issue, gazette):
+    existing = conn.exec_driver_sql(
+        """SELECT d.id FROM patent_documents d
                JOIN patent_applications p ON p.id = d.application_id
                JOIN document_artifacts da ON da.document_id = d.id
                JOIN ingestion_artifacts ia ON ia.id = da.artifact_id
@@ -148,17 +154,57 @@ def attach_pdf(
                  AND p.application_no=%s AND b.batch_key=%s AND s.dataset_key=%s
                  AND NOT s.is_demo AND ia.status IN ('parsed', 'partial')
                  AND b.status IN ('complete', 'partial') LIMIT 1""",
-            (
-                document_id,
-                gazette.stage,
-                number,
-                application,
-                issue,
-                gazette.xml_dataset,
-            ),
-        ).scalar_one_or_none()
-        if existing is None:
-            raise ValueError("No matching official document version in this issue")
+        (
+            document_id,
+            gazette.stage,
+            number,
+            application,
+            issue,
+            gazette.xml_dataset,
+        ),
+    ).scalar_one_or_none()
+    if existing is None:
+        raise ValueError("No matching official document version in this issue")
+
+
+def read_attached_pdf(conn, store, document_id, issue, url, checksum, gazette):
+    artifact = conn.exec_driver_sql(
+        """SELECT ia.id, ia.checksum, ia.object_key, ia.size_bytes
+           FROM document_artifacts da
+           JOIN ingestion_artifacts ia ON ia.id = da.artifact_id
+           JOIN ingestion_batches b ON b.id = ia.batch_id
+           JOIN source_datasets s ON s.id = b.dataset_id
+           WHERE da.document_id=%s AND b.batch_key=%s AND ia.source_locator=%s
+             AND ia.checksum=%s AND b.checksum=ia.checksum
+             AND s.dataset_key=%s AND NOT s.is_demo
+             AND b.status='complete' AND ia.status='parsed'
+             AND ia.size_bytes BETWEEN 1 AND %s
+           ORDER BY ia.id LIMIT 1""",
+        (document_id, issue, url, checksum, gazette.pdf_dataset, MAX_PDF_BYTES),
+    ).one_or_none()
+    if artifact is None:
+        raise ValueError("No previously verified PDF attached to this document version")
+    artifact_id, digest, object_key, size_bytes = artifact
+    return artifact_id, store.read(RawArtifact(digest, object_key, size_bytes))
+
+
+def store_pages(conn, artifact_id, pages):
+    conn.exec_driver_sql(
+        """INSERT INTO gazette_pdf_pages
+               (artifact_id, page_number, extracted_text, search_tokens)
+           VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING""",
+        [
+            (artifact_id, number, text, " ".join(tokenize(text)))
+            for number, text in enumerate(pages, 1)
+        ],
+    )
+
+
+def attach_pdf(
+    store, data, document_id, application, number, issue, url, pages, gazette
+):
+    with engine.begin() as conn:
+        require_official_version(conn, document_id, application, number, issue, gazette)
         raw = store.put(data)
         dataset_id = conn.exec_driver_sql(
             """INSERT INTO source_datasets
@@ -196,15 +242,7 @@ def attach_pdf(
             (batch_id, url, raw.checksum, raw.object_key, raw.size_bytes),
         ).scalar_one()
         link_artifact(conn, document_id, artifact_id, "PDF page 1")
-        conn.exec_driver_sql(
-            """INSERT INTO gazette_pdf_pages
-                   (artifact_id, page_number, extracted_text, search_tokens)
-               VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING""",
-            [
-                (artifact_id, number, text, " ".join(tokenize(text)))
-                for number, text in enumerate(pages, 1)
-            ],
-        )
+        store_pages(conn, artifact_id, pages)
 
 
 def main() -> None:
@@ -220,6 +258,11 @@ def main() -> None:
     parser.add_argument(
         "--apply-to", type=UUID, help="Attach to this existing document version"
     )
+    parser.add_argument(
+        "--replay-stored",
+        action="store_true",
+        help="Read an already verified attachment without contacting TIPO",
+    )
     add_objects_argument(parser)
     args = parser.parse_args()
     gazette = GRANT if args.grant is not None else PUBLICATION
@@ -233,21 +276,46 @@ def main() -> None:
         parser.error("Invalid application, document or issue number")
     if args.expected_sha256 is not None and not SHA256.fullmatch(args.expected_sha256):
         parser.error("Expected SHA-256 must be 64 lowercase hexadecimal digits")
+    if args.replay_stored and not (args.apply_to and args.expected_sha256):
+        parser.error("--replay-stored requires --apply-to and --expected-sha256")
+    store = LocalObjectStore(args.objects)
     try:
-        catalog_path = (
-            f"/S220/gazette/api/patents/{gazette.case_endpoint}/{args.application}"
-        )
-        metadata = json.loads(fetch(catalog_path, "application/json", 1024 * 1024))
-        path = checked_pdf_path(metadata, args.application, number, args.issue, gazette)
-        data = fetch(path, "application/pdf", MAX_PDF_BYTES)
+        if args.apply_to:
+            with engine.connect() as conn:
+                require_official_version(
+                    conn, args.apply_to, args.application, number, args.issue, gazette
+                )
+                if args.replay_stored:
+                    path = pdf_path(args.application, args.issue, gazette)
+                    artifact_id, data = read_attached_pdf(
+                        conn,
+                        store,
+                        args.apply_to,
+                        args.issue,
+                        f"https://{HOST}{path}",
+                        args.expected_sha256,
+                        gazette,
+                    )
+        if not args.replay_stored:
+            catalog_path = (
+                f"/S220/gazette/api/patents/{gazette.case_endpoint}/{args.application}"
+            )
+            metadata = json.loads(fetch(catalog_path, "application/json", 1024 * 1024))
+            path = checked_pdf_path(
+                metadata, args.application, number, args.issue, gazette
+            )
+            data = fetch(path, "application/pdf", MAX_PDF_BYTES)
         checksum = hashlib.sha256(data).hexdigest()
         if args.expected_sha256 and checksum != args.expected_sha256:
             raise ValueError("Gazette PDF does not match its expected SHA-256")
         pages = verify_pdf(data, args.application, number, gazette)
         url = f"https://{HOST}{path}"
-        if args.apply_to:
+        if args.replay_stored:
+            with engine.begin() as conn:
+                store_pages(conn, artifact_id, pages)
+        elif args.apply_to:
             attach_pdf(
-                LocalObjectStore(args.objects),
+                store,
                 data,
                 args.apply_to,
                 args.application,
