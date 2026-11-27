@@ -9,7 +9,7 @@ from typing import Annotated, Literal
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Path, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
@@ -304,6 +304,17 @@ class PatentClaim(BaseModel):
 class PatentClaims(BaseModel):
     document_id: UUID
     claims: list[PatentClaim]
+
+
+class GazettePdfPage(BaseModel):
+    page_number: int
+    extracted_text: str
+
+
+class GazettePdfPages(BaseModel):
+    document_id: UUID
+    artifact_sha256: str
+    pages: list[GazettePdfPage]
 
 
 SUMMARY_FIELDS = """
@@ -946,6 +957,53 @@ def patent_detail(document_id: UUID):
                 for event in events
             ],
         }
+    )
+
+
+@router.get(
+    "/{document_id}/gazette-pdfs/{artifact_sha256}/pages",
+    response_model=GazettePdfPages,
+    responses={404: {"model": PatentErrorEnvelope}},
+)
+def gazette_pdf_pages(
+    document_id: UUID,
+    artifact_sha256: Annotated[str, Path(pattern=r"^[0-9a-f]{64}$")],
+):
+    try:
+        with engine.connect() as conn:
+            rows = (
+                conn.exec_driver_sql(
+                    """SELECT DISTINCT p.page_number, p.extracted_text
+                       FROM patent_documents d
+                       JOIN document_artifacts da ON da.document_id = d.id
+                       JOIN ingestion_artifacts ia ON ia.id = da.artifact_id
+                       JOIN ingestion_batches b ON b.id = ia.batch_id
+                       JOIN source_datasets s ON s.id = b.dataset_id
+                       LEFT JOIN gazette_pdf_pages p ON p.artifact_id = ia.id
+                       WHERE d.id=%s AND d.jurisdiction='TW' AND ia.checksum=%s
+                         AND NOT s.is_demo AND ia.status='parsed' AND b.status='complete'
+                         AND s.dataset_key = CASE d.document_stage
+                            WHEN 'publication' THEN 'TIPO-INVENTION-GAZETTE-PDF'
+                            WHEN 'grant' THEN 'TIPO-GRANT-GAZETTE-PDF'
+                         END
+                       ORDER BY p.page_number""",
+                    (document_id, artifact_sha256),
+                )
+                .mappings()
+                .all()
+            )
+    except SQLAlchemyError:
+        return unavailable()
+    if not rows:
+        return not_found()
+    return GazettePdfPages(
+        document_id=document_id,
+        artifact_sha256=artifact_sha256,
+        pages=[
+            GazettePdfPage.model_validate(row)
+            for row in rows
+            if row["page_number"] is not None
+        ],
     )
 
 

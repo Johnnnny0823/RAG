@@ -6,6 +6,8 @@ PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 
 
 `legal_event_catalog` 保留已驗證發明異動的申請號、證書號、日期、原始檔及記錄位置。專利匯入時以申請號索引配對，已連結的詳情仍從 `patent_legal_events` 讀取。API 角色無異動暫存表的讀寫權限。
 
+`0020_gazette_pdf_pages` 依原檔及頁碼保存 PDF 文字層，以 `(artifact_id, page_number)` 為主鍵。每頁上限 20,000 字元，允許空文字層。API 角色僅可讀。查閱時需依 `document_artifacts` 核對該版本與 PDF SHA-256 的關聯。降版移除衍生文字頁，原始公報與既有專利版本可供重新擷取。
+
 主鍵多為 UUID（`gen_random_uuid()`），時間欄位為 `timestamptz`，只知道日期時用 `date`。
 
 ## 資料表關係

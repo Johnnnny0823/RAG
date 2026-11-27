@@ -177,6 +177,50 @@ async function request<T>(path: string, payload?: object, token?: string, method
   return response.json();
 }
 
+type GazettePdfPage = { page_number: number; extracted_text: string };
+
+function GazettePdfReader({ documentId, checksum }: { documentId: string; checksum: string }) {
+  const [pages, setPages] = useState<GazettePdfPage[] | null>(null);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function loadPages() {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await request<{ pages: GazettePdfPage[] }>(`/patents/${documentId}/gazette-pdfs/${checksum}/pages`);
+      setPages(result.pages);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "公報文字載入失敗。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!pages) {
+    return <div className="mt-2">
+      <button type="button" disabled={loading} onClick={() => void loadPages()}>{loading ? "載入公報文字…" : "讀取公報文字"}</button>
+      {error && <p role="alert">{error}</p>}
+    </div>;
+  }
+  if (!pages.length) return <p role="status">這份公報的頁面文字目前不可用。</p>;
+
+  const normalize = (text: string) => text.normalize("NFKC").toLowerCase().replace(/\s+/g, "");
+  const term = normalize(query);
+  const matches = term ? pages.filter((page) => normalize(page.extracted_text).includes(term)) : pages;
+  return <div className="my-2">
+    <label className="research-field">在公報文字中查找
+      <input value={query} maxLength={120} onChange={(event) => setQuery(event.target.value)} />
+    </label>
+    <p className="text-sm" role="status">顯示 {matches.length}／{pages.length} 頁。掃描圖像的內容請查閱官方 PDF。</p>
+    {matches.map((page) => <details className="my-2" key={page.page_number}>
+      <summary>PDF 第 {page.page_number} 頁</summary>
+      <p className="whitespace-pre-wrap break-words text-sm">{page.extracted_text.trim() ? page.extracted_text : "這一頁沒有可讀取的文字層。"}</p>
+    </details>)}
+  </div>;
+}
+
 async function downloadPrivate(path: string, filename: string, token: string, failure: string) {
   const response = await fetchWithDeadline(`/api/v1${path}`, {
     headers: { Authorization: "Bearer " + token },
@@ -1045,6 +1089,9 @@ export function Research() {
                   FTPS 位址（可複製到 FTPS 用戶端）
                   <input type="text" readOnly value={source.source_url} onFocus={(event) => event.currentTarget.select()} />
                 </label>}
+                {source.source_url?.endsWith(".pdf") && (
+                  <GazettePdfReader documentId={selected.hit.document_id} checksum={source.artifact_sha256} />
+                )}
               </details>
             </li>)}
           </ul>

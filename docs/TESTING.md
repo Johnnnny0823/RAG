@@ -95,7 +95,7 @@ $env:PATENTSCOPE_E2E_GAZETTE_PDFS = "1"
 npm run test:e2e --prefix apps/web -- patent-number.spec.ts
 ```
 
-遠端可在 `Official patent E2E` 選擇 `gazette_pdf=true`。搭配 `coverage=source` 可在未啟動 Ollama 的情況下驗收兩筆固定 PDF。核對時在資料寫入前要求 SHA-256 相符。個案若已下架或內容變更，選用的 PDF 測試會失敗並須重查官方來源。核心 XML 套件預設維持獨立執行。
+遠端可在 `Official patent E2E` 選擇 `gazette_pdf=true`。搭配 `coverage=source` 可在未啟動 Ollama 的情況下驗收兩筆固定 PDF。核對時在資料寫入前要求 SHA-256 相符。API 測試查驗版本、頁碼、首頁文字與跨版 404，瀏覽器測試以證書號定位公告首頁。個案若已下架或內容變更，選用的 PDF 測試會失敗並須重查官方來源。核心 XML 套件預設維持獨立執行。
 
 ### 公報日期與增量索引
 

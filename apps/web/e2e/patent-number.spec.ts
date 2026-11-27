@@ -30,6 +30,14 @@ test("official identifier lookup opens the correct publication and grant version
   const sourceDisclosures = page.locator("details").filter({ has: page.getByText("原檔雜湊與定位", { exact: true }) });
   await sourceDisclosures.first().getByText("原檔雜湊與定位", { exact: true }).click();
   await expect(sourceDisclosures.first()).toHaveAttribute("open", "");
+  if (checkPdfs) {
+    await page.getByRole("button", { name: "讀取公報文字" }).click();
+    const search = page.getByLabel("在公報文字中查找");
+    await search.fill("I941082");
+    await expect(page.getByText("PDF 第 1 頁", { exact: true })).toBeVisible();
+    await page.getByText("PDF 第 1 頁", { exact: true }).click();
+    await expect(page.getByText(/證書號數：I941082/)).toBeVisible();
+  }
   await page.getByRole("button", { name: "查詢同案其他版本" }).click();
   await page.getByRole("button", { name: "公開 202640162 · 全文", exact: true }).click();
   await expect(page.getByRole("link", { name: "在智慧財產局查詢公開號 202640162" })).toBeVisible();

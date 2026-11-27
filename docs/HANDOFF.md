@@ -2087,3 +2087,22 @@
 - Uncommitted changes / file ownership warnings: 測試寫入僅在現有隔離副本。
 - Next 1–3 concrete actions: 核對完整官方 E2E，取得人工標註與部署主機。
 - Exact reproduction steps: 依 TESTING 先啟動隔離 Compose 固定語料，再執行 `scripts.smoke_gazette_pdfs` 或觸發官方工作流程 `coverage=source` 與 `gazette_pdf=true`。
+
+## 官方 PDF 文字層與原始頁碼
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `7fcb6e1`。
+- Current milestone and status: 官方 PDF 頁面文字讀取及站內查找已通過隔離驗收，整體交付 IN_PROGRESS。
+- Goal of this session: 紀錄官方公報的可讀文字與頁碼，提供可回查的同版閱讀流程。
+- Files changed (with purpose): 遷移及匯入保存擷取文字，專利 API 提供同版 PDF 頁面，詳情可在瀏覽器查找。擴充官方 PDF 匯入與 Playwright 驗收。
+- Database migrations added/applied: `0020_gazette_pdf_pages` 從既有隔離資料庫升級成功，空庫另驗證 upgrade、downgrade 至 `0019`、再 upgrade。API 角色只讀。
+- API/Schema changes: 新增 `GET /api/v1/patents/{document_id}/gazette-pdfs/{artifact_sha256}/pages`。舊附件在重跑原件解析前回傳空頁面。
+- Commands actually run and results: pytest 135 passed，含 9 項 PostgreSQL 整合測試。隔離 Compose 實測 2 頁公開與 9 頁公告的擷取、實際號碼及原始頁碼，錯版 SHA-256 回傳 404。五組 Playwright 都能查找公告證書號並展開首頁。Ruff 與前端 lint 通過，API／Nginx 映像建置成功。
+- Tests NOT run and reason: 新提交的遠端官方 PDF 關卡尚待。掃描圖像 OCR 與 PDF 全語料索引未實作。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 重跑第 024019／053028 期兩份官方 PDF，網址、雜湊及來源限制見 DATA_SOURCES。
+- Known bugs / risks / blockers: Windows 預設 pytest 暫存目錄拒絕存取，改以隔離 `--basetemp` 後可重跑。擷取文字可能因 PDF 排版而含換行或標記，閱讀時以原始 PDF 為準。人工評估與公開主機仍待。
+- Decisions made (ADR links): 依 PDF 原檔及頁碼保存文字，查找在瀏覽器內完成。XML 引文、RAG 分段及排序維持原契約。
+- Uncommitted changes / file ownership warnings: 使用隔離測試庫及本機官方 PDF 物件。
+- Next 1–3 concrete actions: 核對新版 CI、確認需納入 PDF 全文索引的頁型及檢索基線、取得人工標註。
+- Exact reproduction steps: 依 TESTING 建立隔離固定語料，執行 `scripts.smoke_gazette_pdfs`，再以 `PATENTSCOPE_E2E_GAZETTE_PDFS=1` 執行號碼查詢用例。

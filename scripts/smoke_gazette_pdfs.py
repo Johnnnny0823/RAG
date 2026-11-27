@@ -4,6 +4,7 @@ import argparse
 import json
 import subprocess
 from dataclasses import dataclass
+from urllib.error import HTTPError
 from urllib.parse import urlsplit
 
 from scripts.evaluate_search import request
@@ -137,8 +138,26 @@ def smoke(api: str, project: str) -> None:
             raise ValueError(f"Duplicate or incorrect PDF source for {case.number}")
         if request(api, path + "/claims") != original:
             raise ValueError(f"XML claim provenance changed for {case.number}")
+        extracted = request(api, f"{path}/gazette-pdfs/{case.checksum}/pages")
+        if (
+            extracted["artifact_sha256"] != case.checksum
+            or extracted["document_id"] != document_id
+            or [page["page_number"] for page in extracted["pages"]]
+            != list(range(1, case.pages + 1))
+            or case.number not in extracted["pages"][0]["extracted_text"]
+        ):
+            raise ValueError(f"Incorrect PDF page provenance for {case.number}")
         print(
             f"{case.number}: official PDF and XML claim provenance verified", flush=True
+        )
+    try:
+        request(api, f"/patents/{publication}/gazette-pdfs/{CASES[1].checksum}/pages")
+    except HTTPError as error:
+        if error.code != 404:
+            raise
+    else:
+        raise ValueError(
+            "The grant PDF pages must be inaccessible through the publication version"
         )
 
 

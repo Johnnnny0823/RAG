@@ -20,6 +20,7 @@ from services.ingestion.import_issue import link_artifact
 
 HOST = "cloud.tipo.gov.tw"
 MAX_PDF_BYTES = 2 * 1024 * 1024
+MAX_PAGE_CHARACTERS = 20_000
 
 
 @dataclass(frozen=True)
@@ -101,13 +102,14 @@ def checked_pdf_path(
 
 def verify_pdf(
     data: bytes, application: str, number: str, gazette: Gazette = PUBLICATION
-) -> int:
+) -> list[str]:
     if len(data) > MAX_PDF_BYTES or not data.startswith(b"%PDF-"):
         raise ValueError("Invalid or oversized gazette PDF")
     reader = PdfReader(io.BytesIO(data), strict=True)
     if reader.is_encrypted or not 1 <= len(reader.pages) <= 32:
         raise ValueError("Unsupported gazette PDF page count or encryption")
-    page = unicodedata.normalize("NFKC", reader.pages[0].extract_text())
+    first_page = reader.pages[0].extract_text()
+    page = unicodedata.normalize("NFKC", first_page)
     page = re.sub(r"\s+", "", page)
     if not (
         gazette.pdf_heading in page
@@ -115,7 +117,10 @@ def verify_pdf(
         and re.search(rf"申請案號:{re.escape(application)}(?![0-9])", page)
     ):
         raise ValueError("Gazette PDF first-page identity does not match")
-    return len(reader.pages)
+    pages = [first_page, *(page.extract_text() for page in reader.pages[1:])]
+    if any(len(text) > MAX_PAGE_CHARACTERS or "\x00" in text for text in pages):
+        raise ValueError("Gazette PDF page text exceeds its limits")
+    return pages
 
 
 def attach_pdf(
@@ -170,7 +175,7 @@ def attach_pdf(
                 issue,
                 raw.checksum,
                 f"tipo-{gazette.stage}-gazette-pdf-v1",
-                Jsonb({"pages": pages}),
+                Jsonb({"pages": len(pages)}),
             ),
         ).scalar_one()
         artifact_id = conn.exec_driver_sql(
@@ -182,6 +187,11 @@ def attach_pdf(
             (batch_id, url, raw.checksum, raw.object_key, raw.size_bytes),
         ).scalar_one()
         link_artifact(conn, document_id, artifact_id, "PDF page 1")
+        conn.exec_driver_sql(
+            """INSERT INTO gazette_pdf_pages (artifact_id, page_number, extracted_text)
+               VALUES (%s, %s, %s) ON CONFLICT DO NOTHING""",
+            [(artifact_id, number, text) for number, text in enumerate(pages, 1)],
+        )
 
 
 def main() -> None:
@@ -241,7 +251,7 @@ def main() -> None:
             {
                 "source_url": url,
                 "sha256": checksum,
-                "pages": pages,
+                "pages": len(pages),
                 "attached": args.apply_to is not None,
             }
         )

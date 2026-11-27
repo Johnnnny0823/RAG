@@ -44,7 +44,9 @@ def test_gazette_pdf_identity_comes_from_labeled_numbers(monkeypatch):
     )
     with pytest.raises(ValueError, match="first-page identity"):
         gazette_pdf.verify_pdf(b"%PDF-DEMO", "113133932", "202639611")
-    assert gazette_pdf.verify_pdf(b"%PDF-DEMO", "113133933", "202639611") == 1
+    assert gazette_pdf.verify_pdf(b"%PDF-DEMO", "113133933", "202639611") == [
+        page.extract_text()
+    ]
 
 
 def test_grant_pdf_keeps_publication_and_certificate_numbers_separate(monkeypatch):
@@ -77,10 +79,9 @@ def test_grant_pdf_keeps_publication_and_certificate_numbers_separate(monkeypatc
         "PdfReader",
         lambda *args, **kwargs: SimpleNamespace(is_encrypted=False, pages=[page]),
     )
-    assert (
-        gazette_pdf.verify_pdf(b"%PDF-DEMO", "114106690", "I941082", gazette_pdf.GRANT)
-        == 1
-    )
+    assert gazette_pdf.verify_pdf(
+        b"%PDF-DEMO", "114106690", "I941082", gazette_pdf.GRANT
+    ) == [page.extract_text()]
     with pytest.raises(ValueError, match="first-page identity"):
         gazette_pdf.verify_pdf(b"%PDF-DEMO", "114106690", "202640162")
 

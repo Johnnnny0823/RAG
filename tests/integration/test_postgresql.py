@@ -67,8 +67,10 @@ def test_api_role_cannot_write_corpus_or_manage_schema():
         ).one()
         assert tuple(role) == ("patentscope_api", False, False, False, False)
         conn.exec_driver_sql("SELECT id FROM patent_documents LIMIT 1").all()
+        conn.exec_driver_sql("SELECT page_number FROM gazette_pdf_pages LIMIT 1").all()
         for statement in (
             "DELETE FROM patent_documents WHERE false",
+            "DELETE FROM gazette_pdf_pages WHERE false",
             "CREATE TABLE public.should_not_create (id integer)",
             "SELECT version_num FROM alembic_version",
         ):

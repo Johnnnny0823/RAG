@@ -59,6 +59,10 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 `lexical_match_fields` 列出同一候選版本中符合詞彙查詢的索引欄位，例如 `title_en`、`abstract_zh`、`claim`、`section:disclosure`。前端依文字欄位與檢索順位說明候選的來源，重排理由只出現在有重排名次的候選。語意順位表達此版本在索引候選中的相對位置，技術特徵是否相符仍由證據比對判定。
 
+### 官方公報 PDF 頁面文字
+
+`GET /api/v1/patents/{document_id}/gazette-pdfs/{artifact_sha256}/pages` 回傳目前文件版本已附加的官方 PDF 文字層。回應帶版本 UUID、PDF 雜湊及依原始頁碼排序的 `pages`，各頁含 `page_number` 與 `extracted_text`。查詢其他版本的 PDF 回傳 404。既有附件尚未擷取文字時回傳空陣列，重跑原件匯入可補齊。詳情在瀏覽器內查找這些文字，原文對照可開啟同一份官方 PDF。
+
 混合請求可加 `"rerank":true`，由本機分析模型根據標題與摘要重排融合後的前 8 筆候選。回傳原 `fusion_rank`、`rerank_rank` 及重排模型資訊。未啟用、候選少於兩筆或在重排範圍外時，對應欄位為 `null`。重排版本 `ollama-listwise-v2` 會依候選數量限定模型輸出的編號與陣列長度。後端獨立驗證每個候選恰好出現一次，驗證失敗回傳 503。分頁在重排後套用，跨請求的排序尚無持久化快照。
 
 ## 技術特徵拆解與編輯
