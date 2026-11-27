@@ -2068,3 +2068,22 @@
 - Uncommitted changes / file ownership warnings: 官方 PDF 與測試資料僅存於隔離環境。
 - Next 1–3 concrete actions: 核對最新整合 CI，接續防止來源漂移的驗收，取得人工標註與部署主機。
 - Exact reproduction steps: 依 SETUP 對已匯入同案的公開、公告文件 UUID 執行 `--publication 202640162` 和 `--grant I941082`，再以號碼查詢切換兩版本。
+
+## 官方公報 PDF 自動化驗收
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `dbfdc07`。
+- Current milestone and status: 本機官方 PDF 品質關卡通過，完整交付仍進行中。
+- Goal of this session: 建立可重跑的官方公報 PDF 與跨版本驗收。
+- Files changed (with purpose): `scripts/smoke_gazette_pdfs.py`、官方工作流程與號碼查詢 E2E。操作指令加入 `--expected-sha256`，於寫入前確認固定原件。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。
+- Commands actually run and results: 隔離 Compose 跑兩份真實 PDF，跨貼被拒、正確版本各重跑兩次仍保留一個 PDF 來源、兩版 XML 請求項未變。五組 Playwright 通過。pytest 126 passed、9 skipped，Ruff、前端 lint、TypeScript 與 Vite build 通過。
+- Tests NOT run and reason: 本輪未在 pytest 啟用 PostgreSQL 套件，實際 Compose 已驗證 PDF 流程。遠端選用 PDF 模式仍待跑。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 重抓第 024019／053028 期已核對的兩份個案 PDF，固定網址及雜湊見 DATA_SOURCES。
+- Known bugs / risks / blockers: 智財局近期公報下載會受服務與卷期保存影響。若出處不符，須以官方證據更新測試。掃描辨識、PDF 全文索引、人工評估與公開主機尚待。
+- Decisions made (ADR links): 遠端 PDF 驗收採 `gazette_pdf` 選用輸入，核心 XML 工作可獨立完成。
+- Uncommitted changes / file ownership warnings: 測試寫入僅在現有隔離副本。
+- Next 1–3 concrete actions: 核對遠端 PDF 關卡及完整官方 E2E，取得人工標註與部署主機。
+- Exact reproduction steps: 依 TESTING 先啟動隔離 Compose 固定語料，再執行 `scripts.smoke_gazette_pdfs` 或觸發官方工作流程 `coverage=source` 與 `gazette_pdf=true`。

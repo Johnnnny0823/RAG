@@ -83,6 +83,22 @@ python scripts/smoke_semantic.py --official-e2e --api http://127.0.0.1:8000
 
 此模式使用第 024019 期的光硬化樹脂及動態導通電阻案件，以及第 053028 期的公告。省略旗標則沿用舊雙期樣本，仍須匯入第 024018 期含 `202637274` 的書目。
 
+### 官方公報 PDF 回歸
+
+以獨立 Compose 專案匯入上述固定官方語料後，可驗證同案的公開及公告 PDF。此測試會寫入該測試庫，再透過 API 驗證附加、拒絕錯版、重跑去重及 XML 請求項來源未變動。
+
+```powershell
+python -m scripts.smoke_gazette_pdfs --api http://127.0.0.1:5173 --compose-project patentscope-tipo-e2e
+$env:PATENTSCOPE_E2E_URL = "http://127.0.0.1:5173"
+$env:PATENTSCOPE_E2E_TIPO = "versions"
+$env:PATENTSCOPE_E2E_GAZETTE_PDFS = "1"
+npm run test:e2e --prefix apps/web -- patent-number.spec.ts
+```
+
+遠端可在 `Official patent E2E` 選擇 `gazette_pdf=true`。搭配 `coverage=source` 可在未啟動 Ollama 的情況下驗收兩筆固定 PDF。核對時在資料寫入前要求 SHA-256 相符。個案若已下架或內容變更，選用的 PDF 測試會失敗並須重查官方來源。核心 XML 套件預設維持獨立執行。
+
+### 公報日期與增量索引
+
 需要驗收日期時，另外執行 [公報書目日期補齊](SETUP.md#從官方公報書目補齊日期)。使用 `GET /api/v1/patents?number_type=publication&number=202639611` 與 `number_type=grant&number=I941082` 核對日期。混合檢索以 `ipc=C08F2/48`、查詢 `photocurable resin composition` 及起迄皆 `2026-10-01` 應可查到公開案。把起迄一起設為 `2026-10-02` 時，固定語料應回傳空清單。
 
 第 024020 期的增量驗收先匯入 [最新卷期書目及兩份全文](SETUP.md#更新最新發明公開書目)，再用已設定的模型補建向量。以下指令使用該期的固定已知案件，與 S10 當下回傳的卷期無關。語意測試使用改寫查詢與 IPC 條件，並檢查混合檢索合併同公開號。引文評估核對版本、字元位置、原文及來源雜湊。

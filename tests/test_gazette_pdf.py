@@ -83,3 +83,34 @@ def test_grant_pdf_keeps_publication_and_certificate_numbers_separate(monkeypatc
     )
     with pytest.raises(ValueError, match="first-page identity"):
         gazette_pdf.verify_pdf(b"%PDF-DEMO", "114106690", "202640162")
+
+
+def test_expected_digest_rejects_changed_pdf_before_parsing(
+    monkeypatch, tmp_path, capsys
+):
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "gazette_pdf",
+            "--application",
+            "114106690",
+            "--grant",
+            "I941082",
+            "--issue",
+            "053028",
+            "--objects",
+            str(tmp_path),
+            "--expected-sha256",
+            "0" * 64,
+        ],
+    )
+    responses = iter((b"{}", b"%PDF-DEMO"))
+    monkeypatch.setattr(gazette_pdf, "fetch", lambda *_: next(responses))
+    monkeypatch.setattr(gazette_pdf, "checked_pdf_path", lambda *_: "/demo.pdf")
+    monkeypatch.setattr(
+        gazette_pdf, "verify_pdf", lambda *_: pytest.fail("Parsed changed PDF")
+    )
+    with pytest.raises(SystemExit) as error:
+        gazette_pdf.main()
+    assert error.value.code == 1
+    assert "does not match its expected SHA-256" in capsys.readouterr().err

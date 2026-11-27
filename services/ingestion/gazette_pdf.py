@@ -15,7 +15,7 @@ from pypdf import PdfReader
 from pypdf.errors import PyPdfError
 
 from services.api.db import engine
-from services.ingestion.artifacts import LocalObjectStore, add_objects_argument
+from services.ingestion.artifacts import SHA256, LocalObjectStore, add_objects_argument
 from services.ingestion.import_issue import link_artifact
 
 HOST = "cloud.tipo.gov.tw"
@@ -192,6 +192,9 @@ def main() -> None:
     number_group.add_argument("--grant", help="Invention grant certificate number")
     parser.add_argument("--issue", required=True)
     parser.add_argument(
+        "--expected-sha256", help="Require this known official PDF digest"
+    )
+    parser.add_argument(
         "--apply-to", type=UUID, help="Attach to this existing document version"
     )
     add_objects_argument(parser)
@@ -205,6 +208,8 @@ def main() -> None:
         and re.fullmatch(pattern, number)
     ):
         parser.error("Invalid application, document or issue number")
+    if args.expected_sha256 is not None and not SHA256.fullmatch(args.expected_sha256):
+        parser.error("Expected SHA-256 must be 64 lowercase hexadecimal digits")
     try:
         catalog_path = (
             f"/S220/gazette/api/patents/{gazette.case_endpoint}/{args.application}"
@@ -212,6 +217,9 @@ def main() -> None:
         metadata = json.loads(fetch(catalog_path, "application/json", 1024 * 1024))
         path = checked_pdf_path(metadata, args.application, number, args.issue, gazette)
         data = fetch(path, "application/pdf", MAX_PDF_BYTES)
+        checksum = hashlib.sha256(data).hexdigest()
+        if args.expected_sha256 and checksum != args.expected_sha256:
+            raise ValueError("Gazette PDF does not match its expected SHA-256")
         pages = verify_pdf(data, args.application, number, gazette)
         url = f"https://{HOST}{path}"
         if args.apply_to:
@@ -232,7 +240,7 @@ def main() -> None:
         json.dumps(
             {
                 "source_url": url,
-                "sha256": hashlib.sha256(data).hexdigest(),
+                "sha256": checksum,
                 "pages": pages,
                 "attached": args.apply_to is not None,
             }

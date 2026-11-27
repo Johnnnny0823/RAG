@@ -22,6 +22,11 @@ test("official identifier lookup opens the correct publication and grant version
   await expect(page.getByRole("heading", { name: "專利詳情" })).toBeVisible();
   await expect(page.getByText("請求項（13）", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "在智慧財產局查詢公告號 I941082" })).toHaveAttribute("href", "https://tiponet.tipo.gov.tw/S092_OUT/2022/out");
+  const checkPdfs = process.env.PATENTSCOPE_E2E_GAZETTE_PDFS === "1";
+  const gazettePdf = page.getByRole("link", { name: "官方公報 PDF", exact: true });
+  if (checkPdfs) {
+    await expect(gazettePdf).toHaveAttribute("href", "https://cloud.tipo.gov.tw/S220/downloads/patent/isu053028/pdfdata/114106690.pdf");
+  }
   const sourceDisclosures = page.locator("details").filter({ has: page.getByText("原檔雜湊與定位", { exact: true }) });
   await sourceDisclosures.first().getByText("原檔雜湊與定位", { exact: true }).click();
   await expect(sourceDisclosures.first()).toHaveAttribute("open", "");
@@ -29,6 +34,9 @@ test("official identifier lookup opens the correct publication and grant version
   await page.getByRole("button", { name: "公開 202640162 · 全文", exact: true }).click();
   await expect(page.getByRole("link", { name: "在智慧財產局查詢公開號 202640162" })).toBeVisible();
   await expect(sourceDisclosures.first()).not.toHaveAttribute("open", "");
+  if (checkPdfs) {
+    await expect(gazettePdf).toHaveAttribute("href", "https://cloud.tipo.gov.tw/S220/downloads/invention/pub024019/pdfdata/114106690.pdf");
+  }
 
   await kind.selectOption("publication");
   await number.fill("２０２６４０１６２");
