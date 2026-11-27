@@ -11,6 +11,26 @@
 | M6 延伸功能 | NOT_STARTED | MVP 之後再評估。 |
 | 交付驗收（Goal M6） | IN_PROGRESS | 官方完整工作流程已有通過紀錄，Nginx／TLS 及真實索引皆有隔離驗收。外部目標主機、最新版整組遠端驗收及人工標註仍待。 |
 
+## 2026-11-27 交付證據索引
+
+此表對照 Goal §14 的 16 項成果。測試證據只適用於所列修訂、語料及環境。
+
+| Goal 項目 | 原始碼、文件與驗收範圍 |
+| --- | --- |
+| 1–2 前後端 | [React 入口](../apps/web/src/main.tsx)、[FastAPI 入口](../services/api/main.py)。`d397c41` 的 [CI](https://github.com/Johnnnny0823/RAG/actions/runs/45974697044) 通過正式打包及核心流程。 |
+| 3 PostgreSQL、遷移 | [資料庫設計](DATABASE.md)、[遷移](../database/migrations/versions)。空白隔離庫已遷移至 `0021_gazette_pdf_search`，同一 CI 通過 9 項 PostgreSQL 整合測試。 |
+| 4 TIPO 匯入 | [來源範圍](DATA_SOURCES.md)、[固定官方樣本](TESTING.md#自動建立固定官方樣本)及[公報 PDF 驗收](TESTING.md#官方公報-pdf-回歸)。正式取件證據涵蓋固定發明公開、公告及選定異動卷期，新型及設計專利的匯入與檢索尚待驗證。 |
+| 5–6 Hybrid RAG 與比對 | [檢索程式](../services/retrieval)、[引文 E2E](../apps/web/e2e/patent-versions.spec.ts)。`ecbee6b` 的[官方完整工作](https://github.com/Johnnnny0823/RAG/actions/runs/45940600508)通過語意、混合、重排及跨版引文流程。較新的 `3458c9e` 正在[重跑官方完整工作](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)。 |
+| 7–8 研究管理與報告 | [工作台 E2E](../apps/web/e2e/workspace.spec.ts)、[報告與引文 E2E](../apps/web/e2e/tipo-research.spec.ts)。隔離流程已驗證帳號、歷史、引文及繁中 PDF。 |
+| 9–10 Playwright、Pytest | [測試方式](TESTING.md)、[瀏覽器套件](../apps/web/e2e)與[整合測試](../tests/integration/test_postgresql.py)。`d397c41` 的一般 CI 通過 128 項預設 pytest、12 項 Playwright 與 9 項獨立 PostgreSQL 整合測試。 |
+| 11 RAG 評估 | [固定資料及結果](EVALUATION.md)。已有詞彙、向量、混合加重排、引文及效能基線。34 組候選的人工複核與正式關聯性重評仍待完成。 |
+| 12–13 CI、Compose | [一般 CI](../.github/workflows/ci.yml)、[官方 E2E](../.github/workflows/tipo-e2e.yml)、[部署覆蓋檔](../docker-compose.deploy.yml)及 [HTTPS](SETUP.md#使用自備憑證啟用-https)。隔離 HTTPS 已驗收，目標主機的對外部署、憑證續期及復原仍待驗證。 |
+| 14–16 文件、交接、Demo | [API](API.md)、[資料庫](DATABASE.md)、[架構](ARCHITECTURE.md)、[測試](TESTING.md)、[交接](HANDOFF.md)與[官方語料 Demo](DEMO.md)。Demo 依固定來源及本機模型重建。 |
+
+## 歷史執行紀錄
+
+以下日期區塊包含當時的待辦及後續驗收。以本頁上方的里程碑及交付證據索引查閱現況。
+
 ## M0 驗收紀錄
 
 - PostgreSQL 16.14、pgvector 0.8.2、Alembic head `0001_enable_vector` 已在本機查證。

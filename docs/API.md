@@ -19,7 +19,7 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 `number_type` 必填，支援 `application`（9 位數申請號）、`publication`（9 位數發明公開號）及 `grant`（目前語料支援 I 開頭的發明公告號）。輸入做全半形與大小寫正規化，保留前導零。分頁預設 `limit=20`、`offset=0`，上限分別為 100 與 10,000。同一號碼的不同文件版本可並存，全文版本排在同一文件的書目版本之前。
 
-來源包含資料集、提供機關、授權、批次、匯入時間、原始 XML 雜湊與 XPath。已保存且通過官方來源檢查的原檔 URL 才會回傳。缺少日期、kind code 或原檔 URL 時回傳 `null`。`content_scope` 區分 `metadata_and_abstract`、`claims_only` 和 `fulltext`。可下載附件留待後續階段。
+來源包含資料集、提供機關、授權、批次、匯入時間、原檔雜湊及檔內位置。已保存且通過官方來源檢查的原檔 URL 才會回傳。缺少日期、kind code 或原檔 URL 時回傳 `null`。`content_scope` 區分 `metadata_and_abstract`、`claims_only` 和 `fulltext`。已核對並附加的官方公報 PDF 可從其來源 URL 開啟，專利詳情亦提供同版本的頁面文字 API。[公報 PDF](#官方公報-pdf-頁面文字)
 
 詳情的 `legal_events` 列出同一申請案已匯入的官方異動公報。公告版本須再符合事件上的證書號。事件種類目前有 `extinguishment`（消滅公告）與 `gazette_correction`（公報更正），並提供證書號、卷期、匯入時間、已知生效日、來源、雜湊及定位。`effective_on` 僅在來源提供時有值。空陣列表示已匯入語料沒有該案的事件，最新權利狀態仍應查智慧財產局。
 

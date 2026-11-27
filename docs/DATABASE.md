@@ -1,6 +1,6 @@
 # 資料庫設計
 
-PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，此整合分支 head 為 `0019_legal_event_catalog`。
+PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，此整合分支單一 head 為 `0021_gazette_pdf_search`。
 
 `audit_logs` 保存帳號 UUID、操作、結果、資源類型、可選的資源 UUID 及時間。API 角色可讀取與新增，無更新或刪除權限。刪除帳號時由外鍵清理歷程。
 
@@ -18,7 +18,11 @@ PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 
 erDiagram
     source_datasets ||--o{ ingestion_batches : "dataset_id"
     ingestion_batches ||--o{ ingestion_artifacts : "batch_id"
+    ingestion_artifacts ||--o{ gazette_pdf_pages : "artifact_id"
+    ingestion_artifacts ||--o{ legal_event_catalog : "artifact_id"
+    ingestion_artifacts ||--o{ patent_legal_events : "artifact_id"
     patent_applications ||--o{ patent_documents : "application_id"
+    patent_applications ||--o{ patent_legal_events : "application_id"
     patent_documents ||--o{ document_artifacts : "document_id"
     ingestion_artifacts ||--o{ document_artifacts : "artifact_id"
     patent_documents ||--o{ patent_classifications : "document_id"
@@ -30,6 +34,7 @@ erDiagram
     patent_documents ||--o{ patent_dense_chunks : "document_id"
     patent_embedding_models ||--o{ patent_dense_chunks : "model_id"
     users ||--o{ auth_sessions : "user_id"
+    users ||--o{ audit_logs : "user_id"
     users ||--o{ search_jobs : "user_id"
     search_runs o|--o{ search_jobs : "run_id"
     search_runs ||--o{ generated_reports : "run_id"
@@ -76,7 +81,7 @@ erDiagram
 | `patent_embedding_models` | 向量模型的供應者、名稱、摘要與處理流程。維度固定為 1,024。 |
 | `patent_dense_chunks` | 每個模型、文件、欄位、片段的向量與字元範圍。 |
 
-`patent_dense_chunks` 目前沒有近似最近鄰索引，向量檢索是精確掃描。現有語料只有一千多個向量，尚未量測需要 ANN 索引的規模。
+`patent_dense_chunks` 使用精確的向量距離排序。現有規模量測涵蓋固定 117 版本的 1,624 個向量，以及擴充 518 版本的 3,164 個向量。何時需要近似最近鄰索引仍待更大語料的量測。[檢索效能基準](EVALUATION.md#2026-11-26-擴充語料與併發量測)
 
 ## 帳號與研究資料
 
@@ -96,23 +101,23 @@ erDiagram
 
 ## 遷移與回復
 
-- `0003`、`0004`、`0009`、`0010` 有可執行的降版。
 - `0002`、`0005`、`0006`、`0007`、`0008` 的降版會刻意丟出錯誤，因為降版會捨棄已匯入的專利或私人研究資料。要回復這些遷移需先備份，再另行決定處理方式。
+- 後續遷移有個別 `downgrade()`，適用條件請查閱各遷移。`0013`、`0018` 等降版會移除對應的報告或稽核資料表，正式資料回復須使用經核對的備份。[備份及還原](SETUP.md#原始-xml-持久保存備份及還原)
 - 驗收方式見 [測試文件](TESTING.md#postgresql-與-api-整合)。
 
 ## 與 AGENTS.md 資料模型的差異
 
-下列項目在 [AGENTS.md](../AGENTS.md) 第 5 節列出，目前沒有對應的資料表：
+相較 [AGENTS.md](../AGENTS.md) 第 5 節的規劃，目前資料存放方式如下。
 
-- 申請人與發明人存在 `patent_documents.metadata_jsonb`，沒有 `patent_parties` 和 `document_parties`。
-- 請求項只有 `independent_flag_nullable`，沒有 `claim_dependencies`，依附關係未正規化。
-- 沒有 `patent_priorities`、`patent_legal_events`、`document_assets`。已查核的來源範圍不含法律狀態。
-- 技術特徵、比對判定與引文存在 `search_runs.request` 和 `search_run_comparisons.result` 的 JSONB，沒有獨立的 `feature_matches`、`evidence_spans`。
-- 沒有 `corpus_snapshots` 和 `reports`。PDF 報告即時產生，不在伺服器保存。
+- 申請人與發明人存於 `patent_documents.metadata_jsonb`。優先權資料尚未獨立建模。
+- `claim_dependencies` 保存原文明示的同版本援引。`patent_legal_events` 連結已核對的消滅及更正公告，涵蓋範圍見 [官方資料來源](DATA_SOURCES.md#專利權異動公報)。
+- 原始文件透過 `document_artifacts` 關聯 `ingestion_artifacts` 與檔內位置。公報 PDF 文字以原件及頁碼保存。
+- 技術特徵、比對判定與引文分別存於 `search_runs.request` 和 `search_run_comparisons.result` 的 JSONB。保存的搜尋保留候選排行與語料涵蓋資訊，重現舊索引所需的版本化語料快照尚未建立。
+- 私人 PDF 由 `generated_reports` 工作非同步產生並暫存，保存期限見下方的背景工作說明。
 
 ## 查詢計畫
 
-登入節流查詢在測試資料庫的 `EXPLAIN (ANALYZE, BUFFERS)` 使用 `ix_login_failures_recent` 的 Bitmap Index Scan，執行時間 0.057 ms（2026-11-10，空資料表）。詞彙與向量檢索的初步查詢計畫、數據及重現指令見 [檢索評估](EVALUATION.md#2026-11-26-postgresql-查詢計畫基線)。
+登入節流查詢在測試資料庫的 `EXPLAIN (ANALYZE, BUFFERS)` 使用 `ix_login_failures_recent` 的 Bitmap Index Scan，執行時間 0.057 ms（2026-11-10，空資料表）。詞彙、向量及公報 PDF 的查詢計畫與重現指令分別見 [檢索基線](EVALUATION.md#2026-11-26-postgresql-查詢計畫基線)及 [公報 PDF 基線](EVALUATION.md#2026-11-27-公報-pdf-詞彙查詢計畫)。
 ### 請求項原文援引
 
 `0011_claim_dependencies` 新增 `claim_dependencies(document_id, child_number, parent_number)`。兩個複合外鍵都指向同一文件版本內的請求項，且被援引項號須小於援引項號，因此無循環。欄位名稱中的 `dependencies` 記錄可由正文核對的援引關係。來源 XML 的獨立項標記仍保留在 `patent_claims`。

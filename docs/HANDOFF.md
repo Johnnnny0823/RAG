@@ -2201,3 +2201,22 @@
 - Uncommitted changes / file ownership warnings: 僅在整合工作樹操作。查詢計畫 JSON 留在本機隔離資料目錄。
 - Next 1–3 concrete actions: 確認遠端工作終態。取得人工複核及部署環境後完成評估與主機驗收。
 - Exact reproduction steps: 依 EVALUATION 指令執行 `python -m scripts.explain_search --gazette-pdf --repetitions 7 --output gazette-pdf-plans.json`。
+
+## 交付證據與現況文件核對
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `d397c41`。
+- Current milestone and status: 一般 CI 已通過，交付驗收 IN_PROGRESS。
+- Goal of this session: 將 Goal §14 的交付項目連到實際原始碼、工作流程及已知驗收範圍，校正文檔中的過時架構資訊。
+- Files changed (with purpose): `docs/PROGRESS.md` 加入交付證據索引，`docs/DATABASE.md` 同步資料表關係與 head，`docs/API.md` 補官方 PDF 來源的實際介面，`docs/SETUP.md` 同步部署狀態，`docs/HANDOFF.md` 記錄驗證。
+- Database migrations added/applied: 本輪無新增。以隔離庫唯讀查詢驗證 `0021_gazette_pdf_search` 及六條文件涉及的外鍵。
+- API/Schema changes: 本輪僅調整文件。
+- Commands actually run and results: `python -m alembic heads` 回報單一 head，`psql` 核對資料表與外鍵。核對本輪四份文件的 119 個本地文件及章節連結。[一般 CI 45974697044](https://github.com/Johnnnny0823/RAG/actions/runs/45974697044) 驗證 `d397c41`，128 項 pytest 通過、9 項在預設套件中跳過，獨立 PostgreSQL 套件 9 項與 Playwright 12 項均通過，隔離 HTTPS 通過。
+- Tests NOT run and reason: 本輪文件修改未重跑程式回歸。使用修訂 `3458c9e` 的[完整官方回歸](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)仍在建置語意索引。
+- Data sources checked (exact URL/date) and license/access notes: 本輪對照既有 DATA_SOURCES 與驗收紀錄，未重新下載官方文件。
+- Known bugs / risks / blockers: 34 組人工作業、正式目標主機驗收、最新完整官方 CI 終態仍待。固定來源驗收集中在發明專利，新型、設計及版本化語料快照尚待驗證或實作。
+- Decisions made (ADR links): 文件索引逐項保留修訂與驗收範圍，原歷史待辦保留於日期紀錄。
+- Uncommitted changes / file ownership warnings: 本輪只更新整合分支的文件，隔離資料庫只讀。
+- Next 1–3 concrete actions: 核對官方回歸終態。收到人工複核與實際主機資訊後分別重跑評估與部署驗收。
+- Exact reproduction steps: 讀取 PROGRESS 的交付證據索引。`python -m alembic heads` 並在隔離 PostgreSQL 查詢 `alembic_version`、`information_schema.tables` 及 `pg_constraint` 核對 Schema。
