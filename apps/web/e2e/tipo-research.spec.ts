@@ -100,6 +100,8 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     await expect(scopeLine.locator("time")).toHaveAttribute("datetime", coverage.observed_at);
     await expect(scopeLine).toContainText("最新文件日期 未提供");
     await expect(publication).toBeVisible();
+    await expect(publication.getByText(/申請人 .*九州大學.*文件日期 未提供.*IPC .*C08F/)).toBeVisible();
+    await expect(publication.getByRole("link", { name: "官方資料集" })).toHaveAttribute("href", /^https:\/\/data\.gov\.tw\/dataset\//);
     await expect(page.getByRole("listitem").filter({ hasText: "公告 " })).toHaveCount(0);
 
     const claimsResponse = page.waitForResponse((response) => /\/api\/v1\/patents\/[^/]+\/claims$/.test(response.url()));

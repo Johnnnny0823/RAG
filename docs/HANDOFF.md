@@ -1930,7 +1930,7 @@
 - Commands actually run and results: [一般 CI 45877176064](https://github.com/Johnnnny0823/RAG/actions/runs/45877176064) 通過。改用 Vite 測試配置重跑一般 Playwright，12 passed。官方來源模式 [45877188284](https://github.com/Johnnnny0823/RAG/actions/runs/45877188284) 的 PWA 驗收及 24 份固定原檔檢查均通過，第一批匯入結果新增欄位導致斷言失敗。本機重現一項失敗，修正後 pytest 116 passed、9 skipped，Ruff 格式與 lint 通過。
 - Tests NOT run and reason: 本機未重建整套官方模型；此輪的 PostgreSQL pytest 依環境設定略過 9 項。
 - Data sources checked (exact URL/date) and license/access notes: 遠端按固定樣本清單以 SHA-256 核對 24 份官方 XML，來源及限制以 DATA_SOURCES 為準。
-- Known bugs / risks / blockers: 修正版 `e73e09e` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45877742498) 與[官方來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45877757310) 已通過。[同版完整官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45878789673)、公開主機及人工相關性複核仍待。
+- Known bugs / risks / blockers: 修正版 `e73e09e` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45877742498)、[官方來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45877757310) 及[完整官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45878789673) 已通過。公開主機及人工相關性複核仍待。
 - Decisions made (ADR links): 明確保留其他計數與錯誤欄位的比對，沒有相關事件的測試語料才允許計數為零。
 - Uncommitted changes / file ownership warnings: 僅修改整合工作樹。
 - Next 1–3 concrete actions: 觀察 `e73e09e` 完整官方 E2E，記錄模型及跨瀏覽器結果並核對引文。
@@ -1954,3 +1954,22 @@
 - Uncommitted changes / file ownership warnings: 評估 JSON 為本機忽略目錄產物。
 - Next 1–3 concrete actions: 核對完整官方工作流程、接收人工標註後對同語料重跑評估、確認實際部署主機。
 - Exact reproduction steps: 啟動已匯入官方種子的隔離 API 與既有 Ollama，執行 `python -m scripts.evaluate_search --api http://127.0.0.1:18168 --repeats 2`。
+
+## 混合檢索候選清單的來源與摘要
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `fa352a9`。
+- Current milestone and status: 研究工作台增量通過隔離驗收，整體部署與人工評估 IN_PROGRESS。
+- Goal of this session: 候選清單直接提供可核對的官方書目、摘要與來源連結。
+- Files changed (with purpose): `services/api/patents.py` 批次讀取同版本的摘要、申請人、IPC 與官方資料集，`apps/web/src/research.tsx` 顯示新增資料。`tests/test_fusion.py` 及官方日期、研究 E2E 補回歸檢查。
+- Database migrations added/applied: 無新增。將 117 版本測試庫的獨立副本升級至既有 `0019_legal_event_catalog`。
+- API/Schema changes: 混合檢索及保存候選加 `abstract_excerpt`、`applicants`、`ipc_codes`、`official_source_url`。舊保存紀錄可讀。
+- Commands actually run and results: pytest 126 passed，含 9 項 PostgreSQL 整合測試。Ruff、Oxlint、前端 build 及 API／Nginx 容器建置通過。日期 Playwright 5 passed，涵蓋 Chromium 桌面、平板、手機及桌面 Firefox、WebKit。混合與部署冒煙通過。用合成帳號保存並重開真實候選，欄位與排序參數核對通過，測後刪除該帳號。
+- Tests NOT run and reason: 本版尚未執行完整遠端官方工作流程。最近通過的 [完整官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45878789673) 對應 `e73e09e`。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 核對公開案 `202639611`，以固定 [TIPO 官方資料集](https://data.gov.tw/dataset/9683) 與現存公報副本核對日期及原檔連結。
+- Known bugs / risks / blockers: 首輪手動升級隔離副本未執行角色配置，詳情 API 回傳 503。依 Compose 原有步驟重配 API 角色後，詳情與公報測試通過。pytest 整合測試首次使用公報副本，因資料庫名稱保護觸發 9 項設定錯誤，改至專用 `patentscope_test` 後通過。人工標註及外部主機驗收仍待。
+- Decisions made (ADR links): 在檢索的唯讀資料快照內依相同 UUID 讀取摘要及網址，沿用專利詳情的官方來源過濾。
+- Uncommitted changes / file ownership warnings: 變更限整合工作樹，手動驗收資料庫為測試副本。
+- Next 1–3 concrete actions: 核對新提交的 CI、取得人工標註、確認可供驗收的部署主機。
+- Exact reproduction steps: 匯入固定官方語料並補齊第 024019 卷期日期，套用既有遷移與 API 權限配置。依 TESTING 設定 `PATENTSCOPE_E2E_TIPO=dates` 執行 Playwright。

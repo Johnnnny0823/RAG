@@ -96,6 +96,26 @@ def test_hybrid_api_sorts_dates_before_pagination_and_keeps_fusion_ranks(monkeyp
     ]
     monkeypatch.setattr(patents, "lexical_rows", lambda *_: rows)
     monkeypatch.setattr(patents, "semantic_rows", lambda *_: rows)
+    conn.exec_driver_sql.return_value.mappings.return_value.__iter__ = lambda _: iter(
+        [
+            {
+                "id": row["document_id"],
+                "abstract_excerpt": row["publication_no"],
+                "applicants": [{"zh": "DEMO applicant"}],
+                "ipc_codes": ["G01R27/02"],
+            }
+            for row in rows
+        ]
+    )
+    monkeypatch.setattr(
+        patents,
+        "document_sources_by_id",
+        lambda *_: {
+            rows[3]["document_id"]: [
+                Mock(dataset_url="https://data.gov.tw/dataset/15987")
+            ]
+        },
+    )
     client = TestClient(app)
     response = client.post(
         "/api/v1/patents/search/hybrid",
@@ -113,3 +133,9 @@ def test_hybrid_api_sorts_dates_before_pagination_and_keeps_fusion_ranks(monkeyp
         ("DEMO-4", 4),
         ("DEMO-2", 2),
     ]
+    first, second = response.json()["items"]
+    assert first["abstract_excerpt"] == "DEMO-4"
+    assert first["applicants"] == [{"zh": "DEMO applicant", "en": None}]
+    assert first["ipc_codes"] == ["G01R27/02"]
+    assert first["official_source_url"] == "https://data.gov.tw/dataset/15987"
+    assert second["official_source_url"] is None

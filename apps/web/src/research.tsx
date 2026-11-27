@@ -29,13 +29,17 @@ type PatentVersion = {
   content_scope: string;
 };
 type Bookmark = PatentVersion & { note: string };
+type Party = { zh: string | null; en: string | null };
 type Hit = PatentVersion & {
   lexical_rank: number | null;
   semantic_rank: number | null;
   fusion_rank: number;
   rerank_rank: number | null;
+  abstract_excerpt?: string | null;
+  applicants?: Party[];
+  ipc_codes?: string[];
+  official_source_url?: string | null;
 };
-type Party = { zh: string | null; en: string | null };
 type SourceLocation = { xpath: string; artifact_sha256: string };
 type Evidence = SourceLocation & { quote: string; char_start: number; char_end: number };
 type SearchSort = "relevance" | "date_desc" | "date_asc";
@@ -882,7 +886,10 @@ export function Research() {
                 <li key={hit.document_id} className="py-3">
                   <p className="text-sm font-medium text-teal-800">第 {results.offset + index + 1} 筆 · {stage[hit.document_stage] ?? hit.document_stage} {hit.publication_no} {hit.kind_code} · {scope[hit.content_scope]}</p>
                   <button className="mt-1 text-left" type="button" disabled={!!busy} onClick={() => void run("正在載入專利詳情…", () => openPatent(hit))}>{title(hit)}</button>
+                  <p className="mt-1 break-words text-sm text-slate-700">申請人 {names(hit.applicants ?? [])} · 文件日期 {hit.publication_date ?? "未提供"}{hit.ipc_codes?.length ? ` · IPC ${hit.ipc_codes.join("、")}` : ""}</p>
+                  {hit.abstract_excerpt && <p className="mt-1 line-clamp-3 break-words text-sm text-slate-700">{hit.abstract_excerpt}</p>}
                   <p className="mt-1 text-sm text-slate-700">詞彙 {hit.lexical_rank ?? "—"} · 語意 {hit.semantic_rank ?? "—"} · 融合 {hit.fusion_rank}{hit.rerank_rank && ` · 重排 ${hit.rerank_rank}`}</p>
+                  {hit.official_source_url && <a className="mt-1 inline-block text-sm" href={hit.official_source_url} target="_blank" rel="noreferrer">官方資料集</a>}
                 </li>
               ))}
             </ol>

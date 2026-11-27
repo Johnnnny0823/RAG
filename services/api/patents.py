@@ -186,6 +186,11 @@ class SemanticSearchResults(PatentSearchResults):
     pipeline: str
 
 
+class PartyName(BaseModel):
+    zh: str | None = None
+    en: str | None = None
+
+
 class HybridPatentHit(PatentVersion):
     rrf_score: float
     lexical_rank: int | None
@@ -194,6 +199,10 @@ class HybridPatentHit(PatentVersion):
     semantic_score: float | None
     fusion_rank: int
     rerank_rank: int | None
+    abstract_excerpt: str | None = None
+    applicants: list[PartyName] = Field(default_factory=list)
+    ipc_codes: list[str] = Field(default_factory=list)
+    official_source_url: str | None = None
 
 
 class RerankMetadata(BaseModel):
@@ -225,11 +234,6 @@ class HybridSearchResults(BaseModel):
     limit: int
     offset: int
     has_more: bool
-
-
-class PartyName(BaseModel):
-    zh: str | None = None
-    en: str | None = None
 
 
 class Classification(BaseModel):
@@ -612,6 +616,41 @@ def document_sources_by_id(
     return sources
 
 
+def add_candidate_previews(conn: Connection, ranked: list[dict]) -> None:
+    if not ranked:
+        return
+    ids = [hit["document_id"] for hit in ranked]
+    rows = conn.exec_driver_sql(
+        """SELECT d.id, left(coalesce(d.abstract_zh, d.abstract_en), 240) AS abstract_excerpt,
+                  d.metadata_jsonb->'applicants' AS applicants,
+                  ARRAY(
+                    SELECT DISTINCT c.code FROM patent_classifications c
+                    WHERE c.document_id = d.id AND c.scheme = 'IPC'
+                    ORDER BY c.code LIMIT 4
+                  ) AS ipc_codes
+           FROM patent_documents d WHERE d.id = ANY(%s::uuid[])""",
+        (ids,),
+    ).mappings()
+    previews = {row["id"]: row for row in rows}
+    sources = document_sources_by_id(conn, ids)
+    for hit in ranked:
+        version = hit["document_id"]
+        row = previews[version]
+        hit.update(
+            abstract_excerpt=row["abstract_excerpt"],
+            applicants=row["applicants"] or [],
+            ipc_codes=row["ipc_codes"],
+            official_source_url=next(
+                (
+                    artifact.dataset_url
+                    for artifact in sources.get(version, [])
+                    if artifact.dataset_url is not None
+                ),
+                None,
+            ),
+        )
+
+
 @router.get(
     "",
     response_model=PatentSearchResults,
@@ -757,18 +796,7 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
                 .one()
             )
             ranked = fuse_rankings(lexical, semantic)
-            abstracts = {}
-            if request.rerank and len(ranked) > 1:
-                ids = [hit["document_id"] for hit in ranked[:RERANK_LIMIT]]
-                abstracts = dict(
-                    conn.exec_driver_sql(
-                        """SELECT id, left(coalesce(abstract_zh, abstract_en, ''), 180)
-                       FROM patent_documents WHERE id = ANY(%s::uuid[])""",
-                        (ids,),
-                    )
-                    .tuples()
-                    .all()
-                )
+            add_candidate_previews(conn, ranked)
     except SemanticIndexUnavailable:
         return missing_semantic_index()
     except EmbeddingError:
@@ -779,13 +807,13 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
     for rank, hit in enumerate(ranked, 1):
         hit.update(fusion_rank=rank, rerank_rank=None)
     reranker = None
-    if abstracts:
+    if request.rerank and len(ranked) > 1:
         prefix = ranked[:RERANK_LIMIT]
         candidates = [
             {
                 "id": i,
                 "title": (hit["title_zh"] or hit["title_en"] or "")[:100],
-                "abstract": abstracts.get(hit["document_id"], ""),
+                "abstract": (hit["abstract_excerpt"] or "")[:180],
             }
             for i, hit in enumerate(prefix, 1)
         ]
