@@ -135,12 +135,15 @@ jobs:
         with:
           path: |
             ${{ runner.temp }}/tipo-fixture/grant-053010.xml
+            ${{ runner.temp }}/tipo-fixture/grant-053030.xml
+            ${{ runner.temp }}/tipo-fixture/grant-052006.xml
+            ${{ runner.temp }}/tipo-fixture/sud08.xml
             ${{ runner.temp }}/tipo-fixture/sud24.xml
           key: ${{ runner.os }}-tipo-grant-event-xml-${{ hashFiles('scripts/seed_tipo_grant_events.py') }}
-      - name: Import official utility model and design corrections
+      - name: Import official utility model and design events
         timeout-minutes: 10
         run: python -m scripts.seed_tipo_grant_events "$RUNNER_TEMP/tipo-fixture"
-      - name: Verify official grant corrections in Playwright
+      - name: Verify official grant events in Playwright
         run: npm run test:e2e --prefix apps/web -- legal-events.spec.ts
         env:
           PATENTSCOPE_E2E_TIPO: grant-events

@@ -2391,3 +2391,22 @@
 - Uncommitted changes / file ownership warnings: 此輪只修改官方異動測試樣本工具、官方 E2E 工作流程及驗收文件。官方原件與測試輸出留在隔離環境。
 - Next 1–3 concrete actions: 確認遠端新版來源驗收和起點的完整模型驗收。依官方公告範圍補驗實際消滅事件。待人工標註和正式主機後進行最終評估與交付。
 - Exact reproduction steps: 使用 `docker-compose.deploy.yml` 啟動隔離環境，設定 `COMPOSE_PROJECT_NAME`，執行 `python -m scripts.seed_tipo_grant_events <fixture-directory> --offline`，再依 TESTING 執行 `PATENTSCOPE_E2E_TIPO=grant-events` 的 Playwright。
+
+## 官方消滅公告樣本
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `419e37e`。本節隨本次變更提交。
+- Current milestone and status: M5 與交付驗收 IN_PROGRESS。兩筆真實消滅事件已驗證 API 與瀏覽器流程。
+- Goal of this session: 以新型和帶 D01 尾碼的衍生設計案例驗證官方消滅公告，並加入官方回歸。
+- Files changed (with purpose): 官方樣本工具新增 2 份公告索引和 `sud08.xml`，工作流程快取這些原件。`legal-events.spec.ts` 核對詳情號碼、原因、生效日、原件雜湊及定位。資料來源、進度與測試文件新增驗收證據。
+- Database migrations added/applied: 無新增。空白隔離環境套用既有 `0022_legal_event_grant_types`，新型先匯入公告、衍生設計先匯入異動。兩者均成功連結。
+- API/Schema changes: 無。
+- Commands actually run and results: 實取兩份官方公告索引。兩筆真實 API 詳情均通過核對。首輪 Playwright 誤在查詢清單驗證詳情專用的申請號，修正後 Chromium 三尺寸、Firefox 和 WebKit 共 10 項通過。Ruff、前端 lint、型別檢查及 Compose 部署通過。起點 `419e37e` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46024172460)和[官方來源 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46024203767)均通過。
+- Tests NOT run and reason: 本次主要改已知官源樣本和瀏覽器測試，未再執行本機 Python 整合套件。舊版官方完整流程仍在執行，新版需要另看新增關卡結果。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 核對 https://data.gov.tw/dataset/15974 與 https://data.gov.tw/dataset/15972，均為政府資料開放授權條款第 1 版。兩份實取公告 FTPS URL、SHA-256、原件索引與第 053033 期異動定位見 [資料來源](DATA_SOURCES.md#第-053033-期新型與設計異動)。
+- Known bugs / risks / blockers: 樣本涵蓋已匯入的歷史事件。即時權利狀態、34 組人工複核、正式主機驗收仍待。
+- Decisions made (ADR links): 以兩種匯入順序檢查關聯。衍生設計保留官方尾碼，與完整申請號精確核對。
+- Uncommitted changes / file ownership warnings: 只在整合分支工作樹與專用 Compose 環境操作，原件與測試輸出未入 Git。
+- Next 1–3 concrete actions: 查核新版官方來源流程及舊版完整模型流程，補驗跨期語料的增量與可回溯性，等人工與部署需求確認後完成總驗收。
+- Exact reproduction steps: 依 [官方異動回歸](TESTING.md#新型及設計異動回歸) 啟動隔離部署，執行 `python -m scripts.seed_tipo_grant_events <fixture-directory> --offline`，使用 `PATENTSCOPE_E2E_TIPO=grant-events` 與 `PATENTSCOPE_E2E_CROSS_BROWSER=1` 執行 `legal-events.spec.ts`。

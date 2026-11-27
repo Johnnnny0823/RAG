@@ -305,4 +305,4 @@ npx playwright test --reporter=list
 
 設定 `PATENTSCOPE_E2E_URL` 指向隔離前端，設 `PATENTSCOPE_E2E_TIPO=grant-events` 及 `PATENTSCOPE_E2E_CROSS_BROWSER=1`，在 `apps/web` 執行 `npx playwright test legal-events.spec.ts`。2026-11-27，Chromium 桌面／平板／手機、Firefox 和 WebKit 共五項通過。
 
-官方 GitHub Actions 另以 `python -m scripts.seed_tipo_grant_events <fixture-directory>` 準備上述兩件更正。此工具確認兩份公告索引及 `sud24.xml` 的 SHA-256，先匯入更正再匯入公告以驗證延後連結。已有原件可用 `--offline`，僅取件與校驗可用 `--prepare-only`。來源流程執行三個 Chromium 設定，完整流程另加 Firefox 與 WebKit。
+官方 GitHub Actions 另以 `python -m scripts.seed_tipo_grant_events <fixture-directory>` 準備上述兩件更正與新型 `M688686`、衍生設計 `D236497` 的消滅公告。工具確認四份公告索引及 `sud08.xml`、`sud24.xml` 的 SHA-256，先匯入異動再匯入公告以驗證延後連結。兩筆消滅案例核對卷期、日期、完整申請號、與原始檔定位。已有原件可用 `--offline`，僅取件與校驗可用 `--prepare-only`。來源流程執行三個 Chromium 設定，完整流程另加 Firefox 與 WebKit。

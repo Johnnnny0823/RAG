@@ -16,6 +16,30 @@ test("utility model and design display their same-certificate official correctio
   }
 });
 
+test("official extinguishments show the recorded dates and source for the exact grants @grant-events", async ({ page }) => {
+  await page.goto("/");
+  const lookup = page.getByRole("region", { name: "專利號碼查詢" });
+  const cases = [
+    { number: "M688686", application: "114211029", date: "2026-11-21", reason: "114140287", record: 34 },
+    { number: "D236497", application: "113302173D01", date: "2026-02-21", reason: "未依限繳費", record: 611 },
+  ];
+  await lookup.getByLabel("號碼類型").selectOption("grant");
+  for (const { number, application, date, reason, record } of cases) {
+    await lookup.getByLabel("專利號碼").fill(number);
+    await lookup.getByRole("button", { name: "查詢專利號碼" }).click();
+    const result = lookup.getByRole("listitem").filter({ hasText: `公告 ${number}` });
+    await result.getByRole("button").click();
+    await expect(page.getByText(application, { exact: true })).toBeVisible();
+    const event = page.getByRole("listitem").filter({ hasText: `專利權消滅公告 · 證書號 ${number} · 卷期 053033` });
+    await expect(event).toContainText(`公報記載消滅日 ${date}`);
+    await expect(event).toContainText(reason);
+    await expect(event.getByRole("link", { name: "異動公報原始檔" })).toHaveAttribute("href", /PatentIsuModXML_053033\/sud08\.xml$/);
+    await event.getByText("異動公報來源定位", { exact: true }).click();
+    await expect(event).toContainText(`sud08'][${record}]`);
+    await expect(event).toContainText("213b98e7337a0f99b74b9eff59ce0d92f0f27ccecf665892f8ee48b8423bd964");
+  }
+});
+
 test("a public document shows the sourced gazette correction for its application @legal-events", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("API、資料庫與向量擴充功能已就緒。")).toBeVisible();
