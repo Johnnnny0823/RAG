@@ -38,7 +38,13 @@
 
 2026-11-27 核對[專利公開資訊查詢](https://tiponet.tipo.gov.tw/S092_OUT/2022/out)。該頁可接受申請案號、公開號或公告號，[官方網站導覽](https://tiponet.tipo.gov.tw/S092_OUT/2022/sitemap)說明結果由查詢產生且未提供固定網址列表。專利詳情顯示應輸入的同版本文件號，使用者可自行到官方頁面查詢。此入口只導向官方網站，個案與可閱文件依智慧財產局的公開範圍而異。
 
-[TIPO 下載說明](https://cloud.tipo.gov.tw/S220/opdata/information/ftp)說明多數瀏覽器已停止支援 FTP。專利詳情可展開來源批次以取得完整 FTPS 位址、檔案 SHA-256 與原文位置。智慧財產局的發明網路公報及專利網路公報另有近半年卷期的 PDF 入口。本專案的公報 PDF 匯入、解析及站內預覽尚未實作。[發明網路公報](https://cloud.tipo.gov.tw/S220/gazette/invention/sundry) · [專利網路公報](https://cloud.tipo.gov.tw/S220/gazette/patent)
+[TIPO 下載說明](https://cloud.tipo.gov.tw/S220/opdata/information/ftp)說明多數瀏覽器已停止支援 FTP。專利詳情可展開來源批次以取得完整 FTPS 位址、檔案 SHA-256 與原文位置。智慧財產局的發明網路公報及專利網路公報另有近半年卷期的 PDF 入口。[發明網路公報](https://cloud.tipo.gov.tw/S220/gazette/invention/sundry) · [專利網路公報](https://cloud.tipo.gov.tw/S220/gazette/patent)
+
+### 發明公開公報個案 PDF
+
+2026-11-27 實測發明網路公報個案請求。官方回應列出民國 115 年第 24 卷第 19 期、公開號 `202639611`、申請號 `113133932` 及 PDF 網址。直連回應為 `application/pdf`，5,824 bytes、1 頁，SHA-256 為 `cf6992639675e797291b4024b86b28c05550f1827d0af30993d0c67c010a7d1a`。用 pypdf 核對首頁欄標下的號碼。這是公報書目頁，可補充原件回溯，原本的請求項及說明書仍以個案 XML 為來源。[公報個案資料](https://cloud.tipo.gov.tw/S220/gazette/api/patents/laid-opens/cases/pubsud01/113133932) · [官方 PDF](https://cloud.tipo.gov.tw/S220/downloads/invention/pub024019/pdfdata/113133932.pdf)
+
+採用單案、人工指定版本的匯入方式。公報站按近期卷期開放，個案網址的保存期限、下載配額、長期批次介接及其他階段的 PDF 欄位未確認。公開前端連結直接指向 TIPO。以政府網站資料開放宣告所列的出處標註、例外與個資條件為準，程式不推定所有專利說明書或圖式可再散布。[智財局政府網站資料開放宣告](https://www.tipo.gov.tw/tw/tipo1/36-17871.html)
 
 ## 公報書目的申請日、公開日與公告日
 

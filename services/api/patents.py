@@ -637,17 +637,22 @@ def add_candidate_previews(conn: Connection, ranked: list[dict]) -> None:
     for hit in ranked:
         version = hit["document_id"]
         row = previews[version]
+        source_urls = [
+            artifact.dataset_url
+            for artifact in sources.get(version, [])
+            if artifact.dataset_url
+        ]
         hit.update(
             abstract_excerpt=row["abstract_excerpt"],
             applicants=row["applicants"] or [],
             ipc_codes=row["ipc_codes"],
             official_source_url=next(
                 (
-                    artifact.dataset_url
-                    for artifact in sources.get(version, [])
-                    if artifact.dataset_url is not None
+                    url
+                    for url in source_urls
+                    if url.startswith("https://data.gov.tw/dataset/")
                 ),
-                None,
+                next(iter(source_urls), None),
             ),
         )
 

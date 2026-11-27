@@ -2030,3 +2030,22 @@
 - Uncommitted changes / file ownership warnings: 變更限整合工作樹。
 - Next 1–3 concrete actions: 核對完整官方 E2E，確認 PDF 的可用檔案取得與使用條件，取得人工標註。
 - Exact reproduction steps: 使用同一套 117 版本固定官方語料，依 TESTING 執行 `dates` 及 `versions` 的 `patent-number.spec.ts`。
+
+## 發明公開公報個案 PDF
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `98905fb`。
+- Current milestone and status: 發明公開公報的單案 PDF 來源已驗收。公報 PDF 的全文檢索、其他文件階段及全面匯入仍待。
+- Goal of this session: 由官方個案資料查驗 PDF 及首頁編號，附加到指定的已匯入公開版本。
+- Files changed (with purpose): `services/ingestion/gazette_pdf.py` 下載、限定同源、核對首頁識別、保存原始位元及批次來源。`tests/test_gazette_pdf.py` 驗證識別與來源拒絕。既有 pypdf 固定版本納入執行依賴。前端詳情提供公報 PDF 連結，混合候選仍優先選政府資料目錄。
+- Database migrations added/applied: 無。使用既有批次、原檔和文件來源關係。
+- API/Schema changes: 無新欄位。專利詳情的 `sources` 可包含公報 PDF 與 `PDF page 1` 來源定位。
+- Commands actually run and results: 單案預覽、套用及重跑成功。API 核對一筆 PDF 來源、SHA-256、122 段說明書仍可取得。Chromium 核對 PDF 連結、雜湊和 19 項請求項。前後端 Docker build、Ruff 與 pytest 124 passed、9 skipped。起點的一般與官方來源模式均通過。
+- Tests NOT run and reason: 本輪未啟用 PostgreSQL pytest 整合套件，另以真實 PostgreSQL、正式映像與真實 TIPO 檔案執行整合。尚未驗收公告、掃描 PDF、OCR 或站內預覽。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 實際從官方前端的個案查詢取得 `202639611` 的原件連結，下載並核對 PDF。網址、雜湊、下載限制及智財局資料開放宣告見 DATA_SOURCES。
+- Known bugs / risks / blockers: 公報網站主要提供近期卷期。程式拒絕身份不符、改網域或無法讀出首頁識別的 PDF。人工評估、對外主機及完整遠端新版驗收仍待。
+- Decisions made (ADR links): PDF 當作補充來源，保持 XML 引文來源與向量內容。前端連到智財局原件，暫無 PDF 轉送服務。
+- Uncommitted changes / file ownership warnings: 驗收 PDF 與物件位於本機忽略目錄，正式資料庫未修改。
+- Next 1–3 concrete actions: 核對新版完整官方 E2E，評估已確認的公告 PDF 案例及人工標註。
+- Exact reproduction steps: 依 SETUP 執行 `gazette_pdf` 預覽，指定已驗證的公開版本 UUID 後重跑兩次，從專利詳情核對唯一 PDF 來源。

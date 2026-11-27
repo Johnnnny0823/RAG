@@ -1033,7 +1033,7 @@ export function Research() {
           <ul className="mb-4">
             {selected.detail.sources.map((source, index) => <li key={index} className="my-2">
               {source.publisher} · {source.dataset_name} · {source.batch_key} · 匯入 {source.ingested_at.slice(0, 10)}（UTC）
-              {source.source_url && <a className="ml-2" href={source.source_url} target="_blank" rel="noreferrer">官方原始檔</a>}
+              {source.source_url && <a className="ml-2" href={source.source_url} target="_blank" rel="noreferrer">{source.source_url.endsWith(".pdf") ? "官方公報 PDF" : "官方原始檔"}</a>}
               {source.dataset_url && source.dataset_url !== source.source_url && <a className="ml-2" href={source.dataset_url} target="_blank" rel="noreferrer">官方資料集</a>}
               <details className="mt-1 text-sm">
                 <summary>原檔雜湊與定位</summary>
