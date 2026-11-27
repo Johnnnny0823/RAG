@@ -11,18 +11,18 @@
 | M6 延伸功能 | NOT_STARTED | MVP 之後再評估。 |
 | 交付驗收（Goal M6） | IN_PROGRESS | 官方完整工作流程及最新官方事件來源流程均有通過紀錄，Nginx／TLS 及真實索引皆有隔離驗收。外部目標主機與人工標註仍待。 |
 
-## 2026-11-27 交付證據索引
+## 2026-11-28 交付證據索引
 
 此表對照 Goal §14 的 16 項成果。測試證據只適用於所列修訂、語料及環境。
 
 | Goal 項目 | 原始碼、文件與驗收範圍 |
 | --- | --- |
 | 1–2 前後端 | [React 入口](../apps/web/src/main.tsx)、[FastAPI 入口](../services/api/main.py)。`d397c41` 的 [CI](https://github.com/Johnnnny0823/RAG/actions/runs/45974697044) 通過正式打包及核心流程。 |
-| 3 PostgreSQL、遷移 | [資料庫設計](DATABASE.md)、[遷移](../database/migrations/versions)。空白隔離庫已遷移至 `0022_legal_event_grant_types`，並用第 053033 期原件驗證舊庫回填與降版保護。本機另通過 9 項 PostgreSQL 整合測試。 |
+| 3 PostgreSQL、遷移 | [資料庫設計](DATABASE.md)、[遷移](../database/migrations/versions)。空白隔離庫已遷移至 `0022_legal_event_grant_types`，並用第 053033 期原件驗證舊庫回填與降版保護。`b234a6e` 的一般 CI 通過 11 項 PostgreSQL 整合測試。 |
 | 4 TIPO 匯入 | [來源範圍](DATA_SOURCES.md)、[固定官方樣本](TESTING.md#自動建立固定官方樣本)及[公報 PDF 驗收](TESTING.md#官方公報-pdf-回歸)。固定發明公開、公告、選定異動卷期及新型、設計書目與各一件個案文字已有驗收。新型與設計各一張官方圖式已核對。第 053033 期的消滅與更正可匯入三類證書，並已驗證兩筆新型及設計更正能在詳情開啟原始來源。 兩筆更正已通過[官方來源工作流程](https://github.com/Johnnnny0823/RAG/actions/runs/46024203767)。兩筆消滅事件亦已通過 [894e229 來源 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46025212381)，涵蓋新型及衍生設計的完整申請號。 新型與設計可各別設定定期選取，第 053028 期已核對兩類公告各一件個案全文。以 053028–053029 期官方快照驗證兩類各自續跑，包含四個全文版本、書目日期、兩個卷期之檢查點及重跑略過。四個全文版本已建 83 條本機向量。 |
-| 5–6 Hybrid RAG 與比對 | [檢索程式](../services/retrieval)、[引文 E2E](../apps/web/e2e/patent-versions.spec.ts)。較新的 `920c845` [官方完整工作](https://github.com/Johnnnny0823/RAG/actions/runs/46023424511)通過語意、混合、重排、跨版引文及報告驗收。 |
-| 7–8 研究管理與報告 | [工作台 E2E](../apps/web/e2e/workspace.spec.ts)、[報告與引文 E2E](../apps/web/e2e/tipo-research.spec.ts)。隔離流程已驗證帳號、歷史、引文及繁中 PDF。 |
-| 9–10 Playwright、Pytest | [測試方式](TESTING.md)、[瀏覽器套件](../apps/web/e2e)與[整合測試](../tests/integration/test_postgresql.py)。`d397c41` 的一般 CI 通過 128 項預設 pytest、12 項 Playwright 與 9 項獨立 PostgreSQL 整合測試。 |
+| 5–6 Hybrid RAG 與比對 | [檢索程式](../services/retrieval)、[引文 E2E](../apps/web/e2e/patent-versions.spec.ts)。`fb308a9` 的[官源完整 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46046502777)通過語意、混合、重排、跨版引文、報告及新型與設計異動。 |
+| 7–8 研究管理與報告 | [工作台 E2E](../apps/web/e2e/workspace.spec.ts)、[報告與引文 E2E](../apps/web/e2e/tipo-research.spec.ts)。隔離流程已驗證帳號、歷史、引文及繁中 PDF。桌面及手機模擬已驗證重新登入後接續並完成同一官源搜尋。 |
+| 9–10 Playwright、Pytest | [測試方式](TESTING.md)、[瀏覽器套件](../apps/web/e2e)與[整合測試](../tests/integration/test_postgresql.py)。`b234a6e` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46047655683)通過 146 項預設 pytest、12 項 Playwright 與 11 項獨立 PostgreSQL 整合測試。 |
 | 11 RAG 評估 | [固定資料及結果](EVALUATION.md)。已有詞彙、向量、混合加重排、引文及效能基線。人工評分已依複核的文件版本計分，未複核版本保留原名次。34 組候選的人工複核與正式相關性重評仍待完成。 |
 | 12–13 CI、Compose | [一般 CI](../.github/workflows/ci.yml)、[官方 E2E](../.github/workflows/tipo-e2e.yml)、[部署覆蓋檔](../docker-compose.deploy.yml)及 [HTTPS](SETUP.md#使用自備憑證啟用-https)。隔離 HTTPS 與[備份還原](TESTING.md#隔離部署的備份還原驗收)已驗收，涵蓋官方 PDF 及其頁面索引。外部目標主機的網域、憑證續期及還原仍待確認。 |
 | 14–16 文件、交接、Demo | [API](API.md)、[資料庫](DATABASE.md)、[架構](ARCHITECTURE.md)、[測試](TESTING.md)、[交接](HANDOFF.md)與[官方語料 Demo](DEMO.md)。Demo 依固定來源及本機模型重建。 |

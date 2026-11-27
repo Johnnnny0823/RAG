@@ -344,3 +344,7 @@ npx playwright test --reporter=list
 ### 工作台查看及取消既有背景搜尋
 
 在隔離 Compose 啟動 `db`、`api`、`web`，保持 `search-worker` 停止。設定 `PATENTSCOPE_E2E_URL` 和 `PATENTSCOPE_E2E_PENDING_SEARCH=1` 後執行 `npm run test:e2e --prefix apps/web -- search-resume.spec.ts`。測試用真實 API 建立合成帳號與待處理工作，再從新瀏覽器登入。構想欄空白時仍可查看並取消原工作，取消不會新增歷史。CI 在背景程序啟動前先執行此案例。
+
+#### 重新登入後完成官源搜尋
+
+2026-11-28 使用含第 053028–053029 期四件官源全文及 83 條向量的隔離部署。先停止背景程序，以合成帳號呼叫 `POST /api/v1/search-jobs`，送出「乾衣機壁掛式支撐結構」，等待取得原工作 ID。從新瀏覽器登入，保持構想欄空白，點「查看背景搜尋」後啟動背景程序，等候顯示 `M688333`。桌面 Chromium 與 Pixel 7 模擬均通過。瀏覽器在接續期間沒有再次呼叫 `POST /search-jobs`。原工作 ID 成功完成，帳號只有同一份搜尋歷史。

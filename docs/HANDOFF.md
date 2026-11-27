@@ -2582,3 +2582,22 @@
 - Uncommitted changes / file ownership warnings: 只在整合工作樹與隔離 Compose 操作，瀏覽器輸出未入 Git。
 - Next 1–3 concrete actions: 確認新增 CI 關卡與既有官源完整 E2E，待人工評分及目標主機就緒後做最終驗收。
 - Exact reproduction steps: 依 [工作台查看及取消既有背景搜尋](TESTING.md#工作台查看及取消既有背景搜尋) 執行。
+
+## 背景搜尋完成路徑與官源遠端驗收
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `3aed739`。
+- Current milestone and status: 桌面與手機模擬的官源背景搜尋完成路徑通過。M5 與交付驗收 IN_PROGRESS。
+- Goal of this session: 以真實候選驗證重登後接續工作，並核對近期 CI 與官源驗收。
+- Files changed (with purpose): TESTING、PROGRESS、HANDOFF 更新實測與連結。
+- Database migrations added/applied: 無。沿用含四件官方全文的隔離資料庫。
+- API/Schema changes: 無。
+- Commands actually run and results: 使用 Docker 封裝前端與本機 Qwen 向量，以桌面 Chromium 和 Pixel 7 模擬分別續跑。兩者皆由原工作 ID 完成，顯示官源 `M688333`，保存一筆搜尋歷史，瀏覽器重送次數為零。試驗帳號均透過 API 清理。`b234a6e` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46047655683)通過 146 項預設 pytest、11 項 PostgreSQL、12 項 Playwright。`3aed739` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46077131538)已全數通過，包含新佇列關卡。`fb308a9` 的[官源完整工作](https://github.com/Johnnnny0823/RAG/actions/runs/46046502777)已通過。
+- Tests NOT run and reason: 文件更新沒有另跑本機 pytest。真實背景搜尋完成測試未使用實體手機。
+- Data sources checked (exact URL/date) and license/access notes: 沿用已核對的 [第 053029 期全文來源](DATA_SOURCES.md#第-053029-期跨期全文驗收)，沒有新增來源。
+- Known bugs / risks / blockers: 正式主機與 34 組人工複核仍待。
+- Decisions made (ADR links): 使用相同已驗證的小語料，保留官源與最新程式碼 CI 的修訂區分。
+- Uncommitted changes / file ownership warnings: 只修改整合工作樹內文件，測試腳本及輸出留於忽略目錄。
+- Next 1–3 concrete actions: 確認新版遠端流程，待人工評分與部署目標後完成評估及交付。
+- Exact reproduction steps: 依 [重新登入後完成官源搜尋](TESTING.md#重新登入後完成官源搜尋) 驗收。
