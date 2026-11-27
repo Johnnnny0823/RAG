@@ -28,7 +28,18 @@
 
 2026-11-27 重新查核 [TIPO 發布的資料集 15987](https://data.gov.tw/dataset/15987)，目錄列免費、每月更新及政府資料開放授權條款第 1 版。重讀第 053028 期先前由官方 FTPS 取得的 `PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index.xml`。原檔為 15,597,462 bytes，SHA-256 `60936a7ab763fbb8bd79b8a3071aa89d43da3ffe4ef65928734a9ddc70827a4a`，含 1,095 筆發明、349 筆新型及 196 筆設計公告。這些數字是完整來源索引筆數。
 
-隔離驗收選入新型 `M687984`（申請號 `114206949`，16 項請求項及 IPC `A63B59/00`）及設計 `D246917`（申請號 `112306158`）。設計樣本在此索引只有書目，請求項、摘要、說明書及分類欄位皆缺，系統保留空值。這一流程使用 15987 的 S01 索引，支援指定公告號匯入及詞彙索引。個案全文、PDF／圖式、法律異動及自動補期仍維持既有發明專利的驗證範圍。[設計說明書與圖式審查基準](https://www.tipo.gov.tw/tw/patents/999-60597.html)
+隔離驗收選入新型 `M687984`（申請號 `114206949`，16 項請求項及 IPC `A63B59/00`）及設計 `D246917`（申請號 `112306158`）。設計樣本在此索引只有書目，請求項、摘要、說明書及分類欄位皆缺，系統保留空值。這一流程使用 15987 的 S01 索引，支援指定公告號匯入及詞彙索引。[設計說明書與圖式審查基準](https://www.tipo.gov.tw/tw/patents/999-60597.html)
+
+### 新型與設計個案說明書
+
+2026-11-27 按同年 [053030 期清單](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index_all.xml)取到兩份個案。另重新下載[同期封存索引](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index.xml)，16,606,541 bytes，SHA-256 `9bb410efd13450866eaa0bc34523fce8785c46d11ce7237efee4cd0c3b3727f0`。資料集 15987 的更新與授權條件見上節。
+
+| 版別 | 原檔、格式及驗收 |
+| --- | --- |
+| `M688679`，申請號 `114206535` | [個案 XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330M688679/114206535-A0305.xml)，72,760 bytes，SHA-256 `adef492f39db89c809115dd68d028cbff178a3634fbcf11f38de3ab0739c3093`，DTD `1.0.0`。核對 208 段說明書及 10 項請求項。 |
+| `D247328`，申請號 `113306657` | [個案 XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330D247328/113306657-A0305.xml)，4,689 bytes，SHA-256 `f8c18dc5cb114fc70bd54b38a4cd8ea97b57772adac3568603e88c36c3e83d18`，DTD `2.0.1`。核對 7 段說明書，原檔沒有請求項。 |
+
+兩案都保留獨立的 S01 版本及個案文字版本。`fulltext` 涵蓋本次驗證的個案說明書及來源提供的請求項。個案摘要欄位、圖式內容、新型與設計法律異動及自動補期尚待整合，圖式的實際下載可用性仍待驗證。
 
 ## 公告期別的固定封存檔
 

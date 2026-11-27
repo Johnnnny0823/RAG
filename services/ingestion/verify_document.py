@@ -1,4 +1,4 @@
-"""Verify a uniquely selected fulltext publication against its archived XML."""
+"""Verify a uniquely selected document version against its archived XML."""
 
 import argparse
 from pathlib import Path
@@ -59,7 +59,9 @@ def verify(
             sections = []
         else:
             sections, claims = parse_specification(
-                payload, application_no, grant=grant_fulltext
+                payload,
+                application_no,
+                grant_number=publication_no if grant_fulltext else None,
             )
         stored_claims = (
             conn.exec_driver_sql(

@@ -19,7 +19,7 @@
 | --- | --- |
 | 1–2 前後端 | [React 入口](../apps/web/src/main.tsx)、[FastAPI 入口](../services/api/main.py)。`d397c41` 的 [CI](https://github.com/Johnnnny0823/RAG/actions/runs/45974697044) 通過正式打包及核心流程。 |
 | 3 PostgreSQL、遷移 | [資料庫設計](DATABASE.md)、[遷移](../database/migrations/versions)。空白隔離庫已遷移至 `0021_gazette_pdf_search`，同一 CI 通過 9 項 PostgreSQL 整合測試。 |
-| 4 TIPO 匯入 | [來源範圍](DATA_SOURCES.md)、[固定官方樣本](TESTING.md#自動建立固定官方樣本)及[公報 PDF 驗收](TESTING.md#官方公報-pdf-回歸)。固定發明公開、公告及選定異動卷期已有驗收。新型及設計各一筆已由官方 S01 匯入並通過號碼與詞彙檢索，兩類個案全文與圖式仍待。 |
+| 4 TIPO 匯入 | [來源範圍](DATA_SOURCES.md)、[固定官方樣本](TESTING.md#自動建立固定官方樣本)及[公報 PDF 驗收](TESTING.md#官方公報-pdf-回歸)。固定發明公開、公告、選定異動卷期及新型、設計書目與各一件個案文字已有驗收。圖式與兩類法律異動仍待。 |
 | 5–6 Hybrid RAG 與比對 | [檢索程式](../services/retrieval)、[引文 E2E](../apps/web/e2e/patent-versions.spec.ts)。`ecbee6b` 的[官方完整工作](https://github.com/Johnnnny0823/RAG/actions/runs/45940600508)通過語意、混合、重排及跨版引文流程。較新的 `3458c9e` 正在[重跑官方完整工作](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)。 |
 | 7–8 研究管理與報告 | [工作台 E2E](../apps/web/e2e/workspace.spec.ts)、[報告與引文 E2E](../apps/web/e2e/tipo-research.spec.ts)。隔離流程已驗證帳號、歷史、引文及繁中 PDF。 |
 | 9–10 Playwright、Pytest | [測試方式](TESTING.md)、[瀏覽器套件](../apps/web/e2e)與[整合測試](../tests/integration/test_postgresql.py)。`d397c41` 的一般 CI 通過 128 項預設 pytest、12 項 Playwright 與 9 項獨立 PostgreSQL 整合測試。 |
@@ -204,3 +204,4 @@
 - [x] Windows Docker Desktop 從空白資料庫跑完官方 PDF 來源驗收。重建 117 個官方文件版本後，實際下載同案兩份 PDF，核對 11 頁、錯版拒絕、離線重跑、原始 XML 及 PDF 詞彙檢索。Chromium 桌面／平板／手機、Firefox 與 WebKit 共五項通過。[重現方式](TESTING.md#官方公報-pdf-回歸)
 - [x] 以受限 API 角色量測 11 頁官方 PDF 的實際查詢 SQL。不限文件階段、只查公開、只查公告分別命中 3、1、2 頁。另驗證 API 分頁與不可檢索輸入的 422 回應。[查詢計畫](EVALUATION.md#2026-11-27-公報-pdf-詞彙查詢計畫)
 - [x] 第 053028 期官方 XML 驗收新型 `M687984` 及設計 `D246917`。重跑重用同批，新型 16 項請求項及設計空請求項均與原檔一致。兩案通過號碼、來源、詞彙檢索及五項 Playwright。[重現步驟](TESTING.md#新型與設計公告回歸)
+- [x] 實取第 053030 期新型 `M688679` 與設計 `D247328` 個案 XML，與同案 S01 版本分開入庫。核對新型 208 段、10 項請求項及設計 7 段、0 項請求項，確認段落檢索及同版來源雜湊。[原件與限制](DATA_SOURCES.md#新型與設計個案說明書)

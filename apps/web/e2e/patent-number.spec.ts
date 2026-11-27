@@ -5,16 +5,24 @@ test("utility model and design expose their actual official content @grant-types
   const lookup = page.getByRole("region", { name: "專利號碼查詢" });
   await lookup.getByLabel("號碼類型").selectOption("grant");
 
-  for (const { number, label, claims } of [
-    { number: "M687984", label: "請求項", claims: 16 },
-    { number: "D246917", label: "書目與摘要", claims: 0 },
-  ]) {
+  const cases = [
+    { number: "M687984", label: "請求項", claims: 16, sections: 0 },
+    { number: "D246917", label: "書目與摘要", claims: 0, sections: 0 },
+  ];
+  if (process.env.PATENTSCOPE_E2E_GRANT_FULLTEXT === "1") {
+    cases.push(
+      { number: "M688679", label: "全文", claims: 10, sections: 208 },
+      { number: "D247328", label: "全文", claims: 0, sections: 7 },
+    );
+  }
+  for (const { number, label, claims, sections } of cases) {
     await lookup.getByLabel("專利號碼").fill(number);
     await lookup.getByRole("button", { name: "查詢專利號碼" }).click();
     const match = lookup.getByRole("listitem").filter({ hasText: new RegExp(`公告 ${number}.*${label}`) });
     await expect(match).toBeVisible();
     await match.getByRole("button").click();
     await expect(page.getByText(`請求項（${claims}）`, { exact: true })).toBeVisible();
+    await expect(page.getByText(`說明書段落（${sections}）`, { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: `在智慧財產局查詢公告號 ${number}` })).toBeVisible();
   }
 });

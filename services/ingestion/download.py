@@ -24,7 +24,7 @@ ARCHIVES = {
 }
 SPEC_PATH = re.compile(
     r"/(?:InventionPubXML|PatentIsuRegSpecXMLA)/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_-]+\.xml"
-    r"|/PatentPubXML/[0-9]{3}/PatentPubXML_[0-9]{6}/[0-9]+I[0-9]+/[0-9]{9}-[A-Za-z0-9_-]+\.xml"
+    r"|/PatentPubXML/[0-9]{3}/PatentPubXML_[0-9]{6}/[0-9]+[IMD][0-9]+/[0-9]{9}-[A-Za-z0-9_-]+\.xml"
 )
 EVENT_PATH = re.compile(
     r"/PatentIsuModXML/[0-9]{3}/PatentIsuModXML_[0-9]{6}/(?:index|sud08|sud24)\.xml"

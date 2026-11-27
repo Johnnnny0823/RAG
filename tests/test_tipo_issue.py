@@ -125,11 +125,36 @@ def test_specification_keeps_exact_text_and_locator():
 
 def test_grant_specification_requires_its_own_document_format():
     grant = SPEC.replace(b"invention-specification", b"specification")
-    [section], [claim] = parse_specification(grant, "000000001", grant=True)
+    [section], [claim] = parse_specification(grant, "000000001", grant_number="I000001")
     assert section.locator == "/specification/description/technical-field/p[1]"
     assert claim.locator == "/specification/claims/claim[1]"
     with pytest.raises(ValueError, match="DOCTYPE"):
-        parse_specification(SPEC, "000000001", grant=True)
+        parse_specification(SPEC, "000000001", grant_number="I000001")
+
+
+def test_utility_model_uses_the_verified_model_dtd_version():
+    model = SPEC.replace(b"invention-specification", b"specification").replace(
+        b"A103.1.0", b"1.0.0"
+    )
+    [section], [claim] = parse_specification(model, "000000001", grant_number="M000001")
+    assert section.locator.endswith("/technical-field/p[1]")
+    assert claim.number == 1
+    with pytest.raises(ValueError, match="Unexpected specification format"):
+        parse_specification(model, "000000001", grant_number="I000001")
+
+
+def test_design_specification_keeps_description_without_claims():
+    design = (
+        SPEC.replace(b"invention-specification", b"specification")
+        .replace(b"A103.1.0", b"2.0.1")
+        .replace(b"technical-field", b"main-use")
+    )
+    with pytest.raises(ValueError, match="Unexpected claims"):
+        parse_specification(design, "000000001", grant_number="D000001")
+    design = design.split(b"<claims>")[0] + b"</specification>"
+    [section], claims = parse_specification(design, "000000001", grant_number="D000001")
+    assert section.locator == "/specification/description/main-use/p[1]"
+    assert claims == []
 
 
 def test_specification_rejects_wrong_application_and_untrusted_doctype():

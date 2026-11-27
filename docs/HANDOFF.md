@@ -2239,3 +2239,22 @@
 - Uncommitted changes / file ownership warnings: 只在整合工作樹與隔離庫作業，原檔未納入 Git。
 - Next 1–3 concrete actions: 監測一般 CI 及官方來源模式；按已查核的官方來源接續個案全文與圖式驗證。
 - Exact reproduction steps: 依 TESTING 的「新型與設計公告回歸」從固定 XML 選取 `M687984` 及 `D246917`，重跑同批後驗證原檔，再跑詞彙索引及 `PATENTSCOPE_E2E_TIPO=grant-types`。
+
+## 新型與設計個案文字匯入
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `dfee0cf`。
+- Current milestone and status: 兩類個案的說明書文字與適用的請求項已驗收，整體 IN_PROGRESS。
+- Goal of this session: 以官方封存清單取得並保存新型與設計的個案文字版本，保持原始版本分離與證據定位。
+- Files changed (with purpose): `download.py` 支援已核對清單中的新型及設計路徑，`specification.py` 驗證個案類型與 DTD 並解析原文，`import_issue.py` 及 `verify_document.py` 串接清單、保存與核對。測試及文件補充新類型及限制。
+- Database migrations added/applied: 無新增。隔離庫新增兩份 S01 版本、兩份個案文字版本、241 個詞彙片段。
+- API/Schema changes: API Schema 沿用既有版本及範圍欄位。設計個案有說明書而無請求項，請求項 API 回傳空陣列。
+- Commands actually run and results: 實取第 053030 期索引及兩份個案。匯入首輪 `fulltext=2`，次輪 `reused=true`；`verify_document` 核對 `M688679` 的 208 段與 10 項請求項、`D247328` 的 7 段與 0 項請求項。實際 API 核對雙版本、段落與請求項來源雜湊及兩案的全文詞彙檢索。Ruff、前端 lint 與型別檢查通過，pytest 132 項通過、9 跳過，Playwright 五項通過。`dfee0cf` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45976160866)與[官方書目來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45976161650)均通過。
+- Tests NOT run and reason: 本輪未另跑 PostgreSQL pytest 套件，已用隔離庫實跑匯入與 API。兩類個案的向量、重排、圖式及法律事件未驗收。[先前啟動的官方完整驗收](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)仍在建立語意索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 用匿名 FTPS 取得 `PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index.xml` 與清單指定的 `PatentPubXML/115/PatentPubXML_053030` 個案，授權、完整網址及 SHA-256 見 DATA_SOURCES。
+- Known bugs / risks / blockers: 個案摘要尚未提取，圖式未下載或顯示。已驗證的 DTD 版本僅涵蓋固定樣本，其他版本仍待實取核對。人工相關性複核與正式主機驗收待完成。
+- Decisions made (ADR links): 依證書號種類及 DTD 嚴格辨識新型和設計。保留 S01 與個案全文版本各自的來源定位，設計省略來源未提供的請求項。
+- Uncommitted changes / file ownership warnings: 原件與測試資料僅存放於隔離目錄，無正式資料庫變更。
+- Next 1–3 concrete actions: 將個案摘要的原始定位納入索引與比對。依官方個案的圖式引用確認圖式可用性，再考慮顯示。核對遠端執行終態。
+- Exact reproduction steps: 依 TESTING「新型與設計公告回歸」選取 `M688679`、`D247328`，執行 `verify_document --grant-issue 053030 --grant-fulltext`，再啟用 `PATENTSCOPE_E2E_GRANT_FULLTEXT=1`。

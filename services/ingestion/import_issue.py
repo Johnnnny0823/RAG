@@ -347,7 +347,9 @@ def import_issue(args):
                     sections, claims = parse_specification(
                         store.read(artifact),
                         record.application_no,
-                        grant=bool(args.grant_number),
+                        grant_number=record.publication_no
+                        if args.grant_number
+                        else None,
                     )
                     spec = Specification(artifact, sections, claims)
                 except (ValueError, ET.ParseError) as error:
@@ -493,13 +495,10 @@ def parse_import_args(argv=None):
         parser.error(
             "--grant-number requires --verified-tipo and an official manifest for specifications"
         )
-    if any(number.startswith(("D", "M")) for number in args.grant_number):
-        if args.manifest:
-            parser.error(
-                "Utility model and design grant imports currently use the S01 index only"
-            )
-        if not args.index_source_url:
-            parser.error("Utility model and design grants require --index-source-url")
+    if not args.index_source_url and any(
+        number.startswith(("D", "M")) for number in args.grant_number
+    ):
+        parser.error("Utility model and design grants require --index-source-url")
     args.specs = {}
     for item in args.spec:
         number, separator, path = item.partition("=")

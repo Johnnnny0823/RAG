@@ -89,6 +89,8 @@ python scripts/smoke_semantic.py --official-e2e --api http://127.0.0.1:8000
 
 將 `PATENTSCOPE_E2E_TIPO` 設為 `grant-types`，並設定隔離站的 `PATENTSCOPE_E2E_URL`，執行 `npm run test:e2e --prefix apps/web -- patent-number.spec.ts`。官方 GitHub Actions 在固定語料測試後加入這組案件，以保留各既有檢索測試的語料範圍。[來源與限制](DATA_SOURCES.md#同期新型與設計公告)
 
+要驗證個案說明書，另準備[第 053030 期索引與全文清單](DATA_SOURCES.md#新型與設計個案說明書)，選取 `M688679`、`D247328`。依 [公告個案全文流程](SETUP.md#追蹤匯入及建立索引) 先匯入 S01 書目，再用同樣選案加上 `--manifest` 及 `--manifest-url` 匯入個案；使用先前下載快取時加 `--cache-only`。用 `verify_document <公告號> --grant-issue 053030 --grant-fulltext` 核對個案原件，並重跑詞彙索引。另設 `PATENTSCOPE_E2E_GRANT_FULLTEXT=1` 後，前述 Playwright 測試會核對新型 208 段、10 項請求項及設計 7 段、0 項請求項。
+
 ### 官方公報 PDF 回歸
 
 以獨立 Compose 專案匯入上述固定官方語料後，可驗證同案的公開及公告 PDF。此測試先驗證錯版的附件請求在連線前遭拒。兩份 PDF 各實取一次，後續透過 `--replay-stored` 重跑，再用 API 核對去重及 XML 請求項來源。若智財局拒絕下載，首次取件關卡會依實際 HTTP 狀態回報失敗。
