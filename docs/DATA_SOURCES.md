@@ -197,3 +197,15 @@
 | --- | --- | --- |
 | `M687984` | `ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053028/5328M687984/114206949-A0305.xml`，`54bae6940d88baee990435a7b76401a1f1edcdecc4cf94e2b9f40012336fb214` | 34,196 bytes，DTD 2.0.1，16 項請求項、25 段說明書 |
 | `D246917` | `ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053028/5328D246917/112306158-A0305.xml`，`2d29c6afbf4738ba75d7bf7ecba42e394a6207ccd5f44325f74e29c36952b4cb` | 3,703 bytes，DTD 2.0.1，2 段說明書 |
+
+## 第 053029 期跨期全文驗收
+
+2026-11-28 核對 [TIPO 專利說明書資料集](https://data.gov.tw/dataset/15987) 並實取第 053029 期的封存清單與個案 XML。資料集採政府資料開放授權條款第 1 版。下列雜湊皆以原件位元組計算。
+
+| 原件 | SHA-256 | 已核對範圍 |
+| --- | --- | --- |
+| `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053029/index.xml` | `f427648c42ed053ceee95e0cd5dc57403d0a8e0a3f2f5ab5ca49af97d6347ac6` | 346 件新型及 215 件設計，驗收各取 1 件 |
+| `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053029/index_all.xml` | `9295fa896934e726174ff4dba4789dbff30d4aef948705ee0b455e2f3f8cb459` | 17,012,564 bytes，公告與個案連結 |
+| `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053029/patent.xml` | `f9697f387ae35c46f9fc00af0aae8812a74ce7dbdf92be64993410cff42bd7d2` | 兩案公告日 2026-10-11 |
+| `ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053029/5329M688333/114206477-A0305.xml` | `840a63d3319265d51a323879277a3b64736e9215dad0ed952515416317b182d4` | 9,377 bytes，新型 10 項請求項、19 段說明書 |
+| `ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053029/5329D247113/113302416-A0305.xml` | `ae4f9b68c7d227afc3c9335d656ee666a0fdfee1a6a5f35f8cfd00a7473af229` | 1,362 bytes，設計 2 段說明書 |

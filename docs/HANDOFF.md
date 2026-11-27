@@ -2448,3 +2448,22 @@
 - Uncommitted changes / file ownership warnings: 只在整合工作樹和專用隔離庫操作，原件未進 Git。
 - Next 1–3 concrete actions: 驗證跨期全文的自動續跑與索引，確認最新版一般 CI，待人工標註及正式主機後完成驗收。
 - Exact reproduction steps: 依 [測試說明](TESTING.md#指定範圍補匯與全文回查) 使用隔離環境，執行 `archive_backfill --stage grant --grant-type model|design --fulltext --apply`，以 `verify_document --grant-fulltext` 等腳本核對原件。
+
+## 兩期新型及設計全文續跑與索引
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `299f907`。本節隨驗收紀錄提交。
+- Current milestone and status: M5 及交付驗收 IN_PROGRESS。兩期書目、全文續跑與檢索達成有界驗收。
+- Goal of this session: 實取第 053029 期個案，驗證兩類全文能續跑多期、重跑能略過，以及全文可建立詞彙與向量索引。
+- Files changed (with purpose): 更新 DATA_SOURCES、TESTING、PROGRESS 和 HANDOFF，記錄原件雜湊及驗收結果。
+- Database migrations added/applied: 無新增遷移。全新部署資料庫套用 `0022_legal_event_grant_types`，四個全文版本和兩組各二期檢查點。
+- API/Schema changes: 無。驗收既有 REST API。
+- Commands actually run and results: 舊的實際 FTPS 書目續跑已完成兩類兩期，尾段查詢誤用 `content_scope` 資料表欄位，改從 `metadata_jsonb` 查詢後核對成功。空白隔離部署完成官方目錄查核後，以十個唯讀官方原件跑 `refresh_archive`；第三輪零取件。逐字核對四份全文。詞彙與本機 Ollama 分別產生 83 個片段及 83 條 1,024 維向量，向量重跑為零。第 053029 期兩件全文在詞彙、語意及混合 API 均排名第一。部署冒煙通過，`299f907` 的 [一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46043725309) 通過。
+- Tests NOT run and reason: 未重跑本機 pytest 或 Playwright，本次提交只有文件。未做無限期定時程序驗收。兩期全文續跑以校驗後的快照替換取件，原件出自真實 FTPS。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 依 https://data.gov.tw/dataset/15987 已核對的授權及官源實取第 053029 期清單與兩個 XML。精確 URL 與雜湊見 [資料來源](DATA_SOURCES.md#第-053029-期跨期全文驗收)。
+- Known bugs / risks / blockers: 仍待 34 組人工相關性複核及正式目標環境確認。排名證據限本次四件官源驗收語料。
+- Decisions made (ADR links): 人工關聯評估及部署狀態仍沿用原有里程碑條件。驗收保留每類每期上限與雜湊。
+- Uncommitted changes / file ownership warnings: 驗收於隔離工作樹、本機 Compose 與唯讀原件快照進行。
+- Next 1–3 concrete actions: 收取人工標註及指定部署環境後執行重評與部署驗收。
+- Exact reproduction steps: 依 [跨兩期驗收](TESTING.md#跨兩期全文與索引) 取件校驗、使用隔離庫與每輪一卷期設定，再核對 `archive_refresh_checkpoints`、原文及向量。

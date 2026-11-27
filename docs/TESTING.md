@@ -316,3 +316,9 @@ npx playwright test --reporter=list
 ### 指定範圍補匯與全文回查
 
 在隔離資料庫執行 `python -m services.ingestion.archive_backfill --stage grant --grant-type model --year 115 --from-issue 053028 --through-issue 053028 --limit 1 --fulltext --apply`，再將 `model` 換成 `design`。用 `verify_document --grant-issue 053028 --grant-fulltext` 逐字核對 `M687984` 及 `D246917`，重跑確認批次使用相同資料，詞彙索引新增版本數為零。若舊版曾隔離同一件新型資料，新版另開解析批次並保留原紀錄。
+
+### 跨兩期全文與索引
+
+2026-11-28 在全新部署資料庫，將 [官源原件](DATA_SOURCES.md#第-053029-期跨期全文驗收) 與第 053028 期的索引、書目、清單及個案掛成唯讀快照。先查真實 FTPS 目錄確認兩期，再將驗收範圍限制在 053028–053029。兩類皆以每輪一卷期執行 `refresh_archive`，轉送 `--grants --grant-type model|design --archive-year 115 --gazette-year 115 --apply --limit 1`。前兩輪各完成一個卷期，第三輪略過所有既有檢查點。四份全文經 `verify_document` 核對，索引累計 83 個詞彙片段。
+
+對同一語料執行 `python -m services.retrieval.index_semantic --batch-size 4 --request-timeout 180`。本機 Ollama `qwen3-embedding:0.6b` 建立 4 個版本、83 條 1,024 維向量，重跑為零。以第 053029 期兩案測試，詞彙、語意、混合三種 API 皆在第一位回傳預期的同一全文版本。混合測試使用預設 RRF。此為已知案件的檢索驗收，不列入人工相關性評分。
