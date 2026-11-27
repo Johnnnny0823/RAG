@@ -332,3 +332,7 @@ npx playwright test --reporter=list
 ### 分散原件的官方 PDF
 
 使用既有[官源 PDF 驗收](TESTING.md#官方公報-pdf-回歸)的公開 `202640162` 及公告 `I941082`。舊版來源的原件可分散於 Compose 資料卷和其他目錄。若 XML 位在舊目錄，在備份複製的 `docker compose run` 加上 `-v <legacy>:/legacy:ro`，並傳入 `--fallback-objects /legacy`。使用兩個舊目錄時重複指定。把合併備份還原到空白隔離庫後，核對兩份附檔的 SHA-256、2 與 9 頁文字層、各 13 項 XML 請求項與頁面檢索。兩筆個案以 `gazette_pdf --replay-stored` 離線重跑後，頁數、索引結果及同案錯版拒絕應維持。
+
+## 私人報告程序中斷回歸
+
+在 PostgreSQL 整合測試環境執行 `python -m pytest -q tests/integration -k background_report`。使用兩個合成帳號，模擬工作程序在處理中停止。核對逾 6 分鐘但仍在重試時間內的報告可用原 ID 接手，原程序晚到不覆蓋結果，逾期工作標為失敗。報告成功時，同帳號可下載、另一帳號取得 404。

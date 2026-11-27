@@ -149,7 +149,7 @@ HTTP 503 回應使用 `error.code`（`DATABASE_UNAVAILABLE`）、`error.message`
 
 `GET /api/v1/search-runs/{run_id}/report.pdf` 用 Bearer token 驗證搜尋紀錄所有權，成功回傳 `application/pdf` 及附件檔名。未登入為 401，其他帳號的紀錄或不存在的紀錄為 404。回應標示 `private, no-store`。
 
-工作台使用背景匯出。 `POST /api/v1/search-runs/{run_id}/reports` 回傳 HTTP 202、工作狀態及 `Location`；同一紀錄重複送出時會接回仍在活動的工作。輪詢 `GET /api/v1/search-runs/{run_id}/reports/{report_id}`，成功後在同一路徑加上 `/pdf` 下載。每次請求都需要原帳號的 Bearer token。工作或原搜尋紀錄不存在、過期或不屬於呼叫者時回傳 404。檔案尚無法下載時回傳 409。
+工作台使用背景匯出。 `POST /api/v1/search-runs/{run_id}/reports` 回傳 HTTP 202、工作狀態及 `Location`；同一紀錄重複送出時會接回仍在活動的工作。輪詢 `GET /api/v1/search-runs/{run_id}/reports/{report_id}`，成功後在同一路徑加上 `/pdf` 下載。每次請求都需要原帳號的 Bearer token。工作或原搜尋紀錄不存在、過期或不屬於呼叫者時回傳 404。檔案尚無法下載時回傳 409。 背景程序接手前，若報告仍在建立後 10 分鐘內、且上次處理已逾 6 分鐘，會用同一報告 ID 重新認領。待處理或已逾處理期限的工作超出重試時間後標為失敗，原帳號可再送出新報告。
 
 工作狀態為 `queued`、`running`、`succeeded` 或 `failed`。生成結果有 8 MiB 上限。完成一小時後，狀態及檔案不再提供，工作程序負責清理暫存。原同步下載端點仍可供既有客戶端使用。
 

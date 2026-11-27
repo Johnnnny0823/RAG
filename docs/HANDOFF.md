@@ -2525,3 +2525,22 @@
 - Uncommitted changes / file ownership warnings: 原件及備份留在隔離專案與暫存目錄，未入 Git。
 - Next 1–3 concrete actions: 核對本提交的遠端結果。依人工評分與目標部署環境跑最終驗收。
 - Exact reproduction steps: 依 [分散原件的官方 PDF](TESTING.md#分散原件的官方-pdf) 從來源合併複製，還原到新資料庫，核對 PDF 頁面 API，再對兩案離線重跑。
+
+## 私人報告重新認領與部署查核
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `fb308a9`。本節隨變更提交。
+- Current milestone and status: 私人 PDF 報告重新認領驗收通過。M5 與交付驗收 IN_PROGRESS。
+- Goal of this session: 背景程序中斷後，在既有重試窗口以同一工作 ID 繼續產生私人報告，避免舊程序交回的結果覆蓋新結果。
+- Files changed (with purpose): `report_jobs.py` 更新重新認領與完成條件。PostgreSQL 整合測試涵蓋有效處理、逾時重認領、舊程序覆寫、正式逾期和權限。
+- Database migrations added/applied: 無新增。測試隔離庫使用現行遷移。
+- API/Schema changes: 路由、回應結構及私密快取規則沿用原有契約，新增伺服端同 ID 繼續處理的行為。
+- Commands actually run and results: 新回歸先確認舊實作未重新認領。修正後 PostgreSQL 整合 10 項通過，pytest 146 項通過、10 項預設跳過，皆有 1 項既有 Starlette 警告。Ruff、Git diff、部署冒煙通過。在已索引官方語料的隔離 Compose 先建立報告，以 DB 時間模擬已中斷七分鐘，再啟動重新建置的工作程序。現有 ID 成功產出 3 頁 PDF，`pypdf` 驗證內文有 `M688333` 與對應繁中標題。本人可下載，另一合成帳號得到 404。起點 [一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46046483382) 通過。
+- Tests NOT run and reason: 本次未在本機重跑全套 Playwright。實際重啟測試模擬了 DB 的逾時時間，未等待六分鐘。起點 [官方完整 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46046502777) 還在執行。
+- Data sources checked (exact URL/date) and license/access notes: 沿用已核對的 [兩期 TIPO 原件](DATA_SOURCES.md#第-053029-期跨期全文驗收)，未新增取件。未用使用者私人構想。
+- Known bugs / risks / blockers: 34 組人工相關性複核與正式主機待確認。報告可在建立後 10 分鐘內接手，逾期可重新提出。
+- Decisions made (ADR links): 用此次處理的 started_at 比對完成權，保留原報告 ID、既有排程與私密權限。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹與合成資料隔離庫操作，PDF 測試輸出未入 Git。
+- Next 1–3 concrete actions: 確認遠端工作，待人工評分及部署環境就緒後繼續最終驗收。
+- Exact reproduction steps: 依 [私人報告程序中斷回歸](TESTING.md#私人報告程序中斷回歸) 啟動 PostgreSQL 測試資料庫，執行 `python -m pytest -q tests/integration -k background_report`。

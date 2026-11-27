@@ -392,3 +392,62 @@ def test_ingestion_monitor_requires_an_operator_selected_account(accounts, monke
                 "UPDATE ingestion_jobs SET stage = 'lexical' WHERE false"
             )
         assert isinstance(error.value.orig, InsufficientPrivilege)
+
+
+def test_background_report_reclaims_stale_job_and_fences_old_worker(
+    accounts, monkeypatch
+):
+    client, ((owner_id, owner, _), (_, other, _)) = accounts
+    with engine.begin() as conn:
+        run_id = conn.exec_driver_sql(
+            """INSERT INTO search_runs (user_id, request, settings)
+               VALUES (%s, '{"query":"DEMO"}', '{}') RETURNING id""",
+            (owner_id,),
+        ).scalar_one()
+    endpoint = f"/api/v1/search-runs/{run_id}/reports"
+    queued = client.post(endpoint, headers=owner)
+    assert queued.status_code == 202
+    path = queued.headers["Location"]
+    report_id = UUID(queued.json()["id"])
+    calls = []
+
+    def render(run, user):
+        assert (run, user) == (run_id, owner_id)
+        calls.append(run)
+        if len(calls) == 1:
+            assert not report_jobs.process_one_report()
+            with engine.begin() as conn:
+                conn.exec_driver_sql(
+                    """UPDATE generated_reports
+                       SET started_at = now() - interval '7 minutes',
+                           created_at = now() - interval '8 minutes' WHERE id = %s""",
+                    (report_id,),
+                )
+            assert report_jobs.process_one_report()
+            return b"%PDF-1.4\nDEMO obsolete worker"
+        return b"%PDF-1.4\nDEMO recovered worker"
+
+    monkeypatch.setattr(report_jobs, "render_saved_report", render)
+    assert report_jobs.process_one_report()
+    assert calls == [run_id, run_id]
+    assert client.get(path, headers=owner).json()["status"] == "succeeded"
+    assert (
+        client.get(path + "/pdf", headers=owner).content
+        == b"%PDF-1.4\nDEMO recovered worker"
+    )
+    assert client.get(path + "/pdf", headers=other).status_code == 404
+
+    next_job = client.post(endpoint, headers=owner)
+    next_id = UUID(next_job.json()["id"])
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            """UPDATE generated_reports SET status = 'running',
+               started_at = now() - interval '7 minutes',
+               created_at = now() - interval '11 minutes' WHERE id = %s""",
+            (next_id,),
+        )
+    assert not report_jobs.process_one_report()
+    assert (
+        client.get(next_job.headers["Location"], headers=owner).json()["status"]
+        == "failed"
+    )

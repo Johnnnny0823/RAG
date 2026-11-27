@@ -136,8 +136,9 @@ def process_one_report() -> bool:
     with engine.begin() as conn:
         conn.exec_driver_sql(
             """UPDATE generated_reports SET status = 'failed', finished_at = now()
-               WHERE (status = 'running' AND started_at < now() - interval '6 minutes')
-                  OR (status = 'queued' AND created_at < now() - interval '10 minutes')"""
+               WHERE created_at < now() - interval '10 minutes'
+                 AND (status = 'queued'
+                   OR (status = 'running' AND started_at < now() - interval '6 minutes'))"""
         )
         conn.exec_driver_sql(
             "DELETE FROM generated_reports WHERE finished_at < now() - interval '1 hour'"
@@ -145,10 +146,14 @@ def process_one_report() -> bool:
         job = conn.exec_driver_sql(
             """UPDATE generated_reports g SET status = 'running', started_at = now()
                FROM search_runs r
-               WHERE g.id = (SELECT id FROM generated_reports WHERE status = 'queued'
-                             ORDER BY created_at, id LIMIT 1 FOR UPDATE SKIP LOCKED)
-                 AND r.id = g.run_id
-               RETURNING g.id, g.run_id, r.user_id"""
+               WHERE g.id = (
+                   SELECT id FROM generated_reports
+                   WHERE created_at >= now() - interval '10 minutes'
+                     AND (status = 'queued'
+                       OR (status = 'running' AND started_at < now() - interval '6 minutes'))
+                   ORDER BY created_at, id LIMIT 1 FOR UPDATE SKIP LOCKED
+               ) AND r.id = g.run_id
+               RETURNING g.id, g.run_id, r.user_id, g.started_at"""
         ).one_or_none()
     if job is None:
         return False
@@ -168,8 +173,8 @@ def process_one_report() -> bool:
     with engine.begin() as conn:
         updated = conn.exec_driver_sql(
             """UPDATE generated_reports SET status = %s, pdf = %s, finished_at = now()
-               WHERE id = %s AND status = 'running'""",
-            (status, pdf, job.id),
+               WHERE id = %s AND status = 'running' AND started_at = %s""",
+            (status, pdf, job.id, job.started_at),
         ).rowcount
     if updated:
         write_activity("report_job_finished", started, status=status)
