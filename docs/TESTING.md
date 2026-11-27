@@ -124,6 +124,12 @@ API 冒煙覆蓋錯版附加拒絕、官方取件、重跑去重、JPEG 原始�
 
 依 [第 053028 期原件](DATA_SOURCES.md#原設計及衍生設計的編號與來源) 準備獨立庫，匯入 `--grant-number D246928 --grant-number D246929` 各一個 S01 與個案版本，再以 `gazette_dates --stage grant --year 115 --issue 053028 --include-other-grants` 核對日期和 LOC。使用 `grant_drawing` 對 `D246929` 的個案版本附加 `--figure 1`，個案 XML 和 JPEG 的 SHA-256 見資料來源。設定 `PATENTSCOPE_E2E_TIPO=derived-design`，執行 `npm run test:e2e --prefix apps/web -- patent-number.spec.ts`。案例比較原號與全形衍生號，確認各回傳兩個自身文件版本，並可開啟衍生設計說明書及圖式。
 
+#### 2026-11-28 完整官源遠端驗收
+
+`a303f44` 的[完整官源工作](https://github.com/Johnnnny0823/RAG/actions/runs/46077504467)結論為成功。固定官方語料核對雜湊後匯入，以 CPU Ollama 建立 117 個專利文件版本的 1,624 筆向量。索引步驟耗時 36 分 24 秒。語意 API 查回 `202640162` 與 `202639611`，兩個固定案例的目標文件均排第 1，另通過 IPC、模型識別、分頁與涵蓋率檢查。
+
+Playwright 通過 PWA 離線隔離 1 項、發明公開與公告號查詢 3 項、全文引證與研究歷史及私人 PDF 5 項、版本分頁與重排序 12 項、新型與設計號查詢 3 項、法律異動 10 項。全文研究流程涵蓋桌面、平板及手機模擬的 Chromium，以及桌面 Firefox、WebKit。部署限流也通過。此次未啟用選用的 TIPO 公報 PDF 下載，該下載的獨立結果見下一節。私人研究報告是由 PatentScope 產出的檔案，另於研究流程驗收。
+
 ### 官方公報 PDF 回歸
 
 以獨立 Compose 專案匯入上述固定官方語料後，可驗證同案的公開及公告 PDF。此測試先驗證錯版的附件請求在連線前遭拒。兩份 PDF 各實取一次，後續透過 `--replay-stored` 重跑，再用 API 核對去重及 XML 請求項來源。若智財局拒絕下載，首次取件關卡會依實際 HTTP 狀態回報失敗。

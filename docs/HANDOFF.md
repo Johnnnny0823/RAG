@@ -2696,3 +2696,22 @@
 - Uncommitted changes / file ownership warnings: 本次只修改整合工作樹，未動到日常開發資料庫。
 - Next 1–3 concrete actions: 查核仍在執行的完整官源工作。選用公報 PDF 可在可正常取件的環境驗收，遠端 403 維持明示。
 - Exact reproduction steps: 依 [官方公報 PDF 回歸](TESTING.md#官方公報-pdf-回歸)重跑。
+
+## 完整官源 E2E 遠端驗收
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，工作樹起點 `9dddcef`，遠端完整官源驗收基準 `a303f44`。
+- Current milestone and status: 完整官源 E2E 已通過。整體交付 IN_PROGRESS。
+- Goal of this session: 等候既有遠端工作完成，核對真實語料、索引、跨瀏覽器研究流程的實際結果。
+- Files changed (with purpose): `docs/TESTING.md`、`docs/PROGRESS.md`、`docs/HANDOFF.md` 更新實測結果。
+- Database migrations added/applied: 無新增。遠端工作以隔離 Compose 執行既有遷移。
+- API/Schema changes: 無。
+- Commands actually run and results: `gh run watch 46077504467 --exit-status` 和 `gh run view` 核對終態與紀錄。[完整官源 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46077504467)成功。CPU 索引耗時 36 分 24 秒，完成 117 個官方版本及 1,624 筆向量。兩個官方語意 API 固定案例皆排第 1。Playwright 各組相加共 34 項通過，涵蓋 PWA、號碼查詢、全文研究及私人報告、版本分頁與重排序及法律異動。部署限流通過。
+- Tests NOT run and reason: 本次沒有產品程式碼改動。此工作未啟用選用的官方公報 PDF 下載，遠端該選項另有 403 紀錄。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 核對 [固定官方樣本](TESTING.md#自動建立固定官方樣本)的遠端雜湊、匯入與檢索結果。此次來源為先前已固定雜湊的官方快取。
+- Known bugs / risks / blockers: 正式主機及 34 組人工相關性複核仍待。最新整合分支另有通過的一般 CI 與官源基礎流程，完整遠端結果限於上列驗收修訂。
+- Decisions made (ADR links): 沿用原執行至終態，保留實測耗時與檢查範圍。
+- Uncommitted changes / file ownership warnings: 只更新整合工作樹的驗收文件，未改動日常資料庫。
+- Next 1–3 concrete actions: 人工相關性複核完成後重跑正式評估，並在目標環境驗收外部部署。選用的公報 PDF 到可正常取件的環境重驗。
+- Exact reproduction steps: 在 GitHub `Official patent E2E` 選 `coverage=full`、`gazette_pdf=false`。檢查語意索引、官方搜尋 API、Playwright 各組與部署限流結果。
