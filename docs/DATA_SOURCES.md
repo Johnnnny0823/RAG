@@ -188,3 +188,12 @@
 ## 新型及設計定期選取
 
 2026-11-28 實取第 053028 期的公告索引與書目，索引 SHA-256 為 `60936a7ab763fbb8bd79b8a3071aa89d43da3ffe4ef65928734a9ddc70827a4a`，書目 SHA-256 為 `836c3c9db01099dfe38fa1d15e9e1d3116180126c02f5179ebcf17542c7bd5c8`。索引有 349 筆新型及 196 筆設計，分別以每類上限一筆選出 `M687984`、`D246917`。以官方書目補入兩者公告日 2026-10-01 和設計 LOC `13-99`。同日實取 [S01 最新索引](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01) 預覽，端點當時回傳第 053030 期，包含 349 筆新型及 169 筆設計。
+
+## 第 053028 期新型及設計全文補匯
+
+2026-11-28 依 [TIPO 專利說明書資料集](https://data.gov.tw/dataset/15987) 所屬的官方 FTPS 封存清單 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index_all.xml` 選件，清單 SHA-256 為 `03e60d4c62ac2f36b6d201d12b69735827db8cdc4d4a90d18f523eb645f7f39a`。實取兩件 XML，保留公告索引與個案版本原件。
+
+| 證書 | 個案 XML 與 SHA-256 | 實測全文 |
+| --- | --- | --- |
+| `M687984` | `ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053028/5328M687984/114206949-A0305.xml`，`54bae6940d88baee990435a7b76401a1f1edcdecc4cf94e2b9f40012336fb214` | 34,196 bytes，DTD 2.0.1，16 項請求項、25 段說明書 |
+| `D246917` | `ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053028/5328D246917/112306158-A0305.xml`，`2d29c6afbf4738ba75d7bf7ecba42e394a6207ccd5f44325f74e29c36952b4cb` | 3,703 bytes，DTD 2.0.1，2 段說明書 |

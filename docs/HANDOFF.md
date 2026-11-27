@@ -2429,3 +2429,22 @@
 - Uncommitted changes / file ownership warnings: 只在整合工作樹及隔離 Compose 專案操作。
 - Next 1–3 concrete actions: 核對跨期續跑第二期各類來源及檢查點，驗證多件全文補期和索引，再回到人工相關性及正式主機驗收。
 - Exact reproduction steps: 依 [測試說明](TESTING.md#按類型選取公告與跨期續跑) 以獨立資料庫執行 `latest_publication --grants --grant-type model|design`，設定排程參數及查詢檢查點。
+
+## 指定範圍補匯新型與設計
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `5ab267b`。本節隨本次變更提交。
+- Current milestone and status: M5 與交付驗收 IN_PROGRESS。第 053028 期兩類全文和第 053028–053029 期書目續跑有實測證據。
+- Goal of this session: 讓手動封存補匯可以依類型選件，修正實際新型全文格式，補驗各類型的跨期檢查點。
+- Files changed (with purpose): `archive_backfill.py` 新增 `--grant-type`，`specification.py` 接受已核對的新型 DTD 2.0.1，`import_issue.py` 對新型全文使用新的批次解析識別。新增 CLI 與解析回歸，更新官源與驗收文件。
+- Database migrations added/applied: 無新增，隔離部署使用既有 head。原先的 `tipo-issue-2` 部分完成批次仍在，兩件全文另有完成批次，全文重跑均重用批次。
+- API/Schema changes: 無。API 實際查到兩筆全文版本，詞彙已可檢索及溯源。
+- Commands actually run and results: Ruff 格式、lint、Compose 啟動成功。pytest 144 通過、9 預設跳過、1 項既有警告。官方清單真實預覽確認兩期期號。以四份事先校驗的官方快照在隔離庫跑兩類續跑，兩組檢查點均含 053028、053029，第三輪無取件。首輪新型全文因不支援 DTD 2.0.1 正確被隔離，修正後可在同庫重跑。全文逐字核對新型 16 項請求項、25 段說明書及設計 2 段說明書。詞彙 API 兩筆全文個案皆出現在第一位，詳情雜湊符合原件。起點 [一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46042742128) 通過。
+- Tests NOT run and reason: 本次沒有新的瀏覽器或 API 介面變更，未重跑 Playwright 及獨立 PostgreSQL pytest。本次以實體 PostgreSQL 與 API 驗證。跨期書目以核對雜湊的官方快照完成，跨期全文及自動定時服務的長時間運作仍待獨立驗收。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 核對 https://data.gov.tw/dataset/15987，政府資料開放授權條款第 1 版，下載兩份官方個案 XML。網址、大小及雜湊見 [資料來源](DATA_SOURCES.md#第-053028-期新型及設計全文補匯)。第 053029 期兩份來源於新型續跑實取，後續對兩類使用相同的原件驗收。
+- Known bugs / risks / blockers: 大型 FTPS 檔案仍可能回 425，需求以有界取樣驗收。正式目標主機與 34 組人工相關性複核仍待。
+- Decisions made (ADR links): 擴充已確定的 DTD 版本，沿用既有 XML 限制、文件識別與來源定位。新型全文批次使用新識別，讓既有隔離樣本可重跑。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹和專用隔離庫操作，原件未進 Git。
+- Next 1–3 concrete actions: 驗證跨期全文的自動續跑與索引，確認最新版一般 CI，待人工標註及正式主機後完成驗收。
+- Exact reproduction steps: 依 [測試說明](TESTING.md#指定範圍補匯與全文回查) 使用隔離環境，執行 `archive_backfill --stage grant --grant-type model|design --fulltext --apply`，以 `verify_document --grant-fulltext` 等腳本核對原件。

@@ -8,7 +8,11 @@ from services.ingestion.patentpub import parse_xml
 DOCTYPE = b'<!DOCTYPE invention-specification SYSTEM "../invention-specification.dtd">'
 GRANT_DOCTYPE = b'<!DOCTYPE specification SYSTEM "../specification.dtd">'
 DTD_VERSION = "A103.1.0"
-GRANT_DTD_VERSIONS = {"I": (DTD_VERSION,), "M": ("1.0.0",), "D": ("1.0.0", "2.0.1")}
+GRANT_DTD_VERSIONS = {
+    "I": (DTD_VERSION,),
+    "M": ("1.0.0", "2.0.1"),
+    "D": ("1.0.0", "2.0.1"),
+}
 UTILITY_SPEC_PARSER_VERSION = "tipo-issue-2"
 ABSTRACT_LANGUAGES = {"tw": "zh", "en": "en"}
 

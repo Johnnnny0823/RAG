@@ -79,3 +79,28 @@ def test_archived_index_must_contain_the_requested_issue(monkeypatch, capsys):
         latest_publication.main(["--archive-issue", "024018", "--issue-year", "115"])
     assert error.value.code == 1
     assert "Archive index does not match the requested issue" in capsys.readouterr().err
+
+
+def test_design_backfill_passes_the_grant_type_to_each_archived_issue(
+    monkeypatch, tmp_path, capsys
+):
+    monkeypatch.setattr(
+        archive_backfill,
+        "list_archive_issues",
+        lambda *_: ["053031", "053032", "053033"],
+    )
+    calls = []
+
+    def import_one(options):
+        assert "--grants" in options
+        assert options[options.index("--grant-type") + 1] == "design"
+        calls.append(options[-1])
+        return 0
+
+    monkeypatch.setattr(archive_backfill, "import_one", import_one)
+    options = [*OPTIONS, "--grant-type", "design"]
+    assert archive_backfill.main(options) == 0
+    assert json.loads(capsys.readouterr().out)["grant_type"] == "design"
+    assert calls == []
+    assert archive_backfill.main([*options, "--apply", "--objects", str(tmp_path)]) == 0
+    assert calls == ["053031", "053032", "053033"]

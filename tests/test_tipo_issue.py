@@ -132,9 +132,10 @@ def test_grant_specification_requires_its_own_document_format():
         parse_specification(SPEC, "000000001", grant_number="I000001")
 
 
-def test_utility_model_uses_the_verified_model_dtd_version():
+@pytest.mark.parametrize("dtd_version", [b"1.0.0", b"2.0.1"])
+def test_utility_model_uses_a_verified_model_dtd_version(dtd_version):
     model = SPEC.replace(b"invention-specification", b"specification").replace(
-        b"A103.1.0", b"1.0.0"
+        b"A103.1.0", dtd_version
     )
     [section], [claim] = parse_specification(model, "000000001", grant_number="M000001")
     assert section.locator.endswith("/technical-field/p[1]")

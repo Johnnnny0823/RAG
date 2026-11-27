@@ -37,6 +37,8 @@ from services.ingestion.specification import (
 )
 
 PARSER_VERSION = "tipo-issue-1"
+# Retry utility model batches quarantined before support for DTD 2.0.1.
+UTILITY_SPEC_BATCH_VERSION = "tipo-issue-utility-3"
 DATASET_URL = "https://data.gov.tw/dataset/15996"
 LICENSE_URL = "https://data.gov.tw/license"
 
@@ -330,7 +332,7 @@ def import_issue(args):
             "SELECT id FROM source_datasets WHERE dataset_key = %s", (dataset_key,)
         ).scalar_one()
         batch_parser_version = (
-            UTILITY_SPEC_PARSER_VERSION
+            UTILITY_SPEC_BATCH_VERSION
             if any(number.startswith("M") for number in specs_raw)
             else PARSER_VERSION
         )

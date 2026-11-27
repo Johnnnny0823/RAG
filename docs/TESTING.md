@@ -312,3 +312,7 @@ npx playwright test --reporter=list
 以新的隔離 Compose 專案啟動後，執行 `python -m services.ingestion.latest_publication --grants --grant-type model --archive-issue 053028 --issue-year 115 --gazette-year 115 --apply --limit 1`。用相同指令將 `model` 換成 `design`。以證書號查詢新型 `M687984`、設計 `D246917`，核對各自的文件範圍、官方書目日期、設計 LOC 及原始來源。
 
 測試歷史補期時，從第 053028 期啟用公告及新型、設計類型。設定 `TIPO_REFRESH_CATCH_UP_MAX_ISSUES=1` 以驗證每輪每類最多補一期。測試可將官方索引的可見範圍限定為 053028–053029，第二輪應銜接 053029，第三輪應讀取既有檢查點。查詢 `archive_refresh_checkpoints` 確認兩組不同設定雜湊各有兩個卷期。
+
+### 指定範圍補匯與全文回查
+
+在隔離資料庫執行 `python -m services.ingestion.archive_backfill --stage grant --grant-type model --year 115 --from-issue 053028 --through-issue 053028 --limit 1 --fulltext --apply`，再將 `model` 換成 `design`。用 `verify_document --grant-issue 053028 --grant-fulltext` 逐字核對 `M687984` 及 `D246917`，重跑確認批次使用相同資料，詞彙索引新增版本數為零。若舊版曾隔離同一件新型資料，新版另開解析批次並保留原紀錄。

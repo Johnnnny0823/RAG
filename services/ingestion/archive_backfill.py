@@ -7,12 +7,14 @@ from ftplib import all_errors
 from os import getenv
 
 from services.ingestion.download import list_archive_issues
+from services.ingestion.grant_index import GRANT_APPLICATION_TYPES
 from services.ingestion.latest_publication import main as import_one
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stage", choices=("publication", "grant"), required=True)
+    parser.add_argument("--grant-type", choices=GRANT_APPLICATION_TYPES.values())
     parser.add_argument("--year", required=True)
     parser.add_argument("--from-issue", required=True)
     parser.add_argument("--through-issue", required=True)
@@ -35,6 +37,8 @@ def main(argv=None) -> int:
         parser.error(
             "Specify 1 to 20 consecutive issues in one volume and archive year"
         )
+    if args.grant_type and args.stage != "grant":
+        parser.error("--grant-type requires --stage grant")
     if not 1 <= args.limit <= 500:
         parser.error("--limit must be between 1 and 500")
     if args.apply and not args.objects:
@@ -54,6 +58,11 @@ def main(argv=None) -> int:
             {
                 "stage": args.stage,
                 "year": args.year,
+                **(
+                    {"grant_type": args.grant_type or "invention"}
+                    if args.stage == "grant"
+                    else {}
+                ),
                 "issues": requested,
                 "documents_per_issue": args.limit,
                 "apply": args.apply,
@@ -77,6 +86,8 @@ def main(argv=None) -> int:
     ]
     if args.stage == "grant":
         options.append("--grants")
+        if args.grant_type:
+            options.extend(["--grant-type", args.grant_type])
     if args.fulltext:
         options.extend(["--archive-year", args.year])
     if args.dates:

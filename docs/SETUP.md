@@ -416,7 +416,7 @@ docker compose run --rm migrate python -m services.ingestion.archive_backfill --
 docker compose run --rm migrate python -m services.ingestion.archive_backfill --stage grant --year 115 --from-issue 053031 --through-issue 053032 --limit 1 --apply
 ```
 
-每期依官方索引順序取 `--limit` 筆，公告只選發明。預設補公開書目摘要或公告請求項並建立詞彙索引。`--fulltext` 使用同年的個案封存清單，`--dates` 使用同期日期公報，`--index-mode hybrid` 可另建向量。某期失敗時停止，已提交的期別保留，重跑相同選擇可重用既有批次。這項補匯以指定範圍和每期上限為準，涵蓋範圍不等於完整卷期。
+每期依官方索引順序取 `--limit` 筆。公告預設選發明，手動補匯可用 `--grant-type model` 或 `--grant-type design`。預設補公開書目摘要或公告請求項並建立詞彙索引。`--fulltext` 使用同年的個案封存清單，`--dates` 使用同期日期公報，`--index-mode hybrid` 可另建向量。某期失敗時停止，已提交的期別保留，重跑相同選擇可重用既有批次。這項補匯以指定範圍和每期上限為準，涵蓋範圍不等於完整卷期。
 
 #### 排程自動補期
 
