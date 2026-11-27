@@ -20,7 +20,11 @@ from services.ingestion.download import (
     download_publication_index,
 )
 from services.ingestion.gazette_dates import apply_dates, archive_url, parse_gazette
-from services.ingestion.grant_index import discover_grant_issue, parse_selected_grants
+from services.ingestion.grant_index import (
+    GRANT_APPLICATION_TYPES,
+    discover_grant_issue,
+    parse_selected_grants,
+)
 from services.ingestion.import_issue import parse_import_args
 from services.ingestion.issue_index import discover_issue, parse_issue_index
 from services.ingestion.issue_manifest import HOST, resolve_spec_urls
@@ -34,9 +38,10 @@ def main(argv=None) -> int:
     )
     parser.add_argument("--limit", type=int, default=100)
     parser.add_argument(
-        "--grants", action="store_true", help="Select an invention grant index"
+        "--grants", action="store_true", help="Select an official grant index"
     )
     parser.add_argument("--grant-number", action="append", default=[])
+    parser.add_argument("--grant-type", choices=GRANT_APPLICATION_TYPES.values())
     parser.add_argument("--archive-issue", help="Use this six-digit archived issue")
     parser.add_argument("--issue-year", help="ROC year of the archived issue")
     parser.add_argument(
@@ -55,6 +60,8 @@ def main(argv=None) -> int:
         parser.error("--limit must be between 1 and 500")
     if args.grant_number and (not args.grants or len(args.grant_number) > args.limit):
         parser.error("--grant-number requires --grants and cannot exceed --limit")
+    if args.grant_type and not args.grants:
+        parser.error("--grant-type requires --grants")
     if args.apply and args.objects is None:
         parser.error("--apply requires --objects or PATENT_OBJECTS_DIR")
     if bool(args.archive_issue) != bool(args.issue_year) or (
@@ -73,6 +80,7 @@ def main(argv=None) -> int:
     gazette = None
     certificates = []
     stage = "grant" if args.grants else "publication"
+    include_other_grants = False
     source = GRANT_INDEX_URL if args.grants else INDEX_URL
     archive = ARCHIVES[stage]
     try:
@@ -84,9 +92,16 @@ def main(argv=None) -> int:
                 download_grant_index() if args.grants else download_publication_index()
             )
         if args.grants:
-            issue, available = discover_grant_issue(data)
+            issue, available = discover_grant_issue(
+                data, args.grant_type or "invention"
+            )
             total_records = len(available)
             certificates = args.grant_number or available[: args.limit]
+            if args.grant_type and not set(certificates).issubset(available):
+                raise ValueError("Selected certificate does not match --grant-type")
+            include_other_grants = any(
+                certificate.startswith(("M", "D")) for certificate in certificates
+            )
             # Verify claims and identities before any of the selected grants are imported.
             records = [
                 record for record, _ in parse_selected_grants(data, issue, certificates)
@@ -114,7 +129,13 @@ def main(argv=None) -> int:
         if args.gazette_year:
             gazette_url = archive_url(stage, args.gazette_year, issue)
             gazette = download_ftps_xml(gazette_url)
-            parse_gazette(gazette, stage, args.gazette_year, issue)
+            parse_gazette(
+                gazette,
+                stage,
+                args.gazette_year,
+                issue,
+                include_other_grants=include_other_grants,
+            )
     except (*all_errors, ParseError, ValueError) as error:
         parser.exit(1, f"TIPO issue could not be verified: {error}\n")
 
@@ -130,7 +151,13 @@ def main(argv=None) -> int:
                 else min(total_records, args.limit),
                 "requested_scope": "fulltext"
                 if manifest
-                else ("claims_only" if args.grants else "metadata_and_abstract"),
+                else (
+                    "claims_only"
+                    if any(
+                        not certificate.startswith("D") for certificate in certificates
+                    )
+                    else "metadata_and_abstract"
+                ),
                 **(
                     {
                         "manifest_url": manifest_url,
@@ -190,7 +217,12 @@ def main(argv=None) -> int:
         return status
     try:
         date_result = apply_dates(
-            gazette, LocalObjectStore(args.objects), stage, args.gazette_year, issue
+            gazette,
+            LocalObjectStore(args.objects),
+            stage,
+            args.gazette_year,
+            issue,
+            include_other_grants=include_other_grants,
         )
     except (OSError, ParseError, ValueError) as error:
         parser.exit(1, f"TIPO dates could not be applied: {error}\n")

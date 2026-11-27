@@ -306,3 +306,9 @@ npx playwright test --reporter=list
 設定 `PATENTSCOPE_E2E_URL` 指向隔離前端，設 `PATENTSCOPE_E2E_TIPO=grant-events` 及 `PATENTSCOPE_E2E_CROSS_BROWSER=1`，在 `apps/web` 執行 `npx playwright test legal-events.spec.ts`。2026-11-27，Chromium 桌面／平板／手機、Firefox 和 WebKit 共五項通過。
 
 官方 GitHub Actions 另以 `python -m scripts.seed_tipo_grant_events <fixture-directory>` 準備上述兩件更正與新型 `M688686`、衍生設計 `D236497` 的消滅公告。工具確認四份公告索引及 `sud08.xml`、`sud24.xml` 的 SHA-256，先匯入異動再匯入公告以驗證延後連結。兩筆消滅案例核對卷期、日期、完整申請號、與原始檔定位。已有原件可用 `--offline`，僅取件與校驗可用 `--prepare-only`。來源流程執行三個 Chromium 設定，完整流程另加 Firefox 與 WebKit。
+
+## 按類型選取公告與跨期續跑
+
+以新的隔離 Compose 專案啟動後，執行 `python -m services.ingestion.latest_publication --grants --grant-type model --archive-issue 053028 --issue-year 115 --gazette-year 115 --apply --limit 1`。用相同指令將 `model` 換成 `design`。以證書號查詢新型 `M687984`、設計 `D246917`，核對各自的文件範圍、官方書目日期、設計 LOC 及原始來源。
+
+測試歷史補期時，從第 053028 期啟用公告及新型、設計類型。設定 `TIPO_REFRESH_CATCH_UP_MAX_ISSUES=1` 以驗證每輪每類最多補一期。測試可將官方索引的可見範圍限定為 053028–053029，第二輪應銜接 053029，第三輪應讀取既有檢查點。查詢 `archive_refresh_checkpoints` 確認兩組不同設定雜湊各有兩個卷期。

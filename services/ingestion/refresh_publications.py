@@ -12,6 +12,7 @@ from time import monotonic, sleep
 from sqlalchemy.exc import SQLAlchemyError
 
 from services.ingestion.archive_refresh import refresh_archive
+from services.ingestion.grant_index import GRANT_APPLICATION_TYPES
 from services.ingestion.latest_publication import main as refresh_once
 from services.ingestion.legal_events import main as replay_legal
 from services.ingestion.legal_refresh import main as refresh_legal
@@ -26,6 +27,7 @@ def serve(
     should_stop: Callable[[], bool],
     *,
     include_grants: bool = False,
+    grant_types: tuple[str, ...] = ("invention",),
     catch_up_year: str | None = None,
     publication_from: str | None = None,
     grant_from: str | None = None,
@@ -35,7 +37,11 @@ def serve(
 ) -> None:
     batches = [("publication", options, publication_from)]
     if include_grants:
-        batches.append(("grant", [*options, "--grants"], grant_from))
+        for grant_type in grant_types:
+            arguments = [*options, "--grants"]
+            if grant_type != "invention":
+                arguments.extend(["--grant-type", grant_type])
+            batches.append(("grant", arguments, grant_from))
     if legal_year:
         batches.append(("legal-replay", ["--replay-stored"], None))
         if legal_from:
@@ -86,6 +92,7 @@ def main() -> None:
     parser.add_argument("--archive-year")
     parser.add_argument("--gazette-year")
     parser.add_argument("--include-grants", choices=("yes", "no"), default="no")
+    parser.add_argument("--grant-types", default="invention")
     parser.add_argument("--catch-up-year")
     parser.add_argument("--publication-from")
     parser.add_argument("--grant-from")
@@ -107,6 +114,13 @@ def main() -> None:
     ):
         parser.error(
             "--legal-from requires --legal-year and a six-digit starting issue"
+        )
+    grant_types = tuple(args.grant_types.split(","))
+    if len(set(grant_types)) != len(grant_types) or any(
+        value not in GRANT_APPLICATION_TYPES.values() for value in grant_types
+    ):
+        parser.error(
+            "--grant-types accepts a comma-separated list of distinct invention, model, design values"
         )
     starts = [issue for issue in (args.publication_from, args.grant_from) if issue]
     if (
@@ -147,6 +161,7 @@ def main() -> None:
         args.retry_interval,
         lambda: stopping,
         include_grants=args.include_grants == "yes",
+        grant_types=grant_types,
         catch_up_year=args.catch_up_year,
         publication_from=args.publication_from,
         grant_from=args.grant_from,

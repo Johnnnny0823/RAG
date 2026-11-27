@@ -398,7 +398,9 @@ docker compose --profile patent-refresh stop patent-refresh
 
 可另設 `TIPO_REFRESH_GAZETTE_YEAR=115`，讓每期匯入後以同卷期官方公報補上申請、公開或公告日期。此設定預設留空，可獨立於全文封存年度設定。單次操作以 `latest_publication --gazette-year 115` 預覽公報網址與雜湊，加上 `--apply` 才寫入。下載及卷期驗證在書目寫入前執行。若後續日期與已存資料衝突，該次日期寫入會回滾，先前成功匯入的書目版本仍可查閱。跨年度須更新設定。
 
-公告也可單次預覽及執行。省略證書號時，依 S01 順序取前幾件發明公告；可重複指定 `--grant-number` 選取實際案例。
+公告也可單次預覽及執行。省略公告類型與證書號時，依 S01 順序取前幾件發明公告。可用 `--grant-type model` 選新型、`--grant-type design` 選設計，或重複指定 `--grant-number`。設計的基礎範圍為書目，並保存來源所提供的摘要。新型亦保存請求項。
+
+定期更新公告時，可另設 `TIPO_REFRESH_GRANT_TYPES=invention,model,design`。各類型各自套用 `TIPO_REFRESH_LIMIT`，與歷史補期設定搭配時各自保存卷期檢查點。未設定時仍只更新發明。每份索引與書目原件按 SHA-256 保存。加入書目日期與分類時設 `TIPO_REFRESH_GAZETTE_YEAR`，設計書目將保留來源提供的 LOC。
 
 ```powershell
 docker compose run --rm migrate python -m services.ingestion.latest_publication --grants --limit 3

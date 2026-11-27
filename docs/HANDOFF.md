@@ -2410,3 +2410,22 @@
 - Uncommitted changes / file ownership warnings: 只在整合分支工作樹與專用 Compose 環境操作，原件與測試輸出未入 Git。
 - Next 1–3 concrete actions: 查核新版官方來源流程及舊版完整模型流程，補驗跨期語料的增量與可回溯性，等人工與部署需求確認後完成總驗收。
 - Exact reproduction steps: 依 [官方異動回歸](TESTING.md#新型及設計異動回歸) 啟動隔離部署，執行 `python -m scripts.seed_tipo_grant_events <fixture-directory> --offline`，使用 `PATENTSCOPE_E2E_TIPO=grant-events` 與 `PATENTSCOPE_E2E_CROSS_BROWSER=1` 執行 `legal-events.spec.ts`。
+
+## 新型及設計公告定期匯入
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `894e229`。本節隨本次變更提交。
+- Current milestone and status: M5 與交付驗收 IN_PROGRESS。真實公告可按新型及設計分別執行選取、書目補強與單期續跑。
+- Goal of this session: 讓官方排程在發明之外也能選取與續跑新型及設計公告。
+- Files changed (with purpose): `grant_index.py` 與 `latest_publication.py` 選取公告類型，`refresh_publications.py` 與 Compose 各別設定選取與續跑。測試覆蓋選取、書目補強與各類選項。操作與官源紀錄同步更新。
+- Database migrations added/applied: 無新增。空白隔離環境使用既有遷移。新型與設計在 `archive_refresh_checkpoints` 使用獨立設定雜湊。以第 053028 期官方快照驗證兩類的同批重跑直接使用檢查點。
+- API/Schema changes: 無。
+- Commands actually run and results: Ruff、Compose 配置檢查與建置通過。pytest 142 項通過、9 項預設跳過、1 項既有警告。S01 最新端點兩次預覽取得第 053030 期。第 053028 期真實 FTPS 匯入 `M687984`、`D246917`，API 核對官方日期、請求項／書目範圍及 LOC，五項 Playwright 通過。首次單元測試因 CLI 缺參數失敗，實作後通過。前期 [官方完整 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46023424511)和[最新版官方消滅來源 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46025212381)均通過。
+- Tests NOT run and reason: 本次未重跑本機 PostgreSQL 整合套件，使用隔離庫直接驗證官源及檢查點。兩期實取續跑遇 FTPS 資料通道 425 後已完成首期新型，後續仍需核對。個案全文批次與跨年續跑未驗收。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28，實取 `https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01`、`ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index.xml` 與 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053028/patent.xml`。詳見 DATA_SOURCES 的授權條件、卷期與 SHA-256。
+- Known bugs / risks / blockers: FTPS 有連線重試。每類上限限制該期取樣範圍。正式主機及 34 組人工相關性複核仍待。
+- Decisions made (ADR links): 沿用現有資料表與每期檢查點。預設沿用發明及舊設定雜湊。新型及設計須由環境變數啟用。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹及隔離 Compose 專案操作。
+- Next 1–3 concrete actions: 核對跨期續跑第二期各類來源及檢查點，驗證多件全文補期和索引，再回到人工相關性及正式主機驗收。
+- Exact reproduction steps: 依 [測試說明](TESTING.md#按類型選取公告與跨期續跑) 以獨立資料庫執行 `latest_publication --grants --grant-type model|design`，設定排程參數及查詢檢查點。

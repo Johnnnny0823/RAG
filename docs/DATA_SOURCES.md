@@ -39,7 +39,7 @@
 | `M688679`，申請號 `114206535` | [個案 XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330M688679/114206535-A0305.xml)，72,760 bytes，SHA-256 `adef492f39db89c809115dd68d028cbff178a3634fbcf11f38de3ab0739c3093`，DTD `1.0.0`。核對 208 段說明書及 10 項請求項。 |
 | `D247328`，申請號 `113306657` | [個案 XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330D247328/113306657-A0305.xml)，4,689 bytes，SHA-256 `f8c18dc5cb114fc70bd54b38a4cd8ea97b57772adac3568603e88c36c3e83d18`，DTD `2.0.1`。核對 7 段說明書，原檔沒有請求項。 |
 
-兩案都保留獨立的 S01 版本及個案文字版本。`fulltext` 涵蓋本次驗證的個案說明書及來源提供的請求項。`M688679` 的個案 XML 另有 `lang=tw` 及 `lang=en` 的摘要。新版 `tipo-issue-2` 保留原文及 `/specification/abstract[1]/abstract-dtext[1]`、`/specification/abstract[2]/abstract-dtext[1]`，既有版本可繼續回查。新型與設計的選定法律異動已可匯入。書目與全文自動補期仍待驗證。
+兩案都保留獨立的 S01 版本及個案文字版本。`fulltext` 涵蓋本次驗證的個案說明書及來源提供的請求項。`M688679` 的個案 XML 另有 `lang=tw` 及 `lang=en` 的摘要。新版 `tipo-issue-2` 保留原文及 `/specification/abstract[1]/abstract-dtext[1]`、`/specification/abstract[2]/abstract-dtext[1]`，既有版本可繼續回查。新型與設計的選定法律異動已可匯入。新型及設計已有按類型選取的排程參數。全文自動補期仍待跨期驗證。
 
 ### 新型與設計個案圖式
 
@@ -183,3 +183,8 @@
 | `D236497` | `113302173D01` | 第 052006 期 `99cde994594aa622cf9469ecb6541403b3567b4597342a6915c35ce5dab526f8` | 第 611 筆，2026-02-21，未依限繳費 |
 
 2026-11-27 實取新型公告 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index.xml`（16,606,541 bytes）及衍生設計公告 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/114/PatentIsuRegSpecXMLA_052006/index.xml`（16,989,536 bytes）。新型公告位於原件第 1106 筆，衍生設計位於原件第 1695 筆，使用含 `D01` 的完整申請號比對。兩案異動原件均為第 053033 期 `sud08.xml`，SHA-256 為 `213b98e7337a0f99b74b9eff59ce0d92f0f27ccecf665892f8ee48b8423bd964`。
+
+
+## 新型及設計定期選取
+
+2026-11-28 實取第 053028 期的公告索引與書目，索引 SHA-256 為 `60936a7ab763fbb8bd79b8a3071aa89d43da3ffe4ef65928734a9ddc70827a4a`，書目 SHA-256 為 `836c3c9db01099dfe38fa1d15e9e1d3116180126c02f5179ebcf17542c7bd5c8`。索引有 349 筆新型及 196 筆設計，分別以每類上限一筆選出 `M687984`、`D246917`。以官方書目補入兩者公告日 2026-10-01 和設計 LOC `13-99`。同日實取 [S01 最新索引](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01) 預覽，端點當時回傳第 053030 期，包含 349 筆新型及 169 筆設計。

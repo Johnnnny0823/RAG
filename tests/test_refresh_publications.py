@@ -128,3 +128,29 @@ def test_archive_resumes_only_successful_issues_for_the_same_configuration(monke
     )
     assert calls[-1] == "053031"
     assert len(checkpoint_rows) == 3
+
+
+def test_archive_refresh_runs_grant_types_with_independent_options(monkeypatch):
+    runs = []
+    monkeypatch.setattr(refresh_publications, "refresh_once", lambda _: 0)
+
+    def refresh(stage, year, issue, options, *_):
+        runs.append((stage, year, issue, options))
+        return False
+
+    monkeypatch.setattr(refresh_publications, "refresh_archive", refresh)
+    refresh_publications.serve(
+        ["--apply"],
+        86400,
+        900,
+        lambda: len(runs) == 3,
+        include_grants=True,
+        grant_types=("invention", "model", "design"),
+        catch_up_year="115",
+        grant_from="053028",
+    )
+    assert runs == [
+        ("grant", "115", "053028", ["--apply", "--grants"]),
+        ("grant", "115", "053028", ["--apply", "--grants", "--grant-type", "model"]),
+        ("grant", "115", "053028", ["--apply", "--grants", "--grant-type", "design"]),
+    ]

@@ -24,14 +24,19 @@ def grant_records(data: bytes) -> ET.Element:
     return root
 
 
-def discover_grant_issue(data: bytes) -> tuple[str, list[str]]:
+def discover_grant_issue(
+    data: bytes, grant_type: str = "invention"
+) -> tuple[str, list[str]]:
     certificates = []
     issues = set()
     for item in grant_records(data):
         if item.tag != "tw-patent-grant":
             raise ValueError("Unexpected element in the TIPO grant issue index")
         certificate = item.get("certificate-number", "")
-        if not re.fullmatch(r"I[0-9]+", certificate):
+        if (
+            not re.fullmatch(r"[IMD][0-9]+", certificate)
+            or GRANT_APPLICATION_TYPES[certificate[0]] != grant_type
+        ):
             continue
         biblio = item.find("tw-bibliographic-data-grant")
         if biblio is None:

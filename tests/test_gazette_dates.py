@@ -116,7 +116,8 @@ def test_latest_issue_previews_verified_dates_and_applies_only_after_import(
         calls.append("patents")
         return pipeline_status
 
-    def apply(data, store, stage, year, issue):
+    def apply(data, store, stage, year, issue, *, include_other_grants):
+        assert not include_other_grants
         assert (data, stage, year, issue) == (
             PUBLICATION,
             "publication",

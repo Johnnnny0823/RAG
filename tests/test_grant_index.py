@@ -89,3 +89,62 @@ def test_design_keeps_bibliography_without_creating_claims():
     derived = design.replace(b"000000001", b"000300001D01")
     grant, _ = parse_grant(derived, "053028", "D000001")
     assert grant.application_no == "000300001D01"
+
+
+def test_latest_design_refresh_selects_only_designs_and_enriches_all_grant_types(
+    monkeypatch, tmp_path, capsys
+):
+    from services.ingestion import latest_publication
+
+    original = GRANT.split(b"<tw-patent-grant ", 1)[1].split(b"</tw-patent-grants>", 1)[
+        0
+    ]
+    design = (
+        original.replace(b"I000001", b"D000001")
+        .replace(b"000000001", b"000300001D01")
+        .replace(b'"invention"', b'"design"')
+        .replace(b'<claims><claim num="1"><p>DEMO exact text</p></claim></claims>', b"")
+    )
+    index = (
+        b'<tw-patent-grants total-count="2"><tw-patent-grant '
+        + original
+        + b"<tw-patent-grant "
+        + design
+        + b"</tw-patent-grants>"
+    )
+    monkeypatch.setattr(latest_publication, "download_grant_index", lambda: index)
+    monkeypatch.setattr(latest_publication, "download_ftps_xml", lambda _: b"gazette")
+
+    def verify_dates(data, stage, year, issue, *, include_other_grants):
+        assert (data, stage, year, issue) == (b"gazette", "grant", "115", "053028")
+        assert include_other_grants
+
+    def import_index(args, *_args, **_kwargs):
+        assert args.grant_number == ["D000001"]
+        return 0
+
+    monkeypatch.setattr(latest_publication, "parse_gazette", verify_dates)
+    monkeypatch.setattr(latest_publication, "run_pipeline", import_index)
+    monkeypatch.setattr(
+        latest_publication,
+        "apply_dates",
+        lambda data, _store, *args, **kwargs: verify_dates(data, *args, **kwargs),
+    )
+    assert (
+        latest_publication.main(
+            [
+                "--grants",
+                "--grant-type",
+                "design",
+                "--apply",
+                "--limit",
+                "1",
+                "--gazette-year",
+                "115",
+                "--objects",
+                str(tmp_path),
+            ]
+        )
+        == 0
+    )
+    assert '"requested_scope": "metadata_and_abstract"' in capsys.readouterr().out
