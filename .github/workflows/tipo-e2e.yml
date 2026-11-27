@@ -130,6 +130,22 @@ jobs:
         env:
           PATENTSCOPE_E2E_TIPO: grant-types
           PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
+      - name: Restore pinned grant event fixtures
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ${{ runner.temp }}/tipo-fixture/grant-053010.xml
+            ${{ runner.temp }}/tipo-fixture/sud24.xml
+          key: ${{ runner.os }}-tipo-grant-event-xml-${{ hashFiles('scripts/seed_tipo_grant_events.py') }}
+      - name: Import official utility model and design corrections
+        timeout-minutes: 10
+        run: python -m scripts.seed_tipo_grant_events "$RUNNER_TEMP/tipo-fixture"
+      - name: Verify official grant corrections in Playwright
+        run: npm run test:e2e --prefix apps/web -- legal-events.spec.ts
+        env:
+          PATENTSCOPE_E2E_TIPO: grant-events
+          PATENTSCOPE_E2E_CROSS_BROWSER: ${{ inputs.coverage == 'full' && '1' || '0' }}
+          PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
       - name: Verify deployment rate limits
         run: python scripts/smoke.py --api http://127.0.0.1:5173 --web http://127.0.0.1:5173 --deployment --deployment-rate-limit
       - uses: actions/upload-artifact@v6

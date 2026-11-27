@@ -304,3 +304,5 @@ npx playwright test --reporter=list
 使用 `services.ingestion.import_issue --verified-tipo` 匯入第 053010 期 `M681479` 及第 053028 期 `D246955`。先查 `GET /api/v1/patents?number_type=grant&number=...`，再查文件 UUID 對應的詳情，核對兩筆更正的卷期、SHA-256、來源 XPath 及空白生效日。在具備資料的隔離庫嘗試降版應被阻擋，遷移版本應維持 `0022_legal_event_grant_types`。
 
 設定 `PATENTSCOPE_E2E_URL` 指向隔離前端，設 `PATENTSCOPE_E2E_TIPO=grant-events` 及 `PATENTSCOPE_E2E_CROSS_BROWSER=1`，在 `apps/web` 執行 `npx playwright test legal-events.spec.ts`。2026-11-27，Chromium 桌面／平板／手機、Firefox 和 WebKit 共五項通過。
+
+官方 GitHub Actions 另以 `python -m scripts.seed_tipo_grant_events <fixture-directory>` 準備上述兩件更正。此工具確認兩份公告索引及 `sud24.xml` 的 SHA-256，先匯入更正再匯入公告以驗證延後連結。已有原件可用 `--offline`，僅取件與校驗可用 `--prepare-only`。來源流程執行三個 Chromium 設定，完整流程另加 Firefox 與 WebKit。

@@ -2372,3 +2372,22 @@
 - Uncommitted changes / file ownership warnings: 只在整合工作樹及專用隔離資料庫操作。官方原件與測試輸出未納入 Git。
 - Next 1–3 concrete actions: 追蹤新版 CI，擴充真實消滅案例的詳情回歸，待人工標註和正式主機後進行最終評估與交付。
 - Exact reproduction steps: 依 [驗收步驟](TESTING.md#新型及設計異動回歸) 建立獨立資料庫與固定原件，重播遷移，再執行 `PATENTSCOPE_E2E_TIPO=grant-events` 的 Playwright 套件。
+
+## 官方異動瀏覽器驗收納入 CI
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `920c845`。本節隨本次變更提交。
+- Current milestone and status: M5 與交付驗收 IN_PROGRESS。已在空白部署環境驗證新版官方更正測試的樣本準備工具與跨瀏覽器流程。
+- Goal of this session: 將真實新型及設計更正的瀏覽器回歸納入官方 GitHub Actions。
+- Files changed (with purpose): `scripts/seed_tipo_grant_events.py` 核對 3 份官方 XML 的 SHA-256 並匯入已核對樣本。`.github/workflows/tipo-e2e.yml` 新增樣本快取與 Playwright 關卡。詳見 TESTING。
+- Database migrations added/applied: 無新增遷移。全新隔離部署環境已套用 `0022_legal_event_grant_types`，事件比公告先匯入，其後兩次公告匯入各連上一筆更正。
+- API/Schema changes: 無。
+- Commands actually run and results: Ruff 格式與 lint、預設 pytest（140 通過、9 預設跳過、1 項既有警告）通過。以全新 Compose 資料庫及 Nginx 部署，使用 `seed_tipo_grant_events --offline` 匯入三份原件，`legal-events.spec.ts` 五項通過。起點 `920c845` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46023391973)通過。
+- Tests NOT run and reason: 開始新版前，[起點的官方完整流程](https://github.com/Johnnnny0823/RAG/actions/runs/46023424511)仍在執行。新增關卡的遠端結果須按新版修訂查核。未重跑九項 PostgreSQL pytest，上一修訂已通過且本次沒有改資料庫或 API。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27，樣本沿用 [第 053033 期來源紀錄](DATA_SOURCES.md#第-053033-期新型與設計異動) 中的更正 XML 和同案第 053010、053028 期公告原件。
+- Known bugs / risks / blockers: 官方來源型態及檔案雜湊如變更，驗收會中止。此次瀏覽器流程涵蓋兩筆官方更正。仍待人工相關性複核和正式主機驗收。
+- Decisions made (ADR links): 使用獨立的校驗快取，保留一般核心樣本行為及既有 CI 快取。完整官方流程涵蓋五種瀏覽器設定，來源流程使用三種 Chromium 設定。
+- Uncommitted changes / file ownership warnings: 此輪只修改官方異動測試樣本工具、官方 E2E 工作流程及驗收文件。官方原件與測試輸出留在隔離環境。
+- Next 1–3 concrete actions: 確認遠端新版來源驗收和起點的完整模型驗收。依官方公告範圍補驗實際消滅事件。待人工標註和正式主機後進行最終評估與交付。
+- Exact reproduction steps: 使用 `docker-compose.deploy.yml` 啟動隔離環境，設定 `COMPOSE_PROJECT_NAME`，執行 `python -m scripts.seed_tipo_grant_events <fixture-directory> --offline`，再依 TESTING 執行 `PATENTSCOPE_E2E_TIPO=grant-events` 的 Playwright。
