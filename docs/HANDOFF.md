@@ -2163,3 +2163,22 @@
 - Uncommitted changes / file ownership warnings: 只在整合工作樹作業，官方原件未納入 Git。
 - Next 1–3 concrete actions: 官方完整取件從可正常存取的環境重跑。匯入人工作業完成的複核表後重跑評估。取得正式部署環境後執行對外驗收。
 - Exact reproduction steps: 依 SETUP 對已存在的官方附件加入 `--replay-stored` 並帶 `--apply-to`、`--expected-sha256`，再依 TESTING 核對原件、頁碼及 API。
+
+## 空白部署的官方公報 PDF 驗收
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，受驗修訂 `33d647a`。
+- Current milestone and status: 官方公報 PDF 來源驗收在 Windows 隔離部署通過，整體 IN_PROGRESS。
+- Goal of this session: 驗證從空庫遷移、官方 XML 匯入、PDF 首次下載到瀏覽器檢索的完整路徑。
+- Files changed (with purpose): `docs/TESTING.md` 補執行證據與 Windows 掛載處理，`docs/PROGRESS.md`、`docs/HANDOFF.md` 記錄結果。
+- Database migrations added/applied: 空白隔離庫遷移到 `0021_gazette_pdf_search`。匯入 117 版本、1,560 個詞彙索引片段、11 個官方 PDF 頁面。
+- API/Schema changes: 本輪驗收沿用 `33d647a` 的 API 及 Schema。
+- Commands actually run and results: `docker compose ... -p patentscope-gazette-clean ... up -d --build --wait` 成功，`scripts.seed_tipo_e2e --offline --skip-semantic` 驗證 24 件官方 XML，`scripts.smoke_gazette_pdfs`、`scripts/smoke_lexical.py --official-e2e` 及包裝版部署冒煙通過。Playwright `patent-number.spec.ts` 的 Chromium 三種裝置、Firefox、WebKit 共五項通過。首次種子匯入受 Docker Desktop 的 `D:` 掛載錯誤影響，改用 `$env:TEMP` 內的複本後成功。
+- Tests NOT run and reason: 本輪使用來源模式，模型、PDF 報告及一般測試結果獨立於這次驗收。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 實取 `https://cloud.tipo.gov.tw/S220/downloads/invention/pub024019/pdfdata/114106690.pdf` 和 `https://cloud.tipo.gov.tw/S220/downloads/patent/isu053028/pdfdata/114106690.pdf`，雜湊與 DATA_SOURCES 的記錄一致。官方 XML 從已保存的逐檔雜湊固定原件重建。
+- Known bugs / risks / blockers: GitHub runner 的官方首次取件曾收到 403，這次成功發生於本機。仍需 34 組人工複核與正式對外主機驗收。
+- Decisions made (ADR links): 使用新命名 Compose 專案及資料卷，沿用固定 XML 和實際 HTTPS 取件測試。
+- Uncommitted changes / file ownership warnings: 只更新整合分支文件，下載原件與測試報告留在隔離環境。
+- Next 1–3 concrete actions: 匯入人工複核結果後重跑檢索評估，取得正式部署環境後驗收對外連線。
+- Exact reproduction steps: 依 TESTING 的固定官方樣本及 PDF 章節，啟動獨立包裝版 Compose，匯入固定 XML，執行 PDF API smoke，再以 `PATENTSCOPE_E2E_TIPO=versions`、`PATENTSCOPE_E2E_GAZETTE_PDFS=1` 和 `PATENTSCOPE_E2E_CROSS_BROWSER=1` 驗收。

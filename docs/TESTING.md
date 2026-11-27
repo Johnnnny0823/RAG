@@ -97,6 +97,10 @@ npm run test:e2e --prefix apps/web -- patent-number.spec.ts
 
 遠端可在 `Official patent E2E` 選擇 `gazette_pdf=true`。搭配 `coverage=source` 可在未啟動 Ollama 的情況下驗收兩筆固定 PDF。核對時在資料寫入前要求 SHA-256 相符。API 測試查驗版本、頁碼、首頁文字與跨版 404，瀏覽器測試以證書號定位公告首頁。個案若已下架或內容變更，選用的 PDF 測試會失敗並須重查官方來源。核心 XML 套件預設維持獨立執行。
 
+2026-11-27 以 Windows Docker Desktop 的新 Compose 專案從空白資料庫遷移到 `0021_gazette_pdf_search`。`seed_tipo_e2e --offline --skip-semantic` 核對 24 件先前保存的官方 XML，再重建 117 個官方版本及 1,560 個詞彙索引片段。`smoke_gazette_pdfs` 隨後從智財局首次下載兩份 PDF、核對錯版與原始 XML，並實跑離線回填及 PDF 詞彙檢索。Chromium 桌面／平板／手機、Firefox 及 WebKit 共五項號碼查詢測試通過。要加跑 Firefox 與 WebKit，請設定 `PATENTSCOPE_E2E_CROSS_BROWSER=1`。
+
+若 Docker Desktop 無法掛載 `D:` 的樣本目錄，可把固定 XML 快取複製到 `$env:TEMP` 內另一個資料夾，再以 `--offline --skip-semantic` 驗證及匯入。上述本機驗收與 GitHub runner 的 [HTTP 403](https://github.com/Johnnnny0823/RAG/actions/runs/45972249350)是不同環境的取件結果。
+
 ### 公報日期與增量索引
 
 需要驗收日期時，另外執行 [公報書目日期補齊](SETUP.md#從官方公報書目補齊日期)。使用 `GET /api/v1/patents?number_type=publication&number=202639611` 與 `number_type=grant&number=I941082` 核對日期。混合檢索以 `ipc=C08F2/48`、查詢 `photocurable resin composition` 及起迄皆 `2026-10-01` 應可查到公開案。把起迄一起設為 `2026-10-02` 時，固定語料應回傳空清單。
