@@ -336,3 +336,7 @@ npx playwright test --reporter=list
 ## 私人報告程序中斷回歸
 
 在 PostgreSQL 整合測試環境執行 `python -m pytest -q tests/integration -k background_report`。使用兩個合成帳號，模擬工作程序在處理中停止。核對逾 6 分鐘但仍在重試時間內的報告可用原 ID 接手，原程序晚到不覆蓋結果，逾期工作標為失敗。報告成功時，同帳號可下載、另一帳號取得 404。
+
+## 背景搜尋程序中斷回歸
+
+在 PostgreSQL 整合環境執行 `python -m pytest -q tests/integration -k background_search`，驗證舊程序交回結果時無法寫入歷史、同一工作重新認領只保存一筆、取消後不建立歷史及逾期後刪除暫存請求。另在已有官源與本機向量的隔離 Compose 建立背景搜尋，以時間欄位模擬中斷，再啟動新工作程序查核原工作 ID、唯一的歷史、官方候選和跨帳號 404。

@@ -2544,3 +2544,22 @@
 - Uncommitted changes / file ownership warnings: 只在整合工作樹與合成資料隔離庫操作，PDF 測試輸出未入 Git。
 - Next 1–3 concrete actions: 確認遠端工作，待人工評分及部署環境就緒後繼續最終驗收。
 - Exact reproduction steps: 依 [私人報告程序中斷回歸](TESTING.md#私人報告程序中斷回歸) 啟動 PostgreSQL 測試資料庫，執行 `python -m pytest -q tests/integration -k background_report`。
+
+## 背景搜尋逾時後續跑
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `bac26c4`。本節隨變更提交。
+- Current milestone and status: M5 與交付驗收 IN_PROGRESS。背景搜尋續跑已實際核對。
+- Goal of this session: 讓中斷的混合搜尋在原工作 ID 續跑，保留取消、權限與唯一搜尋歷史。
+- Files changed (with purpose): `search_worker.py` 在重試期限內認領中斷工作，寫入歷史前鎖定同一次執行。PostgreSQL 整合測試涵蓋舊程序、取消、工作續跑、逾期清理及權限。
+- Database migrations added/applied: 無新增，沿用隔離庫的 `0022_legal_event_grant_types`。
+- API/Schema changes: 路由與格式不變。重試使用原工作 ID，逾期錯誤碼沿用 `SEARCH_JOB_EXPIRED`。
+- Commands actually run and results: 新增回歸先重現舊程序可寫入歷史，再補上執行檢查點。首輪修正測試誤從歷史列表讀取詳情欄位，改用保存紀錄端點。本機真實 Compose 背景工作以同 ID 找回官源 `M688333`，只保存一筆歷史並清除工作暫存請求。跨帳號讀取為 404，部署冒煙通過。修正測試後，11 項 PostgreSQL 整合測試全數通過。Ruff、Git diff 與預設 pytest 通過，146 項通過、11 預設跳過、1 項既有警告。起點[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46047065984)通過。
+- Tests NOT run and reason: 本機未重跑 Playwright，改跑真實工作程序、REST API 與 PostgreSQL 整合。遠端[官方完整工作](https://github.com/Johnnnny0823/RAG/actions/runs/46046502777)仍在執行。
+- Data sources checked (exact URL/date) and license/access notes: 使用已驗證的 [第 053029 期原件](DATA_SOURCES.md#第-053029-期跨期全文驗收)。未新增取件。測試查詢是已公開的專利技術。
+- Known bugs / risks / blockers: 工作超過重試時間時會標為失敗。34 組人工相關性複核與正式主機仍待確認。
+- Decisions made (ADR links): 沿用工作開始時間辨認此次認領，確保保存搜尋紀錄與更新工作狀態使用同一交易。
+- Uncommitted changes / file ownership warnings: 只使用整合工作樹和隔離資料庫。
+- Next 1–3 concrete actions: 確認此修訂的 CI 及執行中的官源流程。取得人工標註與部署環境後完成重評和交付。
+- Exact reproduction steps: 依 [背景搜尋程序中斷回歸](TESTING.md#背景搜尋程序中斷回歸) 執行 PostgreSQL 套件，再用隔離 Compose 真實官源執行背景搜尋。

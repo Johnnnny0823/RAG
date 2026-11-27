@@ -24,17 +24,23 @@ def process_one() -> bool:
         conn.exec_driver_sql(
             """UPDATE search_jobs SET status = 'failed', request = NULL,
                       error_code = 'SEARCH_JOB_EXPIRED', finished_at = now()
-               WHERE (status = 'running' AND started_at < now() - interval '6 minutes')
-                  OR (status = 'queued' AND created_at < now() - interval '10 minutes')"""
+               WHERE created_at < now() - interval '10 minutes'
+                 AND (status = 'queued'
+                   OR (status = 'running' AND started_at < now() - interval '6 minutes'))"""
         )
         conn.exec_driver_sql(
             "DELETE FROM search_jobs WHERE finished_at < now() - interval '1 day'"
         )
         job = conn.exec_driver_sql(
             """UPDATE search_jobs j SET status = 'running', started_at = now()
-               WHERE j.id = (SELECT id FROM search_jobs WHERE status = 'queued'
-                             ORDER BY created_at, id LIMIT 1 FOR UPDATE SKIP LOCKED)
-               RETURNING j.id, j.user_id, j.request"""
+               WHERE j.id = (
+                   SELECT id FROM search_jobs
+                   WHERE created_at >= now() - interval '10 minutes'
+                     AND (status = 'queued'
+                       OR (status = 'running' AND started_at < now() - interval '6 minutes'))
+                   ORDER BY created_at, id LIMIT 1 FOR UPDATE SKIP LOCKED
+               )
+               RETURNING j.id, j.user_id, j.request, j.started_at"""
         ).one_or_none()
     if job is None:
         return False
@@ -59,9 +65,11 @@ def process_one() -> bool:
         ).scalar_one_or_none()
         if owner is None:
             return True
+        # A cancelled job or a superseded worker must not save search history.
         active = conn.exec_driver_sql(
-            "SELECT id FROM search_jobs WHERE id = %s AND status = 'running' FOR UPDATE",
-            (job.id,),
+            """SELECT id FROM search_jobs
+               WHERE id = %s AND status = 'running' AND started_at = %s FOR UPDATE""",
+            (job.id, job.started_at),
         ).scalar_one_or_none()
         if active is None:
             return True

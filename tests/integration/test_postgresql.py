@@ -451,3 +451,80 @@ def test_background_report_reclaims_stale_job_and_fences_old_worker(
         client.get(next_job.headers["Location"], headers=owner).json()["status"]
         == "failed"
     )
+
+
+def test_background_search_reclaims_stale_job_and_saves_once(accounts, monkeypatch):
+    client, ((_, owner, _), (_, other, _)) = accounts
+    queued = client.post(
+        "/api/v1/search-jobs", headers=owner, json={"query": "DEMO recover"}
+    )
+    assert queued.status_code == 202
+    path = queued.headers["Location"]
+    job_id = UUID(queued.json()["id"])
+    result = HybridSearchResults(
+        items=[],
+        tokenizer_version="DEMO",
+        model_name="DEMO",
+        model_digest="a" * 64,
+        pipeline="DEMO",
+        query_expansion_version="DEMO",
+        rrf_k=60,
+        candidate_limit=100,
+        applied_feature_ids=[],
+        reranker=None,
+        limit=20,
+        offset=0,
+        has_more=False,
+    )
+
+    def superseded(request, *, full_snapshot):
+        assert request.query == "DEMO recover" and full_snapshot
+        assert not search_worker.process_one()
+        with engine.begin() as conn:
+            conn.exec_driver_sql(
+                "UPDATE search_jobs SET started_at = started_at + interval '1 second' WHERE id = %s",
+                (job_id,),
+            )
+        return result
+
+    monkeypatch.setattr(search_worker, "run_hybrid", superseded)
+    assert search_worker.process_one()
+    state = client.get(path, headers=owner).json()
+    assert state["status"] == "running" and state["run_id"] is None
+    assert client.get("/api/v1/search-runs", headers=owner).json() == []
+    assert client.get(path, headers=other).status_code == 404
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            """UPDATE search_jobs SET started_at = now() - interval '7 minutes',
+                created_at = now() - interval '8 minutes' WHERE id = %s""",
+            (job_id,),
+        )
+
+    monkeypatch.setattr(search_worker, "run_hybrid", lambda *_args, **_kwargs: result)
+    assert search_worker.process_one()
+    state = client.get(path, headers=owner).json()
+    assert state["status"] == "succeeded"
+    [saved] = client.get("/api/v1/search-runs", headers=owner).json()
+    assert saved["id"] == state["run_id"]
+    detail = client.get(f"/api/v1/search-runs/{saved['id']}", headers=owner).json()
+    assert detail["request"]["query"] == "DEMO recover"
+
+    expired = client.post(
+        "/api/v1/search-jobs", headers=owner, json={"query": "DEMO expires"}
+    )
+    expired_id = UUID(expired.json()["id"])
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            """UPDATE search_jobs SET status = 'running',
+                started_at = now() - interval '7 minutes',
+                created_at = now() - interval '11 minutes' WHERE id = %s""",
+            (expired_id,),
+        )
+    assert not search_worker.process_one()
+    state = client.get(expired.headers["Location"], headers=owner).json()
+    assert state["status"] == "failed"
+    assert state["error_code"] == "SEARCH_JOB_EXPIRED"
+    with engine.connect() as conn:
+        assert conn.exec_driver_sql(
+            "SELECT request IS NULL FROM search_jobs WHERE id = %s", (expired_id,)
+        ).scalar_one()
