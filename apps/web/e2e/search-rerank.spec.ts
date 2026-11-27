@@ -51,5 +51,6 @@ test("local model reranks the same official candidates @versions", async ({ page
     expect(candidate.fusion_rank).toBe(original.find((item) => item.document_id === candidate.document_id)?.fusion_rank);
     await expect(rows.nth(index)).toContainText(candidate.publication_no);
     await expect(rows.nth(index)).toContainText(`重排 ${index + 1}`);
+    await expect(rows.nth(index).getByText(/相關原因 · .*模型依標題與摘要重排/)).toBeVisible();
   }
 });

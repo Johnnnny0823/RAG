@@ -26,6 +26,7 @@ def hit(
 
 def test_fusion_deduplicates_versions_without_combining_different_version_ranks():
     metadata = hit(1, scope="metadata_and_abstract")
+    metadata["lexical_match_fields"] = ["title_zh"]
     fulltext = hit(2, score=0.7)
     grant = hit(3, number="DEMO-grant", stage="grant")
     lexical = [metadata, grant, grant]
@@ -41,6 +42,7 @@ def test_fusion_deduplicates_versions_without_combining_different_version_ranks(
     assert result[1]["semantic_rank"] == 1
     assert result[1]["semantic_score"] == 0.7
     assert result[1]["lexical_rank"] is None
+    assert "lexical_match_fields" not in result[1]
     assert "rrf_score" not in fulltext
 
 
@@ -86,6 +88,7 @@ def test_hybrid_api_sorts_dates_before_pagination_and_keeps_fusion_ranks(monkeyp
     rows = [
         {
             **hit(i, number=f"DEMO-{i}"),
+            "lexical_match_fields": ["title_zh", "claim"],
             "publication_date": published,
             "application_no": f"DEMO-{i}",
             "filing_date": None,
@@ -137,5 +140,6 @@ def test_hybrid_api_sorts_dates_before_pagination_and_keeps_fusion_ranks(monkeyp
     assert first["abstract_excerpt"] == "DEMO-4"
     assert first["applicants"] == [{"zh": "DEMO applicant", "en": None}]
     assert first["ipc_codes"] == ["G01R27/02"]
+    assert first["lexical_match_fields"] == ["title_zh", "claim"]
     assert first["official_source_url"] == "https://data.gov.tw/dataset/15987"
     assert second["official_source_url"] is None

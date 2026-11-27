@@ -203,6 +203,7 @@ class HybridPatentHit(PatentVersion):
     applicants: list[PartyName] = Field(default_factory=list)
     ipc_codes: list[str] = Field(default_factory=list)
     official_source_url: str | None = None
+    lexical_match_fields: list[str] = Field(default_factory=list)
 
 
 class RerankMetadata(BaseModel):
@@ -367,12 +368,12 @@ LEXICAL_SEARCH = f"""
             ts_rank(t.terms, q.terms) *
             CASE WHEN t.field IN ('title_zh', 'title_en') THEN 3
                  WHEN t.field IN ('abstract_zh', 'abstract_en') THEN 2 ELSE 1 END
-        ) AS score
+        ) AS score, array_agg(DISTINCT t.field ORDER BY t.field) AS lexical_match_fields
         FROM patent_lexical_chunks t CROSS JOIN query q
         WHERE t.tokenizer_version = %s AND t.terms @@ q.terms
         GROUP BY t.document_id
     )
-    SELECT {SUMMARY_FIELDS}, m.score
+    SELECT {SUMMARY_FIELDS}, m.score, m.lexical_match_fields
     {DOCUMENTS_FROM} JOIN matches m ON m.document_id = d.id
     {PUBLIC_DOCUMENT_FILTER}
     {SEARCH_FILTERS}

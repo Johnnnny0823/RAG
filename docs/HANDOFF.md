@@ -1973,3 +1973,22 @@
 - Uncommitted changes / file ownership warnings: 變更限整合工作樹，手動驗收資料庫為測試副本。
 - Next 1–3 concrete actions: 核對新提交的 CI、取得人工標註、確認可供驗收的部署主機。
 - Exact reproduction steps: 匯入固定官方語料並補齊第 024019 卷期日期，套用既有遷移與 API 權限配置。依 TESTING 設定 `PATENTSCOPE_E2E_TIPO=dates` 執行 Playwright。
+
+## 候選檢索理由
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `491658a`。
+- Current milestone and status: 可解釋檢索增量已在隔離環境驗收，整體部署與人工評估 IN_PROGRESS。
+- Goal of this session: 以檢索器實際欄位與順位提供候選相關原因。
+- Files changed (with purpose): `services/api/patents.py` 回傳詞彙命中的索引欄位，`apps/web/src/research.tsx` 顯示詞彙區段、語意候選及重排理由。更新 API 文件與融合、日期及重排測試。
+- Database migrations added/applied: 無。
+- API/Schema changes: 混合與保存候選加 `lexical_match_fields`。舊保存資料缺少此項時仍可顯示檢索分支。
+- Commands actually run and results: Ruff、Oxlint 及 API／Nginx 映像建置通過。pytest 126 passed（含 9 項 PostgreSQL）。固定官方公報 Playwright 5 passed，官方重排桌面 1 passed。受限角色對三組查詢各測 20 次詞彙 SQL，前後候選、順位與分數一致，P50 由 0.479／0.632／1.477 ms 至 0.507／1.163／1.687 ms。這是 117 版本小語料與當地環境執行時間。
+- Tests NOT run and reason: 本提交的全套遠端官方 E2E 尚未執行。起點一般 CI [45938111033](https://github.com/Johnnnny0823/RAG/actions/runs/45938111033) 通過，[起點官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45938131415) 執行中。
+- Data sources checked (exact URL/date) and license/access notes: 隔離回放第 024019／053028 期的 117 個官方版本。2026-11-27 核對公開案 `202639611` 的英文標題、摘要詞彙命中及語意順位，沿用[官方資料集](https://data.gov.tw/dataset/9683)。
+- Known bugs / risks / blockers: 大語料的欄位彙總成本與本機資料庫差異仍待量測。人工標註與公開主機仍待。
+- Decisions made (ADR links): 使用資料庫實際命中的同版索引欄位，不推論技術特徵相符程度。語意分支說明為候選資格。
+- Uncommitted changes / file ownership warnings: 變更限整合工作樹。
+- Next 1–3 concrete actions: 核對遠端官方工作流程，取得人工標註與正式主機配置。
+- Exact reproduction steps: 啟動 117 版本固定官方語料與 Ollama。在正式 Nginx 測試站用 `dates` 執行公報套件，再用 `versions` 執行 `search-rerank.spec.ts`。

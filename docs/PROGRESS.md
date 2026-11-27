@@ -170,3 +170,4 @@
 - [x] `e73e09e` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45877742498)、[官方來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45877757310)與[完整官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45878789673)均通過。完整模式另驗證向量索引、瀏覽器引用定位、PDF、跨版本、分頁與重排。
 - [x] 評估報告保留標註資料集雜湊及官方語料狀態，並於狀態改變時中止。隔離 117 版本官方語料實跑詞彙、向量、混合加重排各 8 次，前後語料狀態一致。[評估文件](EVALUATION.md#檢索評估)
 - [x] 混合檢索清單顯示同版本摘要、申請人、文件日期、IPC 與官方資料集連結。隔離官方語料的五種 Playwright 專案及真實 API 搜尋保存和重開均通過。[API 契約](API.md#混合檢索)
+- [x] 混合候選列出實際詞彙命中區段、是否由語意檢索取回及是否經模型重排。117 版本的官方語料通過六項 Playwright 回歸。唯讀 SQL 核對三組查詢調整前後的候選、順位與原始分數一致。[交接](HANDOFF.md#候選檢索理由)

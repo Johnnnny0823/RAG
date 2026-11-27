@@ -39,6 +39,7 @@ type Hit = PatentVersion & {
   applicants?: Party[];
   ipc_codes?: string[];
   official_source_url?: string | null;
+  lexical_match_fields?: string[];
 };
 type SourceLocation = { xpath: string; artifact_sha256: string };
 type Evidence = SourceLocation & { quote: string; char_start: number; char_end: number };
@@ -113,6 +114,21 @@ const scope: Record<string, string> = {
 const splitTerms = (value: string) => value.split(/[,，、\n]/).map((word) => word.trim()).filter(Boolean);
 const names = (parties: Party[]) => parties.map((party) => party.zh || party.en).filter(Boolean).join("、") || "未提供";
 const title = (hit: PatentVersion) => hit.title_zh || hit.title_en || hit.publication_no;
+
+function retrievalReason(hit: Hit): string {
+  const fields = hit.lexical_match_fields ?? [];
+  const areas = [
+    fields.some((field) => field.startsWith("title_")) && "標題",
+    fields.some((field) => field.startsWith("abstract_")) && "摘要",
+    fields.includes("claim") && "請求項",
+    fields.some((field) => field.startsWith("section:")) && "說明書",
+  ].filter(Boolean);
+  return [
+    hit.lexical_rank !== null && (areas.length ? `詞彙命中${areas.join("、")}` : "詞彙檢索候選"),
+    hit.semantic_rank !== null && "列入語意檢索候選",
+    hit.rerank_rank !== null && "模型依標題與摘要重排",
+  ].filter(Boolean).join(" · ");
+}
 
 function evidenceBounds(text: string, source: SourceLocation, evidence: Evidence | null) {
   if (!source || !evidence || evidence.xpath !== source.xpath || evidence.artifact_sha256 !== source.artifact_sha256) return null;
@@ -888,6 +904,7 @@ export function Research() {
                   <button className="mt-1 text-left" type="button" disabled={!!busy} onClick={() => void run("正在載入專利詳情…", () => openPatent(hit))}>{title(hit)}</button>
                   <p className="mt-1 break-words text-sm text-slate-700">申請人 {names(hit.applicants ?? [])} · 文件日期 {hit.publication_date ?? "未提供"}{hit.ipc_codes?.length ? ` · IPC ${hit.ipc_codes.join("、")}` : ""}</p>
                   {hit.abstract_excerpt && <p className="mt-1 line-clamp-3 break-words text-sm text-slate-700">{hit.abstract_excerpt}</p>}
+                  <p className="mt-1 text-sm text-slate-700">相關原因 · {retrievalReason(hit)}</p>
                   <p className="mt-1 text-sm text-slate-700">詞彙 {hit.lexical_rank ?? "—"} · 語意 {hit.semantic_rank ?? "—"} · 融合 {hit.fusion_rank}{hit.rerank_rank && ` · 重排 ${hit.rerank_rank}`}</p>
                   {hit.official_source_url && <a className="mt-1 inline-block text-sm" href={hit.official_source_url} target="_blank" rel="noreferrer">官方資料集</a>}
                 </li>

@@ -21,10 +21,12 @@ test("official gazette dates filter a publication and link its source @gazette",
     item.publication_no === "202639611" && item.content_scope === "fulltext",
   );
   expect(candidate?.abstract_excerpt).toBeTruthy();
+  expect(candidate.lexical_match_fields).toContain("title_en");
   const publication = page.getByRole("listitem").filter({ hasText: "公開 202639611 · 全文" });
   await expect(publication).toBeVisible({ timeout: 40_000 });
   await expect(publication.getByText(/申請人 .*九州大學.*文件日期 2026-10-01.*IPC .*C08F/)).toBeVisible();
   await expect(publication.getByText(candidate.abstract_excerpt, { exact: true })).toBeVisible();
+  await expect(publication.getByText(/相關原因 · 詞彙命中標題.*列入語意檢索候選/)).toBeVisible();
   await expect(publication.getByRole("link", { name: "官方資料集" })).toHaveAttribute("href", "https://data.gov.tw/dataset/9683");
   await expect(page.getByText(/搜尋涵蓋範圍.*最新文件日期 2026-10-01/)).toBeVisible();
   await publication.getByRole("button").click();
