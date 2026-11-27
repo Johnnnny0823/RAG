@@ -2677,3 +2677,22 @@
 - Uncommitted changes / file ownership warnings: 隔離測試腳本位於忽略目錄，隨機測試密碼未寫入工作樹。測試帳號已刪除，服務已停止，未改動日常資料庫。
 - Next 1–3 concrete actions: 確認一般及官源 CI 最終結果。待目標主機及人工複核就緒後完成交付驗收。
 - Exact reproduction steps: 依 [輪替步驟](SETUP.md#輪替-postgresql-執行帳號密碼)及[隔離驗收](TESTING.md#隔離的資料庫執行帳號輪替)重跑。
+
+## 公報 PDF 遠端驗收
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `f155985`。
+- Current milestone and status: 公報 PDF 本機來源複核通過，遠端選用下載仍待。整體交付 IN_PROGRESS。
+- Goal of this session: 追蹤正式官源工作，釐清 GitHub runner 的公報 PDF 下載問題，保留必要檢查的結果。
+- Files changed (with purpose): `.github/workflows/tipo-e2e.yml` 將選用 PDF 下載及對應瀏覽器檢查移至必要來源檢查之後，保持遠端下載失敗會讓整個工作失敗。必要檢查通過時仍驗證入口限流。更新進度、測試和交接文件。
+- Database migrations added/applied: 無新增。
+- API/Schema changes: 無。
+- Commands actually run and results: [遠端公報 PDF 驗收](https://github.com/Johnnnny0823/RAG/actions/runs/46079497499)在 `202640162` 的官方個案 JSON 收到 HTTP 403。已通過 XML 固定雜湊及詞彙 API。以本機應用程式 `fetch` 及 `checked_pdf_path` 直接核對兩案，兩份 PDF 大小與固定 SHA-256 相符。`uv run --no-project --python 3.12 --with pyyaml` 解析工作定義並檢查步驟順序通過，`git diff --check` 通過。`f155985` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46079395192)通過。
+- Tests NOT run and reason: 舊順序的遠端 PDF 因 403 未達瀏覽器。工作流程尚須用新版 GitHub Actions 重跑，本機未另跑 pytest。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 實際核對 [公開 PDF 個案](https://cloud.tipo.gov.tw/S220/downloads/invention/pub024019/pdfdata/114106690.pdf)及[公告 PDF 個案](https://cloud.tipo.gov.tw/S220/downloads/patent/isu053028/pdfdata/114106690.pdf)，使用條件與限制見 [DATA_SOURCES](DATA_SOURCES.md#發明公告公報個案-pdf)。
+- Known bugs / risks / blockers: 遠端對個案端點回應 HTTP 403，原因尚未確認。正式部署及 34 組人工相關性複核仍待。
+- Decisions made (ADR links): 保留固定 PDF 雜湊及版本校驗，讓必要官源檢查先完成。
+- Uncommitted changes / file ownership warnings: 本次只修改整合工作樹，未動到日常開發資料庫。
+- Next 1–3 concrete actions: 驗證新版選用 PDF 工作順序及既有完整官源工作。若 runner 仍拒絕，以已驗證正式公報原件的本機驗收作為獨立證據。
+- Exact reproduction steps: 依 [官方公報 PDF 回歸](TESTING.md#官方公報-pdf-回歸)重跑。

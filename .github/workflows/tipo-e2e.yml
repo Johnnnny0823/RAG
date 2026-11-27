@@ -74,15 +74,11 @@ jobs:
         run: |
           python scripts/smoke_patents.py --official-e2e --api http://127.0.0.1:5173
           python scripts/smoke_lexical.py --official-e2e --api http://127.0.0.1:5173
-      - name: Verify paired official gazette PDFs
-        if: inputs.gazette_pdf
-        run: python -m scripts.smoke_gazette_pdfs --api http://127.0.0.1:5173 --compose-project "$COMPOSE_PROJECT_NAME"
       - name: Official identifier lookup in Chromium
         run: npm run test:e2e --prefix apps/web -- patent-number.spec.ts
         env:
           PATENTSCOPE_E2E_TIPO: versions
           PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
-          PATENTSCOPE_E2E_GAZETTE_PDFS: ${{ inputs.gazette_pdf && '1' || '0' }}
       - name: Start isolated CPU model server
         if: inputs.coverage == 'full'
         run: |
@@ -144,12 +140,24 @@ jobs:
         timeout-minutes: 10
         run: python -m scripts.seed_tipo_grant_events "$RUNNER_TEMP/tipo-fixture"
       - name: Verify official grant events in Playwright
+        id: grant-events
         run: npm run test:e2e --prefix apps/web -- legal-events.spec.ts
         env:
           PATENTSCOPE_E2E_TIPO: grant-events
           PATENTSCOPE_E2E_CROSS_BROWSER: ${{ inputs.coverage == 'full' && '1' || '0' }}
           PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
+      - name: Verify paired official gazette PDFs
+        if: inputs.gazette_pdf
+        run: python -m scripts.smoke_gazette_pdfs --api http://127.0.0.1:5173 --compose-project "$COMPOSE_PROJECT_NAME"
+      - name: Verify official gazette PDFs in Chromium
+        if: inputs.gazette_pdf
+        run: npm run test:e2e --prefix apps/web -- patent-number.spec.ts
+        env:
+          PATENTSCOPE_E2E_TIPO: versions
+          PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
+          PATENTSCOPE_E2E_GAZETTE_PDFS: "1"
       - name: Verify deployment rate limits
+        if: ${{ !cancelled() && steps.grant-events.conclusion == 'success' }}
         run: python scripts/smoke.py --api http://127.0.0.1:5173 --web http://127.0.0.1:5173 --deployment --deployment-rate-limit
       - uses: actions/upload-artifact@v6
         if: failure()
