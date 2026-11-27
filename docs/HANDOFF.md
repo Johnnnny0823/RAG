@@ -2601,3 +2601,22 @@
 - Uncommitted changes / file ownership warnings: 只修改整合工作樹內文件，測試腳本及輸出留於忽略目錄。
 - Next 1–3 concrete actions: 確認新版遠端流程，待人工評分與部署目標後完成評估及交付。
 - Exact reproduction steps: 依 [重新登入後完成官源搜尋](TESTING.md#重新登入後完成官源搜尋) 驗收。
+
+## 測試依賴安全更新
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `a303f44`。
+- Current milestone and status: 依賴公告修正和隔離測試通過。整體交付 IN_PROGRESS。
+- Goal of this session: 查核現有 Python 與前端依賴，更新已確認需要修正的開發套件。
+- Files changed (with purpose): `requirements-dev.txt` 將 pytest 9.0.2 固定至 9.0.3，並更新交接及測試紀錄。
+- Database migrations added/applied: 無。整合測試使用隔離庫 head `0022_legal_event_grant_types`。
+- API/Schema changes: 無。
+- Commands actually run and results: npm audit 前端鎖檔 0 項。pip-audit 原本重複列出 pytest 同一則 CVE-2025-71176，升版重掃回報無已知漏洞。全新 uv 測試環境確認 pytest 9.0.3，預設測試 146 通過、11 預設跳過，另啟用 PostgreSQL 測試 11 項全數通過。Ruff 與 Git diff 檢查通過。起點的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46077493967)已通過。
+- Tests NOT run and reason: 沒有產品程式或前端依賴變更，本地未重跑瀏覽器套件。容器 OS 與正式主機未納入依賴掃描。起點的[官方完整工作](https://github.com/Johnnnny0823/RAG/actions/runs/46077504467)仍在執行。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 查閱 [pytest 官方修正說明](https://github.com/pytest-dev/pytest/releases/tag/9.0.3)，沒有新增 TIPO 取件。
+- Known bugs / risks / blockers: 34 組人工相關性標註與正式主機仍待確認。此次掃描為該時點的套件公告結果。
+- Decisions made (ADR links): 選擇官方已修正的同系列補丁版，保留執行依賴與既有測試架構。
+- Uncommitted changes / file ownership warnings: 只修改整合工作樹。本機原開發虛擬環境未更新。
+- Next 1–3 concrete actions: 查核本提交的 CI 及既有官源工作，待人工標註與目標環境就緒後做最後驗收。
+- Exact reproduction steps: 依 [依賴公告查核](TESTING.md#依賴公告查核) 重掃。以 `uv run --no-project --python 3.12 --with-requirements requirements-dev.txt python -m pytest -q` 執行預設套件，依 TESTING 設定 PostgreSQL 旗標後執行整合測試。

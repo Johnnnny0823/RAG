@@ -348,3 +348,7 @@ npx playwright test --reporter=list
 #### 重新登入後完成官源搜尋
 
 2026-11-28 使用含第 053028–053029 期四件官源全文及 83 條向量的隔離部署。先停止背景程序，以合成帳號呼叫 `POST /api/v1/search-jobs`，送出「乾衣機壁掛式支撐結構」，等待取得原工作 ID。從新瀏覽器登入，保持構想欄空白，點「查看背景搜尋」後啟動背景程序，等候顯示 `M688333`。桌面 Chromium 與 Pixel 7 模擬均通過。瀏覽器在接續期間沒有再次呼叫 `POST /search-jobs`。原工作 ID 成功完成，帳號只有同一份搜尋歷史。
+
+## 依賴公告查核
+
+2026-11-28 執行 `npm audit --prefix apps/web --json`，前端鎖檔回報 0 項。執行 `uvx pip-audit --strict --requirement requirements-dev.txt` 時，pytest 9.0.2 的報告重複列出同一則 CVE-2025-71176。依 [pytest 官方修正說明](https://github.com/pytest-dev/pytest/releases/tag/9.0.3) 將開發依賴固定至 9.0.3。以相同指令重掃，當時解析到的 Python 執行與開發依賴均無已知公告。兩次掃描涵蓋套件依賴，容器 OS 與目標主機另需驗收。
