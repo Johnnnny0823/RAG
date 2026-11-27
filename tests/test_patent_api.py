@@ -49,6 +49,8 @@ def test_query_number_normalization_keeps_leading_zeroes():
         patents.normalize_number(" ０９１１３２００１ ", "application") == "091132001"
     )
     assert patents.normalize_number(" ｉ９４１０８２ ", "grant") == "I941082"
+    assert patents.normalize_number(" ｍ６８７９８４ ", "grant") == "M687984"
+    assert patents.normalize_number("ｄ２４６９１７", "grant") == "D246917"
 
 
 def test_source_url_omits_unverified_links_and_tokens():

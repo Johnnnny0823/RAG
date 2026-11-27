@@ -83,6 +83,12 @@ python scripts/smoke_semantic.py --official-e2e --api http://127.0.0.1:8000
 
 此模式使用第 024019 期的光硬化樹脂及動態導通電阻案件，以及第 053028 期的公告。省略旗標則沿用舊雙期樣本，仍須匯入第 024018 期含 `202637274` 的書目。
 
+### 新型與設計公告回歸
+
+先依固定官方樣本驗證取得 `grant-053028.xml`。對獨立 Compose 專案掛載含該原檔的目錄至 `/inputs`，使用 `migrate` 容器執行 `python -m services.ingestion.import_issue --index /inputs/grant-053028.xml --index-source-url ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index.xml --batch 053028 --grant-number M687984 --grant-number D246917 --verified-tipo`。重跑應回報 `reused: true`。再於同一專案執行 `python -m services.ingestion.verify_document <公告號> --grant-issue 053028`，分別驗證新型 16 項與設計 0 項請求項。要驗證詞彙檢索，匯入後重跑 `services.retrieval.index_lexical`。
+
+將 `PATENTSCOPE_E2E_TIPO` 設為 `grant-types`，並設定隔離站的 `PATENTSCOPE_E2E_URL`，執行 `npm run test:e2e --prefix apps/web -- patent-number.spec.ts`。官方 GitHub Actions 在固定語料測試後加入這組案件，以保留各既有檢索測試的語料範圍。[來源與限制](DATA_SOURCES.md#同期新型與設計公告)
+
 ### 官方公報 PDF 回歸
 
 以獨立 Compose 專案匯入上述固定官方語料後，可驗證同案的公開及公告 PDF。此測試先驗證錯版的附件請求在連線前遭拒。兩份 PDF 各實取一次，後續透過 `--replay-stored` 重跑，再用 API 核對去重及 XML 請求項來源。若智財局拒絕下載，首次取件關卡會依實際 HTTP 狀態回報失敗。

@@ -1,4 +1,4 @@
-"""Parse a selected invention grant from the verified TIPO S01 issue index."""
+"""Parse selected grants from the verified TIPO S01 issue index."""
 
 import hashlib
 import re
@@ -8,6 +8,8 @@ from services.ingestion.artifacts import MAX_GAZETTE_XML_BYTES
 from services.ingestion.issue_index import party_names, text
 from services.ingestion.patentpub import PatentPublication, parse_xml, patent_number
 from services.ingestion.specification import Claim
+
+GRANT_APPLICATION_TYPES = {"I": "invention", "M": "model", "D": "design"}
 
 
 def parse_grant(data: bytes, issue: str, certificate: str):
@@ -51,21 +53,22 @@ def parse_selected_grants(
     if (
         not selected
         or len(selected) != len(certificates)
-        or any(not re.fullmatch(r"I[0-9]+", certificate) for certificate in selected)
+        or any(
+            not re.fullmatch(r"[IMD][0-9]{1,12}", certificate)
+            for certificate in selected
+        )
     ):
-        raise ValueError("Expected distinct invention grant numbers")
+        raise ValueError("Expected distinct grant numbers")
     matches = {}
     for position, item in enumerate(grant_records(data), 1):
         certificate = item.get("certificate-number")
         if item.tag != "tw-patent-grant" or certificate not in selected:
             continue
         if certificate in matches:
-            raise ValueError(f"Multiple matching invention grants: {certificate}")
+            raise ValueError(f"Multiple matching grants: {certificate}")
         matches[certificate] = _parse_grant(item, position, issue, certificate)
     if missing := selected - matches.keys():
-        raise ValueError(
-            f"Missing selected invention grants: {', '.join(sorted(missing))}"
-        )
+        raise ValueError(f"Missing selected grants: {', '.join(sorted(missing))}")
     return [matches[certificate] for certificate in certificates]
 
 
@@ -90,10 +93,12 @@ def _parse_grant(item: ET.Element, position: int, issue: str, certificate: str):
         raise ValueError("Missing grant bibliography")
     if grant_issue(biblio) != issue:
         raise ValueError("TIPO grant index does not match the requested issue")
+    application_type = GRANT_APPLICATION_TYPES[certificate[0]]
     if (
         biblio.findtext("publication-reference/document-id/doc-number") != certificate
         or biblio.findtext("certificate-number/document-id/doc-number") != certificate
-        or biblio.find("./application-reference[@appl-type='invention']") is None
+        or biblio.find(f"./application-reference[@appl-type='{application_type}']")
+        is None
     ):
         raise ValueError("Grant identifiers or application type disagree")
 
@@ -113,8 +118,10 @@ def _parse_grant(item: ET.Element, position: int, issue: str, certificate: str):
             raise ValueError("Empty grant claim")
         numbers.add(number)
         claims.append(Claim(number, original, None, f"{locator}/claims/claim[{index}]"))
-    if not claims:
-        raise ValueError("No claims in selected invention grant")
+    if application_type == "design" and claims:
+        raise ValueError("Unexpected claims in selected design grant")
+    if application_type != "design" and not claims:
+        raise ValueError("No claims in selected invention or utility model grant")
 
     item.tail = None
     return PatentPublication(

@@ -66,3 +66,23 @@ def test_large_grant_issue_is_accepted_without_raising_the_individual_xml_limit(
     assert grant.publication_no == "I000001" and len(claims) == 1
     with pytest.raises(ValueError, match="exceeds the size limit"):
         parse_xml(issue)
+
+
+def test_utility_model_preserves_claims_and_rejects_mismatched_application_type():
+    model = GRANT.replace(b"I000001", b"M000001").replace(b'"invention"', b'"model"')
+    grant, [claim] = parse_grant(model, "053028", "M000001")
+    assert grant.publication_no == "M000001"
+    assert claim.text == "DEMO exact text"
+    with pytest.raises(ValueError, match="application type"):
+        parse_grant(model.replace(b'"model"', b'"invention"'), "053028", "M000001")
+
+
+def test_design_keeps_bibliography_without_creating_claims():
+    design = GRANT.replace(b"I000001", b"D000001").replace(b'"invention"', b'"design"')
+    with pytest.raises(ValueError, match="Unexpected claims"):
+        parse_grant(design, "053028", "D000001")
+    design = design.replace(b'<claim num="1"><p>DEMO exact text</p></claim>', b"")
+    grant, claims = parse_grant(design, "053028", "D000001")
+    assert grant.publication_no == "D000001"
+    assert grant.title_en == "DEMO"
+    assert claims == []

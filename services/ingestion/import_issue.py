@@ -129,7 +129,9 @@ def store_document(
                     "content_scope": "fulltext"
                     if has_fulltext
                     else (
-                        "claims_only" if stage == "grant" else "metadata_and_abstract"
+                        "claims_only"
+                        if spec and spec.claims
+                        else "metadata_and_abstract"
                     ),
                 }
             ),
@@ -362,7 +364,7 @@ def import_issue(args):
                     error_log,
                 )
             stage = "grant" if args.grant_number else "publication"
-            if args.grant_number and spec is None:
+            if spec is None and grant_claims.get(record.publication_no):
                 spec = Specification(index_raw, [], grant_claims[record.publication_no])
             document_id = store_document(conn, record, jurisdiction, spec, stage=stage)
             link_artifact(conn, document_id, index_id, record.locator)
@@ -413,7 +415,9 @@ def import_issue(args):
                 for number, error in failures.items()
             ]
         if args.grant_number:
-            counts["grants_with_claims"] = len(records)
+            counts["grants_with_claims"] = sum(
+                bool(claims) for claims in grant_claims.values()
+            )
         if records and not args.demo:
             counts["legal_events_linked"] = link_events(
                 conn, applications=sorted({record.application_no for record in records})
@@ -439,7 +443,7 @@ def parse_import_args(argv=None):
         "--grant-number",
         action="append",
         default=[],
-        help="Select an invention grant from an official S01 index (repeatable)",
+        help="Select an invention, utility model or design grant from an official S01 index (repeatable)",
     )
     parser.add_argument("--manifest", type=Path, help="Official index_all.xml file")
     parser.add_argument("--manifest-url", help="Official FTPS URL of the manifest file")
@@ -489,6 +493,13 @@ def parse_import_args(argv=None):
         parser.error(
             "--grant-number requires --verified-tipo and an official manifest for specifications"
         )
+    if any(number.startswith(("D", "M")) for number in args.grant_number):
+        if args.manifest:
+            parser.error(
+                "Utility model and design grant imports currently use the S01 index only"
+            )
+        if not args.index_source_url:
+            parser.error("Utility model and design grants require --index-source-url")
     args.specs = {}
     for item in args.spec:
         number, separator, path = item.partition("=")

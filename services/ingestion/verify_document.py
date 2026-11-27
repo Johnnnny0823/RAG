@@ -21,10 +21,17 @@ def verify(
     grant_fulltext: bool = False,
 ) -> tuple[int, int]:
     stage = "grant" if grant_issue else "publication"
-    scope = "claims_only" if grant_issue and not grant_fulltext else "fulltext"
+    index_grant = bool(grant_issue and not grant_fulltext)
+    scope = "fulltext"
+    if index_grant:
+        scope = (
+            "metadata_and_abstract" if publication_no.startswith("D") else "claims_only"
+        )
     with engine.connect() as conn:
-        document_id, application_no, checksum, key, size = conn.exec_driver_sql(
-            """SELECT DISTINCT d.id, p.application_no, a.checksum, a.object_key, a.size_bytes
+        document_id, application_no, checksum, key, size, source_hash = (
+            conn.exec_driver_sql(
+                """SELECT DISTINCT d.id, p.application_no, a.checksum, a.object_key,
+                               a.size_bytes, d.source_hash
                FROM patent_documents d
                JOIN patent_applications p ON p.id = d.application_id
                JOIN document_artifacts da ON da.document_id = d.id
@@ -33,17 +40,21 @@ def verify(
                  AND d.publication_no = %s
                  AND d.metadata_jsonb->>'content_scope' = %s
                  AND (da.record_locator IN ('/invention-specification','/specification')
-                      OR (d.document_stage = 'grant' AND %s = 'claims_only' AND
+                      OR (%s AND
                           right(da.record_locator, 1) = ']' AND
                           starts_with(da.record_locator, '/tw-patent-grants/tw-patent-grant[')))""",
-            (stage, publication_no, scope, scope),
-        ).one()
+                (stage, publication_no, scope, index_grant),
+            ).one()
+        )
         payload = LocalObjectStore(root).read(RawArtifact(checksum, key, size))
-        if grant_issue and not grant_fulltext:
+        if grant_issue and index_grant:
             grant, claims = parse_grant(payload, grant_issue, publication_no)
-            if grant.application_no != application_no:
+            if (
+                grant.application_no != application_no
+                or grant.source_hash != source_hash
+            ):
                 raise ValueError(
-                    "Archived grant application number differs from the database"
+                    "Archived grant application number or source hash differs from the database"
                 )
             sections = []
         else:
@@ -103,5 +114,5 @@ if __name__ == "__main__":
         grant_fulltext=args.grant_fulltext,
     )
     print(
-        f"Verified {claims} claims and {sections} description paragraphs against archived XML"
+        f"Verified document against archived XML: {claims} claims and {sections} description paragraphs"
     )

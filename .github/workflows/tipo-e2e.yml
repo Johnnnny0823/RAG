@@ -114,6 +114,22 @@ jobs:
         env:
           PATENTSCOPE_E2E_TIPO: versions
           PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
+      - name: Verify official utility model and design records
+        run: |
+          compose=(docker compose --env-file .env.example run --rm --no-deps)
+          inputs=(-v "$RUNNER_TEMP/tipo-fixture:/inputs:ro")
+          index_source='ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index.xml'
+          "${compose[@]}" "${inputs[@]}" migrate python -m services.ingestion.import_issue \
+            --index /inputs/grant-053028.xml --index-source-url "$index_source" --batch 053028 \
+            --grant-number M687984 --grant-number D246917 --verified-tipo
+          for number in M687984 D246917; do
+            "${compose[@]}" migrate python -m services.ingestion.verify_document "$number" --grant-issue 053028
+          done
+      - name: Utility model and design number lookup in Chromium
+        run: npm run test:e2e --prefix apps/web -- patent-number.spec.ts
+        env:
+          PATENTSCOPE_E2E_TIPO: grant-types
+          PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
       - name: Verify deployment rate limits
         run: python scripts/smoke.py --api http://127.0.0.1:5173 --web http://127.0.0.1:5173 --deployment --deployment-rate-limit
       - uses: actions/upload-artifact@v6

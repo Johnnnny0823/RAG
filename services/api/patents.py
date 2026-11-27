@@ -565,7 +565,7 @@ def missing_semantic_index():
 
 def normalize_number(number: str, number_type: NumberType) -> str:
     normalized = unicodedata.normalize("NFKC", number).strip().upper()
-    pattern = r"I[0-9]{1,12}" if number_type == "grant" else r"[0-9]{9}"
+    pattern = r"[IMD][0-9]{1,12}" if number_type == "grant" else r"[0-9]{9}"
     if not re.fullmatch(pattern, normalized):
         raise ValueError("專利號碼格式與查詢類型不符。")
     return normalized

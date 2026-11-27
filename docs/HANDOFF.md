@@ -2220,3 +2220,22 @@
 - Uncommitted changes / file ownership warnings: 本輪只更新整合分支的文件，隔離資料庫只讀。
 - Next 1–3 concrete actions: 核對官方回歸終態。收到人工複核與實際主機資訊後分別重跑評估與部署驗收。
 - Exact reproduction steps: 讀取 PROGRESS 的交付證據索引。`python -m alembic heads` 並在隔離 PostgreSQL 查詢 `alembic_version`、`information_schema.tables` 及 `pg_constraint` 核對 Schema。
+
+## 新型與設計公告書目切片
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `09ac472`。
+- Current milestone and status: 已驗收同一期新型與設計公告各一筆，整體交付 IN_PROGRESS。
+- Goal of this session: 增加真實新型及設計資料的指定公告匯入，維持各文件類型實際可取得的欄位與原文。
+- Files changed (with purpose): `grant_index.py` 核對 I/M/D 號碼與官方 `appl-type`，`import_issue.py` 保留新型請求項及設計書目，`verify_document.py` 按版本核對原始來源，`patents.py` 支援 M/D 公告號。新增單元、Playwright、官方 CI 步驟與操作文件。
+- Database migrations added/applied: 無新增，沿用 `0021_gazette_pdf_search`。隔離庫增加兩個文件版本及 18 個詞彙片段。
+- API/Schema changes: `GET /api/v1/patents` 的 `number_type=grant` 接受 M/D 公告號。未提供的設計摘要、分類及原文保留空值或空集合。
+- Commands actually run and results: Ruff 格式及 lint 通過，pytest 130 通過、9 跳過，前端 lint 及 Compose 正式建置通過。`import_issue` 首次新增，第二次重用。`verify_document` 確認新型 16、設計 0、既有發明 13 項請求項及原始定位。真實 API 對兩案通過精確號碼、官方原檔雜湊及詞彙檢索。新 Playwright 首輪因定位到錯誤的按鈕名稱失敗，改按清單項目限定後 Chromium 三尺寸、Firefox、WebKit 皆通過。既有發明 PDF Chromium 回歸亦通過。
+- Tests NOT run and reason: 本輪本機未執行九項獨立 PostgreSQL pytest，以隔離真實匯入及 API 補驗。新增兩案未驗證語意檢索或模型比對。新遠端驗收等待推送。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 查核 https://data.gov.tw/dataset/15987，免費、每月更新、政府資料開放授權條款第 1 版。使用已核對 SHA-256 的第 053028 期 FTPS 索引，詳見 DATA_SOURCES。
+- Known bugs / risks / blockers: 新型及設計的個案全文、圖式、法律狀態及排程仍待驗證或實作。人工複核及對外主機驗收待完成。
+- Decisions made (ADR links): 只允許以已驗證 S01 來源選取新型及設計公告。官方 CI 在既有固定語料回歸後才匯入兩筆，保留既有檢索用例的固定語料。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹與隔離庫作業，原檔未納入 Git。
+- Next 1–3 concrete actions: 監測一般 CI 及官方來源模式；按已查核的官方來源接續個案全文與圖式驗證。
+- Exact reproduction steps: 依 TESTING 的「新型與設計公告回歸」從固定 XML 選取 `M687984` 及 `D246917`，重跑同批後驗證原檔，再跑詞彙索引及 `PATENTSCOPE_E2E_TIPO=grant-types`。
