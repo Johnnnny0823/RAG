@@ -39,7 +39,7 @@
 | `M688679`，申請號 `114206535` | [個案 XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330M688679/114206535-A0305.xml)，72,760 bytes，SHA-256 `adef492f39db89c809115dd68d028cbff178a3634fbcf11f38de3ab0739c3093`，DTD `1.0.0`。核對 208 段說明書及 10 項請求項。 |
 | `D247328`，申請號 `113306657` | [個案 XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330D247328/113306657-A0305.xml)，4,689 bytes，SHA-256 `f8c18dc5cb114fc70bd54b38a4cd8ea97b57772adac3568603e88c36c3e83d18`，DTD `2.0.1`。核對 7 段說明書，原檔沒有請求項。 |
 
-兩案都保留獨立的 S01 版本及個案文字版本。`fulltext` 涵蓋本次驗證的個案說明書及來源提供的請求項。`M688679` 的個案 XML 另有 `lang=tw` 及 `lang=en` 的摘要。新版 `tipo-issue-2` 保留原文及 `/specification/abstract[1]/abstract-dtext[1]`、`/specification/abstract[2]/abstract-dtext[1]`，既有版本可繼續回查。新型與設計法律異動及自動補期尚待整合。
+兩案都保留獨立的 S01 版本及個案文字版本。`fulltext` 涵蓋本次驗證的個案說明書及來源提供的請求項。`M688679` 的個案 XML 另有 `lang=tw` 及 `lang=en` 的摘要。新版 `tipo-issue-2` 保留原文及 `/specification/abstract[1]/abstract-dtext[1]`、`/specification/abstract[2]/abstract-dtext[1]`，既有版本可繼續回查。新型與設計的選定法律異動已可匯入。書目與全文自動補期仍待驗證。
 
 ### 新型與設計個案圖式
 
@@ -163,3 +163,16 @@
 ### 第 053032 期異動封存
 
 2026-11-26 實測民國 115 年第 053032 期的匿名 FTPS 封存。[索引](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053032/index.xml) 大小為 250,333 bytes，SHA-256 `864b6d1837000ba92354018bc6ea647e9e5050cbe86cdbfda0cb10475ba4575b`。[消滅公告 `sud08`](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053032/sud08.xml) 有 982 筆發明事件，SHA-256 `6b9ccbdcf7d4966247c5de51b5bc2c60371c3badb58f7b6ec93e64801a7cff1a`。[更正公報 `sud24`](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053032/sud24.xml) 有 33 筆發明事件，SHA-256 `624e09e1e2b820778f52722ba3589c9f653ae2423c6e181b0a4c033fb4eafa16`。兩類原檔的發明事件身分及次數均與封存索引一致。
+
+## 第 053033 期新型與設計異動
+
+2026-11-27 依[智財局專利權異動公報資料集](https://data.gov.tw/dataset/15974)核對第 053033 期 FTPS 原件。該資料集採政府資料開放授權條款第 1 版，目錄更新頻率為每月。第 053033 期索引 SHA-256 為 `3945c07fd8f2b286e00dac8d46c67faf849c998f3c89009b3eec75ebc2226299`。兩類事件均比對索引的分類、申請號及證書號。
+
+| 原件 | 發明 | 新型 | 設計 | 未匯入 |
+| --- | ---: | ---: | ---: | ---: |
+| `sud08.xml` 消滅 | 838 | 476 | 167 | 1 筆舊式純數字號 |
+| `sud24.xml` 更正 | 31 | 2 | 1 | 1 筆無法驗證證書格式 |
+
+新型 `M681479`（申請號 `114206865`、第 053010 期 S01）在 `sud24.xml` 第 5 筆有代理人更正。設計 `D246955`（申請號 `114305323`、第 053028 期 S01）在第 28 筆有設計人更正。兩筆皆未載生效日，僅保存更正項目。第 053010 期公告索引 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053010/index.xml` 的 SHA-256 為 `5f2bed1abaa7b9e812fcf1f1e2b240007c4881be719fb387d114b4ca92611d2e`。第 053028 期對應索引的 SHA-256 為 `60936a7ab763fbb8bd79b8a3071aa89d43da3ffe4ef65928734a9ddc70827a4a`。
+
+本次實際連結並開啟的是兩筆更正。歷史消滅事件已進目錄，仍需相符公告版本才會出現在詳情。現行權利狀態請查智財局最新資料。

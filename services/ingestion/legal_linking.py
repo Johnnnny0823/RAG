@@ -27,6 +27,10 @@ def link_events(
            JOIN patent_applications a ON a.jurisdiction = 'TW' AND a.application_no = p.application_no
            WHERE (%s::uuid IS NULL OR p.artifact_id = %s)
              AND (%s::text[] IS NULL OR p.application_no = ANY(%s::text[]))
+             AND (starts_with(p.certificate_no, 'I') OR EXISTS (
+               SELECT 1 FROM patent_documents d WHERE d.application_id = a.id
+                 AND d.document_stage = 'grant' AND d.publication_no = p.certificate_no
+             ))
              AND NOT EXISTS (
                SELECT 1 FROM patent_documents d WHERE d.application_id = a.id
                  AND d.document_stage = 'grant' AND d.publication_no <> p.certificate_no

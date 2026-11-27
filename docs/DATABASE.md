@@ -1,14 +1,16 @@
 # 資料庫設計
 
-PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，此整合分支單一 head 為 `0021_gazette_pdf_search`。
+PostgreSQL 16 搭配 pgvector 0.8.2。結構由 `database/migrations/versions/` 的 Alembic 遷移建立，此整合分支單一 head 為 `0022_legal_event_grant_types`。
 
 `audit_logs` 保存帳號 UUID、操作、結果、資源類型、可選的資源 UUID 及時間。API 角色可讀取與新增，無更新或刪除權限。刪除帳號時由外鍵清理歷程。
 
-`legal_event_catalog` 保留已驗證發明異動的申請號、證書號、日期、原始檔及記錄位置。專利匯入時以申請號索引配對，已連結的詳情仍從 `patent_legal_events` 讀取。API 角色無異動暫存表的讀寫權限。
+`legal_event_catalog` 保留已驗證發明、新型及設計異動的申請號、證書號、日期、原始檔及記錄位置。專利匯入時以申請號索引配對，已連結的詳情仍從 `patent_legal_events` 讀取。API 角色無異動暫存表的讀寫權限。
 
 `0020_gazette_pdf_pages` 依原檔及頁碼保存 PDF 文字層，以 `(artifact_id, page_number)` 為主鍵。每頁上限 20,000 字元，允許空文字層。API 角色僅可讀。查閱時需依 `document_artifacts` 核對該版本與 PDF SHA-256 的關聯。降版移除衍生文字頁，原始公報與既有專利版本可供重新擷取。
 
 `0021_gazette_pdf_search` 以現有繁中雙字詞分詞建立 GIN，升版會回填既有擷取頁。新匯入 PDF 同步建立頁面詞彙索引。降版移除衍生索引欄位，保留 PDF 文字層。
+
+`0022_legal_event_grant_types` 擴充證書號約束，並接受具有官方尾碼的衍生設計申請號。新型及設計事件須與同一案的公告證書號相符才會連結。降版前若有任何新型或設計事件，遷移會停止並保留資料。
 
 主鍵多為 UUID（`gen_random_uuid()`），時間欄位為 `timestamptz`，只知道日期時用 `date`。
 

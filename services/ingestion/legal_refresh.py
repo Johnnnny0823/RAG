@@ -18,8 +18,10 @@ from services.ingestion.download import (
 )
 from services.ingestion.issue_manifest import HOST
 from services.ingestion.legal_events import (
+    CERTIFICATE_PATTERN,
     TYPES,
     archive_url,
+    event_counts,
     import_events,
     parse_events,
 )
@@ -61,7 +63,7 @@ def refresh(
             (row.get("aplno"), row.get("cerno"))
             for row in root
             if row.get("sudtype") == event_type
-            and re.fullmatch(r"I[0-9]+", row.get("cerno", ""))
+            and CERTIFICATE_PATTERN.fullmatch(row.get("cerno", ""))
         )
         if not expected:
             continue
@@ -71,7 +73,7 @@ def refresh(
             raise ValueError(
                 f"Official event category {event_type} disagrees with its index"
             )
-        payloads[event_type] = (payload, len(events))
+        payloads[event_type] = (payload, event_counts(events))
 
     if apply:
         store.put(index)
@@ -85,10 +87,10 @@ def refresh(
             event_type: import_events(payload, store, year, issue, event_type)
             if apply
             else {
-                "invention_events": count,
+                **counts,
                 "sha256": hashlib.sha256(payload).hexdigest(),
             }
-            for event_type, (payload, count) in payloads.items()
+            for event_type, (payload, counts) in payloads.items()
         },
     }
 

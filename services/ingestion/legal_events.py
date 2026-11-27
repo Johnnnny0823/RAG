@@ -1,4 +1,4 @@
-"""Import selected invention events from a verified TIPO gazette issue."""
+"""Import selected patent events from a verified TIPO gazette issue."""
 
 import argparse
 import json
@@ -24,6 +24,8 @@ from services.ingestion.patentpub import parse_xml, patent_number
 
 DATASET_URL = "https://data.gov.tw/dataset/15974"
 PARSER_VERSION = "tipo-sundry-events-1"
+CATALOG_SCOPE = "invention-utility-model-design-v2"
+CERTIFICATE_PATTERN = re.compile(r"[IMD][0-9]+")
 TYPES = {"sud08": "extinguishment", "sud24": "gazette_correction"}
 logger = logging.getLogger(__name__)
 
@@ -71,10 +73,12 @@ def parse_events(data: bytes, issue: str, event_type: str) -> list[LegalEvent]:
             raise ValueError("Event belongs to a different gazette issue")
         certificate_field = "cerno" if extinct else "orgpatno"
         certificate = item.findtext(namespace + certificate_field, "").strip()
-        if not re.fullmatch(r"I[0-9]+", certificate):
+        if not CERTIFICATE_PATTERN.fullmatch(certificate):
             continue
         application = patent_number(
-            item, namespace + ("aplno" if extinct else "orgaplno")
+            item,
+            namespace + ("aplno" if extinct else "orgaplno"),
+            design=certificate.startswith("D"),
         )
         effective = (
             roc_date(item.findtext(namespace + "extdt", "").strip())
@@ -91,6 +95,14 @@ def parse_events(data: bytes, issue: str, event_type: str) -> list[LegalEvent]:
             LegalEvent(application, certificate, effective, detail or None, locator)
         )
     return events
+
+
+def event_counts(events: list[LegalEvent]) -> dict[str, int]:
+    return {
+        "invention_events": sum(e.certificate_no.startswith("I") for e in events),
+        "utility_model_events": sum(e.certificate_no.startswith("M") for e in events),
+        "design_events": sum(e.certificate_no.startswith("D") for e in events),
+    }
 
 
 def import_events(
@@ -148,13 +160,13 @@ def import_events(
             (artifact_id,),
         ).scalar_one()
         counts = {
-            "invention_events": len(events),
+            **event_counts(events),
             "matched_events": matched,
             "cataloged_events": len(events),
         }
         conn.exec_driver_sql(
             "UPDATE ingestion_batches SET counts_jsonb=%s WHERE id=%s",
-            (Jsonb(counts), batch_id),
+            (Jsonb({**counts, "catalog_scope": CATALOG_SCOPE}), batch_id),
         )
     return {**counts, "new_events": inserted, "sha256": raw.checksum}
 
@@ -168,9 +180,10 @@ def replay_stored_events(store: LocalObjectStore) -> dict:
                JOIN source_datasets s ON s.id = b.dataset_id
                WHERE s.dataset_key = 'TIPO-15974' AND NOT s.is_demo
                  AND ia.status = 'parsed' AND b.status = 'complete'
-                 AND b.parser_version = %s AND NOT (b.counts_jsonb ? 'cataloged_events')
+                 AND b.parser_version = %s
+                 AND (NOT (b.counts_jsonb ? 'cataloged_events') OR b.counts_jsonb->>'catalog_scope' IS DISTINCT FROM %s)
                ORDER BY b.batch_key, ia.source_locator""",
-            (PARSER_VERSION,),
+            (PARSER_VERSION, CATALOG_SCOPE),
         ).all()
     inserted = failed = 0
     for row in pending:

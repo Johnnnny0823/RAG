@@ -54,7 +54,7 @@ EXTINGUISHMENT = b"""<!DOCTYPE Sud08Dataset SYSTEM "sud08.dtd"[]>
   <sud08><cerno>I999999</cerno><aplno>000000001</aplno><volno>53</volno><isuno>33</isuno>
     <extdt>115/02/21</extdt><extson>fixture reason</extson><patentee>fixture name</patentee>
   </sud08>
-  <sud08><cerno>M999999</cerno><volno>53</volno><isuno>33</isuno></sud08>
+  <sud08><cerno>2999999</cerno><volno>53</volno><isuno>33</isuno></sud08>
 </Sud08Dataset>"""
 
 CORRECTION = b"""
@@ -65,12 +65,26 @@ CORRECTION = b"""
 </Sud24Dataset>"""
 
 
-def test_extinguishment_date_comes_from_source_and_other_patent_kinds_are_skipped():
+def test_extinguishment_date_comes_from_source_and_legacy_numbers_are_skipped():
     [event] = parse_events(EXTINGUISHMENT, "053033", "sud08")
     assert event.application_no == "000000001" and event.certificate_no == "I999999"
     assert event.effective_on == date(2026, 2, 21)
     assert event.detail == "fixture reason"
     assert event.record_locator.endswith("*[local-name()='sud08'][1]")
+
+
+def test_modern_utility_model_and_derived_design_events_keep_their_identities():
+    utility = EXTINGUISHMENT.replace(b"I999999", b"M999999")
+    [extinction] = parse_events(utility, "053033", "sud08")
+    assert extinction.certificate_no == "M999999"
+    assert extinction.effective_on == date(2026, 2, 21)
+
+    derived = CORRECTION.replace(b"I999999", b"D999999").replace(
+        b"000000001", b"000300001D01"
+    )
+    [correction] = parse_events(derived, "053033", "sud24")
+    assert correction.application_no == "000300001D01"
+    assert correction.certificate_no == "D999999"
 
 
 def test_correction_exposes_only_the_corrected_field_and_has_no_assumed_date():

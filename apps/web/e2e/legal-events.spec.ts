@@ -1,5 +1,21 @@
 import { expect, test } from "@playwright/test";
 
+test("utility model and design display their same-certificate official corrections @grant-events", async ({ page }) => {
+  await page.goto("/");
+  const lookup = page.getByRole("region", { name: "專利號碼查詢" });
+  await lookup.getByLabel("號碼類型").selectOption("grant");
+  for (const [number, field] of [["M681479", "代理人"], ["D246955", "設計人"]]) {
+    await lookup.getByLabel("專利號碼").fill(number);
+    await lookup.getByRole("button", { name: "查詢專利號碼" }).click();
+    await lookup.getByRole("listitem").filter({ hasText: `公告 ${number}` }).getByRole("button").click();
+    const correction = page.getByRole("listitem").filter({ hasText: `公報更正 · 證書號 ${number} · 卷期 053033` });
+    await expect(correction.getByText(new RegExp(field))).toBeVisible();
+    await expect(correction.getByRole("link", { name: "異動公報原始檔" })).toHaveAttribute("href", /PatentIsuModXML_053033\/sud24\.xml$/);
+    await correction.getByText("異動公報來源定位", { exact: true }).click();
+    await expect(correction.getByText(/97993734e1cd87b54537069ded8593a02615d7aa09442779a47a688ccffc16a3/)).toBeVisible();
+  }
+});
+
 test("a public document shows the sourced gazette correction for its application @legal-events", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("API、資料庫與向量擴充功能已就緒。")).toBeVisible();

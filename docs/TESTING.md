@@ -296,3 +296,11 @@ npx playwright test --reporter=list
 2026-11-27 通過 5 項，涵蓋桌面、平板與手機 Chromium，以及桌面 Firefox 與 WebKit。測試連線時核對語料狀態 API 由網路回應，斷線時核對提示與 API 無法讀取，恢復後再次取得 200。官方來源工作流程在啟動正式映像後先跑桌面 Chromium，再匯入官方語料。
 
 部署冒煙的 `--deployment` 也會驗證 manifest 的媒體類型與作用範圍、Service Worker 的腳本媒體類型與快取政策，以及離線頁。完整官方工作流程在向量索引及語意 API 驗收後，再以 `--require-official-index` 檢查公開語料狀態。測試站若同時驗收限流，會在觸發限流前查詢語料狀態。
+
+## 新型及設計異動回歸
+
+用隔離 Compose 專案以已驗證的第 053033 期 `sud08.xml` 和 `sud24.xml` 建立舊版發明事件，再升至 `0022_legal_event_grant_types`。執行 `python -m services.ingestion.legal_events --replay-stored` 回填新型與設計。重跑應回報零筆，總數應維持 869 筆發明、478 筆新型及 168 筆設計。
+
+使用 `services.ingestion.import_issue --verified-tipo` 匯入第 053010 期 `M681479` 及第 053028 期 `D246955`。先查 `GET /api/v1/patents?number_type=grant&number=...`，再查文件 UUID 對應的詳情，核對兩筆更正的卷期、SHA-256、來源 XPath 及空白生效日。在具備資料的隔離庫嘗試降版應被阻擋，遷移版本應維持 `0022_legal_event_grant_types`。
+
+設定 `PATENTSCOPE_E2E_URL` 指向隔離前端，設 `PATENTSCOPE_E2E_TIPO=grant-events` 及 `PATENTSCOPE_E2E_CROSS_BROWSER=1`，在 `apps/web` 執行 `npx playwright test legal-events.spec.ts`。2026-11-27，Chromium 桌面／平板／手機、Firefox 和 WebKit 共五項通過。

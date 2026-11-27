@@ -18,8 +18,8 @@
 | Goal 項目 | 原始碼、文件與驗收範圍 |
 | --- | --- |
 | 1–2 前後端 | [React 入口](../apps/web/src/main.tsx)、[FastAPI 入口](../services/api/main.py)。`d397c41` 的 [CI](https://github.com/Johnnnny0823/RAG/actions/runs/45974697044) 通過正式打包及核心流程。 |
-| 3 PostgreSQL、遷移 | [資料庫設計](DATABASE.md)、[遷移](../database/migrations/versions)。空白隔離庫已遷移至 `0021_gazette_pdf_search`，同一 CI 通過 9 項 PostgreSQL 整合測試。 |
-| 4 TIPO 匯入 | [來源範圍](DATA_SOURCES.md)、[固定官方樣本](TESTING.md#自動建立固定官方樣本)及[公報 PDF 驗收](TESTING.md#官方公報-pdf-回歸)。固定發明公開、公告、選定異動卷期及新型、設計書目與各一件個案文字已有驗收。新型與設計各一張官方圖式已核對，兩類法律異動仍待。 |
+| 3 PostgreSQL、遷移 | [資料庫設計](DATABASE.md)、[遷移](../database/migrations/versions)。空白隔離庫已遷移至 `0022_legal_event_grant_types`，並用第 053033 期原件驗證舊庫回填與降版保護。本機另通過 9 項 PostgreSQL 整合測試。 |
+| 4 TIPO 匯入 | [來源範圍](DATA_SOURCES.md)、[固定官方樣本](TESTING.md#自動建立固定官方樣本)及[公報 PDF 驗收](TESTING.md#官方公報-pdf-回歸)。固定發明公開、公告、選定異動卷期及新型、設計書目與各一件個案文字已有驗收。新型與設計各一張官方圖式已核對。第 053033 期的消滅與更正可匯入三類證書，並已驗證兩筆新型及設計更正能在詳情開啟原始來源。 |
 | 5–6 Hybrid RAG 與比對 | [檢索程式](../services/retrieval)、[引文 E2E](../apps/web/e2e/patent-versions.spec.ts)。`3458c9e` 的[官方完整工作](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)通過語意、混合、重排、跨版引文及報告驗收。 |
 | 7–8 研究管理與報告 | [工作台 E2E](../apps/web/e2e/workspace.spec.ts)、[報告與引文 E2E](../apps/web/e2e/tipo-research.spec.ts)。隔離流程已驗證帳號、歷史、引文及繁中 PDF。 |
 | 9–10 Playwright、Pytest | [測試方式](TESTING.md)、[瀏覽器套件](../apps/web/e2e)與[整合測試](../tests/integration/test_postgresql.py)。`d397c41` 的一般 CI 通過 128 項預設 pytest、12 項 Playwright 與 9 項獨立 PostgreSQL 整合測試。 |

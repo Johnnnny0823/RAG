@@ -2353,3 +2353,22 @@
 - Uncommitted changes / file ownership warnings: 只在整合工作樹操作，官方原檔未納入 Git。
 - Next 1–3 concrete actions: 查核新型與設計法律異動書目是否可按公告號及申請號無歧義配對，再爭取完成目標主機與人工評估。
 - Exact reproduction steps: 依 TESTING 的衍生設計申請號回歸建立第 053028 期隔離庫，開啟 `PATENTSCOPE_E2E_TIPO=derived-design` 執行 Playwright。
+
+## 官方新型與設計異動公報
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `00d4cac`。本節隨本次變更提交。
+- Current milestone and status: 固定新型及設計的更正事件已通過驗收。M5 及交付驗收 IN_PROGRESS。
+- Goal of this session: 擴充官方消滅與更正事件的支援範圍，保留舊有發明來源，再從 API 與瀏覽器核對新型和設計原件。
+- Files changed (with purpose): `legal_events.py` 處理三種證書和保存原件回填，`legal_refresh.py` 對照官方索引，`legal_linking.py` 限制新型及設計的連結條件，遷移擴充資料庫約束。pytest 與 Playwright 提供回歸測試。
+- Database migrations added/applied: `0022_legal_event_grant_types` 接在 `0021_gazette_pdf_search` 後。空庫升版及舊庫回填已驗證。舊庫原有 869 筆發明事件，新版保留原筆數並補入 478 筆新型及 168 筆設計。重跑為零，降版保護有資料的舊庫。
+- API/Schema changes: 路由與 JSON 結構沿用原契約。新型、設計公告現在可取得相符事件。兩筆詳情皆核對 SHA-256、證書號、申請號、原始條目及未載生效日。
+- Commands actually run and results: Ruff 格式與 lint 通過。pytest 140 項通過，9 項預設跳過，1 項既有 Starlette 警告。另在專用空庫啟用 PostgreSQL 整合套件，9 項全數通過。前端 lint、TypeScript 及 Compose 建置通過。真實 API 和 Chromium 三尺寸、Firefox、WebKit 五項通過。起點 `00d4cac` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46022065811)通過。
+- Tests NOT run and reason: 新提交的完整官方遠端 E2E 未重跑。本次新增瀏覽器案例需要第 053010 期及第 053028 期樣本。消滅原件已核對並匯入異動目錄，本次瀏覽器驗收聚焦更正事件。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 核對 https://data.gov.tw/dataset/15974，政府資料開放授權條款第 1 版。使用第 053033 期 `ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053033/index.xml`、同目錄 `sud08.xml`、`sud24.xml`，以及兩份官方公告索引，詳見 [資料來源](DATA_SOURCES.md#第-053033-期新型與設計異動)。
+- Known bugs / risks / blockers: 兩筆舊式或無法驗證的證書格式保留於原件。即時權利狀態、其他事件類型、正式主機驗收和 34 組人工評分仍待。跨期新型及設計全文補期仍待驗證。
+- Decisions made (ADR links): 保留舊解析批次識別及原始物件，以批次覆蓋標記判斷是否需要重播。新型及設計採申請號與同案公告證書雙重匹配。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹及專用隔離資料庫操作。官方原件與測試輸出未納入 Git。
+- Next 1–3 concrete actions: 追蹤新版 CI，擴充真實消滅案例的詳情回歸，待人工標註和正式主機後進行最終評估與交付。
+- Exact reproduction steps: 依 [驗收步驟](TESTING.md#新型及設計異動回歸) 建立獨立資料庫與固定原件，重播遷移，再執行 `PATENTSCOPE_E2E_TIPO=grant-events` 的 Playwright 套件。
