@@ -322,3 +322,9 @@ npx playwright test --reporter=list
 2026-11-28 在全新部署資料庫，將 [官源原件](DATA_SOURCES.md#第-053029-期跨期全文驗收) 與第 053028 期的索引、書目、清單及個案掛成唯讀快照。先查真實 FTPS 目錄確認兩期，再將驗收範圍限制在 053028–053029。兩類皆以每輪一卷期執行 `refresh_archive`，轉送 `--grants --grant-type model|design --archive-year 115 --gazette-year 115 --apply --limit 1`。前兩輪各完成一個卷期，第三輪略過所有既有檢查點。四份全文經 `verify_document` 核對，索引累計 83 個詞彙片段。
 
 對同一語料執行 `python -m services.retrieval.index_semantic --batch-size 4 --request-timeout 180`。本機 Ollama `qwen3-embedding:0.6b` 建立 4 個版本、83 條 1,024 維向量，重跑為零。以第 053029 期兩案測試，詞彙、語意、混合三種 API 皆在第一位回傳預期的同一全文版本。混合測試使用預設 RRF。此為已知案件的檢索驗收，不列入人工相關性評分。
+
+## 隔離部署的備份還原驗收
+
+在來源隔離庫匯入第 053028–053029 期驗收語料和向量，以兩個 DEMO 帳號驗證私人資料。建立第一個帳號的研究專案與一筆官方專利收藏及備註，保存來源 API 的版本、雜湊及向量查詢結果。關閉來源 Web 與 API，再依 [SETUP 的備份還原命令](SETUP.md#原始-xml-持久保存備份及還原) 備份，還原到第二個 Compose 專案的新資料庫。
+
+核對 Alembic 版本、原件 SHA-256、四份全文、向量筆數及其 API 結果順序。啟動目的端後，確認原有效憑證與重新登入都可使用，專案及備註內容一致，第二個帳號讀取專案返回 404。查核 `patentscope_api` 能讀取官方資料、能寫入其工作台，並欠缺官方文件的 UPDATE 權限。封裝前端及就緒狀態可用 `scripts/smoke.py --deployment` 驗證。

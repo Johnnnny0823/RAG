@@ -2486,3 +2486,23 @@
 - Uncommitted changes / file ownership warnings: 只在整合工作樹修改評估器及文件，正式標註池內容未變更。
 - Next 1–3 concrete actions: 收到人工分數後在固定語料重評，依確認的目標部署環境做交付驗收。
 - Exact reproduction steps: `python -m pytest -q tests/test_evaluate_search.py`。正式標註格式與重跑指令見 [評估說明](EVALUATION.md)。
+
+
+## 最新修訂的隔離備份還原
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `bf5d368`。本節隨驗收紀錄提交。
+- Current milestone and status: Docker Compose 隔離復原驗收通過。M5 與交付驗收 IN_PROGRESS。
+- Goal of this session: 從已索引語料備份 PostgreSQL 與原件，還原至空白資料庫並驗證私人資料隔離。
+- Files changed (with purpose): SETUP 改用單一交易還原並記錄備份雜湊。TESTING、PROGRESS 及 HANDOFF 保存驗收方法與結果。
+- Database migrations added/applied: 無新增遷移。在空白目的端以 `pg_restore --single-transaction --no-acl` 還原，再套用既有 Alembic 與 API 專用角色配置，head 為 `0022_legal_event_grant_types`。
+- API/Schema changes: 無。
+- Commands actually run and results: `pg_dump -Fc` 的本機及目的端 SHA-256 均為 `bb192630596866037eef051101693a2b9e14405528084eba209103a1820b92f0`。兩端逐筆校驗 10 份資料庫引用物件，目的端再核對 4 份官方全文與 83 條向量。原有效登入、重新登入、專案、收藏備註、跨帳號 404 及語意排序一致性皆通過。API 角色有文件讀取、專案新增權限，無官方文件更新權限。目的端部署冒煙通過，DB 與 API 無主機連接埠。起點[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46045019402)通過。
+- Tests NOT run and reason: 本次只提交文件，未重跑單元套件。復原語料涵蓋新型及設計 XML、向量與合成私人筆記，未涵蓋官方 PDF 附件、報告工作復原或外部主機憑證續期。
+- Data sources checked (exact URL/date) and license/access notes: 沿用已驗證的第 053028、053029 期 [官方原件](DATA_SOURCES.md#第-053029-期跨期全文驗收)，未新增取件。
+- Known bugs / risks / blockers: 首輪驗收腳本誤用收藏路由，第二次將註冊回應與包含額外欄位的 `/me` 比較。修正腳本後，以另一空白目的端完成同一流程。外部主機與 34 組人工評分待使用者確認。
+- Decisions made (ADR links): 還原後重套 API 最小權限，原件校驗通過才啟動 Web 與 API。驗收使用本機模型和合成帳號。
+- Uncommitted changes / file ownership warnings: 備份、測試帳號及憑證均留在隔離環境。Git 只保存文件。
+- Next 1–3 concrete actions: 收到人工評分檔後以固定語料重評，在指定主機執行部署及復原驗收。
+- Exact reproduction steps: 依 [備份還原驗收](TESTING.md#隔離部署的備份還原驗收) 執行，再以 `scripts/smoke.py --deployment` 檢查目的端。

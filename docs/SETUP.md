@@ -317,16 +317,17 @@ Compose 的 `migrate` 容器將原始物件儲存在專案自己的 `patent-obje
 docker compose run --rm --no-deps migrate python -m services.ingestion.sync_objects
 docker compose exec -T db pg_dump -U patentscope -Fc -f /tmp/patentscope-backup.dump patentscope
 docker compose cp db:/tmp/patentscope-backup.dump (Join-Path $backup 'db.dump')
+Get-FileHash -LiteralPath (Join-Path $backup 'db.dump') -Algorithm SHA256
 docker compose run --rm --no-deps -v "${backup}:/backup" migrate python -m services.ingestion.sync_objects --copy-to /backup
 ```
 
-還原時，先把同一批 PostgreSQL 備份還原到獨立專案的新資料庫，然後將原始物件複製到該專案的資料卷。下列命令應在該獨立專案執行。
+還原前先比對備份的 SHA-256 記錄。請用獨立 Compose 專案的新資料庫，以單一交易還原 PostgreSQL，再套用遷移及 API 專用角色權限。等同批原件複製及逐筆校驗通過後，再啟動 Web 和 API。
 
 ```powershell
 docker compose up -d --wait db
 docker compose build migrate
 docker compose cp (Join-Path $backup 'db.dump') db:/tmp/patentscope-backup.dump
-docker compose exec -T db pg_restore -U patentscope --exit-on-error --no-acl -d patentscope /tmp/patentscope-backup.dump
+docker compose exec -T db pg_restore -U patentscope --single-transaction --no-acl -d patentscope /tmp/patentscope-backup.dump
 docker compose run --rm --no-deps migrate
 docker compose run --rm --no-deps -v "${backup}:/backup:ro" migrate python -m services.ingestion.sync_objects --objects /backup --copy-to /var/lib/patentscope/objects
 docker compose run --rm --no-deps migrate python -m services.ingestion.sync_objects
