@@ -63,6 +63,20 @@ python -m scripts.export_review_packet --api http://127.0.0.1:18038 --pool evalu
 python scripts/evaluate_search.py --api http://127.0.0.1:18022 --review-pool evaluation/tipo_review_pool_next.json
 ```
 
+## 2026-11-28 AI 初評暫定評估（非人工標註）
+
+使用者請 Codex 依 34 組候選的原文草擬分數與理由，檔案為 `.patent-data/review/patentscope-ai-review-draft.json`，草稿本身標示 `draft_origin: AI preliminary suggestions; independent human review required` 且狀態仍為 `pending_human_review`。分布為 2 分 7 筆、1 分 5 筆、0 分 22 筆，其中 19 筆僅有書目與摘要可判讀。使用者表示自己無法判讀專利，決定人工複核留在待辦。
+
+為取得暫定參考，將同一份草稿另存並把 `label_status` 設為 `ai_preliminary`，評估器因此不視為人工標註，以公開號比對（`judgment_identity: publication`）。資料檔 SHA-256 `c3a6547cf0728df790365346e93e98678ed89186bb29a65c60c879092e74d826`。對本機 HTTPS 部署（117 個版本，詞彙與向量皆涵蓋 117 個版本）每模式重跑兩次，四案共 8 次有相關標註的執行。
+
+| 模式 | P@10 下限 | R@10 標註池 | nDCG@10 標註池 | MRR | 未標註返回項 | P50 ms | P95 ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 詞彙 | 0.125 | 0.438 | 0.701 | 1.000 | 0 | 2101.91 | 2126.15 |
+| 向量 | 0.275 | 0.917 | 0.937 | 1.000 | 0 | 2440.03 | 2472.90 |
+| 混合＋重排 | 0.300 | 1.000 | 0.963 | 1.000 | 0 | 7647.72 | 22429.25 |
+
+這些數字以 AI 初評為標註，**不是人工複核結果**，不能作為檢索品質的正式結論，也不能據以宣稱某模式較佳。延遲經 HTTPS 與 Nginx 量測，詞彙模式明顯高於 2026-11-26 隔離環境的 58 ms，原因未調查。正式評估仍需熟悉相關技術的人員複核同一候選池，填入複核者與依據後以 `label_status: human_reviewed` 重跑。
+
 ## 2026-11-26 固定官方語料基線
 
 使用第 024019、053028 期的 117 版本官方隔離語料，已補齊公報日期。依既有四案種子集，每個模式重跑兩次，共 24 次 HTTP 請求。分詞器為 `han-bigram-v1`，嵌入使用 `qwen3-embedding:0.6b`、`patent-dense-v1`，重排使用 `qwen2.5:1.5b`、`ollama-listwise-v2`。這是五項已知相關種子標註的工程基線，人工複核尚未執行。

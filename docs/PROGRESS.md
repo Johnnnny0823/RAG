@@ -15,7 +15,7 @@
 
 Claude Code 接手順序、既有證據與待人工及外部部署驗收項目見[最新交接](HANDOFF.md#2026-11-28-交由-claude-code-接續)。
 
-2026-11-28 Claude Code 接手核對：Ruff、pytest 148 項、前端 lint 與型別檢查在本機通過，遷移唯一 head 為 `0023_patent_priorities`，PR #1 的兩項檢查及最近三次官方 E2E 成功。重啟 Docker 後，全新資料卷遷移至 `0023_patent_priorities` 並通過 14 項 PostgreSQL 整合、HTTP 冒煙、3 項背景搜尋接續及 12 項一般 Playwright。官方 E2E 工作流程在本機全新專案重跑，下載並核對 24 個官方檔案、建立 1,624 筆向量，34 項 Playwright 含 Firefox 與 WebKit 通過。選用的公報 PDF 步驟本機直接取件成功，兩份 PDF 與 XML 出處核對及 3 項 Chromium 通過。PR #1 已合併入 `main`（`0810e1d`），main CI 通過。34 組人工複核仍未評分。使用者指定先以本機為部署目標，本機 HTTPS 部署與備份還原驗收通過。見 [核對紀錄](HANDOFF.md#2026-11-28-claude-code-接手核對)。
+2026-11-28 Claude Code 接手核對：Ruff、pytest 148 項、前端 lint 與型別檢查在本機通過，遷移唯一 head 為 `0023_patent_priorities`，PR #1 的兩項檢查及最近三次官方 E2E 成功。重啟 Docker 後，全新資料卷遷移至 `0023_patent_priorities` 並通過 14 項 PostgreSQL 整合、HTTP 冒煙、3 項背景搜尋接續及 12 項一般 Playwright。官方 E2E 工作流程在本機全新專案重跑，下載並核對 24 個官方檔案、建立 1,624 筆向量，34 項 Playwright 含 Firefox 與 WebKit 通過。選用的公報 PDF 步驟本機直接取件成功，兩份 PDF 與 XML 出處核對及 3 項 Chromium 通過。PR #1 已合併入 `main`（`0810e1d`），main CI 通過。34 組人工複核未完成：使用者表示無法判讀專利，決定留在待辦。另以 Codex 的 AI 初評跑[暫定評估](EVALUATION.md#2026-11-28-ai-初評暫定評估非人工標註)，明確標示非人工標註。使用者指定先以本機為部署目標，本機 HTTPS 部署與備份還原驗收通過。見 [核對紀錄](HANDOFF.md#2026-11-28-claude-code-接手核對)。
 
 整合分支的累積差異、驗收證據及待確認事項可在[交付審查草稿](https://github.com/Johnnnny0823/RAG/pull/1)檢視。
 

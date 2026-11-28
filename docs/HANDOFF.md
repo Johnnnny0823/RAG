@@ -16,7 +16,8 @@
 - Known bugs / risks / blockers: 測試種子不會把原件放進部署資料卷，已在 SETUP 補上必要步驟。本機 Ollama 的 11434 埠綁定所有網路介面，屬 lawinformation 專案，未變更。
 - Decisions made (ADR links): 部署目標暫定為本機，由使用者於 2026-11-28 指定。
 - Uncommitted changes / file ownership warnings: 部署工作目錄 `C:\Users\xnikz\patentscope-local\app` 是 `main` 的乾淨複本。密碼與 CA 私鑰在 `C:\Users\xnikz\patentscope-local\secrets`，備份在 `C:\Users\xnikz\patentscope-local\backups\20261128-172538`，均不在版本庫。驗收腳本在 `C:\Users\xnikz\patentscope-local\tools`。
-- Next 1–3 concrete actions: 收到人工複核 JSON 後執行檢索評估。若要對外開放，另提供網域與憑證並驗收防火牆及續期。
+- Next 1–3 concrete actions: 人工複核依使用者決定留在待辦；需由熟悉技術的人員確認 Codex 初評後，以 `human_reviewed` 重跑評估。若要對外開放，另提供網域與憑證並驗收防火牆及續期。
+- AI 初評暫定評估：使用者請 Codex 草擬 34 組分數，草稿保持 `pending_human_review`。另存為 `ai_preliminary` 對本機部署跑評估，結果見 [EVALUATION](EVALUATION.md#2026-11-28-ai-初評暫定評估非人工標註)，不作為人工評估。
 - Exact reproduction steps: 見 [SETUP 本機長期部署](SETUP.md#本機長期部署)。
 
 ## 2026-11-28 Claude Code 接手核對
