@@ -218,3 +218,5 @@
 - [x] 用遠端 Playwright trace 定位一次首頁載入失敗。一般 CI 把獨立於背景程序的瀏覽器檢查排在容器啟動之前，新版一般 CI 已通過。[診斷](TESTING.md#一般-ci-首頁載入回歸)
 
 - [x] 就緒檢查涵蓋 pgvector 運算、`public` schema 存取與 API 所需資料表的讀取權限。真實 PostgreSQL 已核對缺表及權限不足時回傳安全的 503。[測試方式](TESTING.md#資料庫就緒檢查)
+
+- [x] 已驗證的公報個案 JSON 與 PDF 可在官源即時取件不可用時首次離線匯入。`202640162`、`I941082` 各自核對 SHA-256、版本、頁面索引與來源。GitHub runner 直接取件的歷史 HTTP 403 另有紀錄。[測試方式](TESTING.md#官源公報-pdf-首次離線匯入)

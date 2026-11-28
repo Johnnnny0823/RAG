@@ -1,3 +1,5 @@
+import hashlib
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
@@ -159,3 +161,64 @@ def test_wrong_attachment_is_rejected_before_network_io(monkeypatch, tmp_path, c
         gazette_pdf.main()
     assert error.value.code == 1
     assert "No matching official document version" in capsys.readouterr().err
+
+
+def test_archive_preview_validates_case_and_digest_without_fetching(
+    monkeypatch, tmp_path, capsys
+):
+    application = "114106690"
+    certificate = "I941082"
+    issue = "053028"
+    path = gazette_pdf.pdf_path(application, issue, gazette_pdf.GRANT)
+    url = "https://cloud.tipo.gov.tw" + path
+    case_file = tmp_path / "case.json"
+    pdf_file = tmp_path / "gazette.pdf"
+    case = {
+        "applicationNo": application,
+        "certificateNo": certificate,
+        "vol": 53,
+        "no": 28,
+        "pdfUrl": url,
+    }
+    case_file.write_text(json.dumps({"patentDoc": case}), encoding="utf-8")
+    pdf = b"%PDF-DEMO"
+    pdf_file.write_bytes(pdf)
+    digest = hashlib.sha256(pdf).hexdigest()
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "gazette_pdf",
+            "--application",
+            application,
+            "--grant",
+            certificate,
+            "--issue",
+            issue,
+            "--objects",
+            str(tmp_path),
+            "--archive-case",
+            str(case_file),
+            "--archive-pdf",
+            str(pdf_file),
+            "--expected-sha256",
+            digest,
+        ],
+    )
+    monkeypatch.setattr(gazette_pdf, "fetch", lambda *_: pytest.fail("Contacted TIPO"))
+    verify_pdf = Mock(return_value=["DEMO"])
+    monkeypatch.setattr(gazette_pdf, "verify_pdf", verify_pdf)
+    gazette_pdf.main()
+    verify_pdf.assert_called_once_with(pdf, application, certificate, gazette_pdf.GRANT)
+    assert json.loads(capsys.readouterr().out) == {
+        "source_url": url,
+        "pages": 1,
+        "sha256": digest,
+        "attached": False,
+    }
+    verify_pdf.reset_mock()
+    pdf_file.write_bytes(pdf + b"changed")
+    with pytest.raises(SystemExit) as error:
+        gazette_pdf.main()
+    assert error.value.code == 1
+    assert "does not match its expected SHA-256" in capsys.readouterr().err
+    verify_pdf.assert_not_called()

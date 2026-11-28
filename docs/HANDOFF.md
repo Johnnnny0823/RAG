@@ -2791,3 +2791,22 @@
 - Uncommitted changes / file ownership warnings: 只修改整合分支，資料庫測試均在隔離 PostgreSQL。
 - Next 1–3 concrete actions: 追蹤上版完整官源 E2E。等待人工評估及目標部署環境。
 - Exact reproduction steps: 依 [資料庫就緒檢查](TESTING.md#資料庫就緒檢查) 執行。
+
+## 官源公報 PDF 離線匯入
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `a55520d`。
+- Current milestone and status: 官源 PDF 首次離線匯入通過隔離驗收。整體交付 IN_PROGRESS。
+- Goal of this session: 部署環境無法即時下載時，可用合法保存的原始官源資料建立附件。
+- Files changed (with purpose): `services/ingestion/gazette_pdf.py` 新增離線首次匯入，`tests/test_gazette_pdf.py` 驗證雜湊及不呼叫 TIPO，更新 SETUP、TESTING、PROGRESS、HANDOFF。
+- Database migrations added/applied: 無新增，使用隔離 `0023_patent_priorities`。既有資料庫及附件格式相容。
+- API/Schema changes: 無。CLI 新增 `--archive-case` 及 `--archive-pdf`，與 `--expected-sha256` 搭配。
+- Commands actually run and results: Ruff 格式及 lint 通過，pytest 148 通過、14 預設跳過，1 則既有 Starlette 警告。以兩份實際官源原件測預覽、附加兩次、重建索引、錯版與雜湊拒絕。API 核對兩份首頁可查、2 與 9 頁及各 13 項 XML 請求項未改。相關 Playwright 5 項通過。
+- Tests NOT run and reason: 遠端即時 PDF 取件未重跑，仍保留 403 紀錄。完整官源 E2E 仍在既有流程執行。流程此次不依賴新遷移。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 核對 [公開個案 PDF](https://cloud.tipo.gov.tw/S220/downloads/invention/pub024019/pdfdata/114106690.pdf)及[公告個案 PDF](https://cloud.tipo.gov.tw/S220/downloads/patent/isu053028/pdfdata/114106690.pdf)和對應個案 JSON。授權、識別及雜湊見 [來源紀錄](DATA_SOURCES.md#發明公告公報個案-pdf)。
+- Known bugs / risks / blockers: 來源端即時取件仍可能回傳 403。離線匯入以前仍須取得可核對的官源原件與既定雜湊。人工複核及外部部署仍待。
+- Decisions made (ADR links): 沿用既有官方 URL 合約、原件雜湊、版本及 PDF 首頁身份驗證。維持在線匯入與資料庫附件重建的既有流程。
+- Uncommitted changes / file ownership warnings: 驗收檔案放在 Git 忽略目錄，資料庫只使用隔離測試庫。
+- Next 1–3 concrete actions: 關注一般 CI 與既有完整官源 E2E，待標註與目標環境就緒再驗收交付。
+- Exact reproduction steps: 依 [官源公報 PDF 首次離線匯入](TESTING.md#官源公報-pdf-首次離線匯入)操作。

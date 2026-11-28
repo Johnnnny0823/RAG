@@ -194,6 +194,20 @@ docker compose @deployArgs run --rm --no-deps migrate python -m services.ingesti
 
 可用 `--expected-sha256` 指定先前已核對的官方原檔雜湊。回傳內容不符時，指令會在解析及資料庫寫入前中止。
 
+#### 從已取得的官方公報原件首次匯入
+
+如果部署主機無法直接取得官方個案，從有合法存取權的環境保存 TIPO 原始個案 JSON 及其指定 PDF。保留來源網址、取件日期及先前核對的 PDF SHA-256。已驗證的成對樣本見 [官方來源紀錄](DATA_SOURCES.md#發明公告公報個案-pdf)。將檔案放在版本庫以外的資料夾，在部署匯入時掛載成唯讀。
+
+以下以公告 `I941082` 為例。將原始個案 JSON 和 PDF 分別放在絕對路徑 `$inputs` 下的 `I941082.json` 與 `I941082.pdf`。要預覽可省略 `--apply-to $documentId`，要附加則指定官方公告版本 UUID。Windows 宿主機可沿用既有 `$deployArgs`。
+
+```powershell
+docker compose @deployArgs run --rm --no-deps -v "${inputs}:/archive:ro" migrate python -m services.ingestion.gazette_pdf --application 114106690 --grant I941082 --issue 053028 --archive-case /archive/I941082.json --archive-pdf /archive/I941082.pdf --expected-sha256 7b9fd5dcb190a7108770a812999e556b5126f2d0333dcf3a914ed20c91f1a615 --apply-to $documentId
+```
+
+匯入不會連線 TIPO。程式核對申請案、證書、卷期、正式來源路徑、固定雜湊與 PDF 首頁欄標，才會寫入附件及頁面索引。離線執行的日期是驗證時間，官源取件日期應與原件一併保存。若已附加到資料庫，可用下一節方式重建頁面。
+
+#### 從已附加的官方 PDF 補建頁面索引
+
 若資料庫已附加該版本的官方 PDF，可在上述命令保留 `--apply-to`、補上 `--expected-sha256`，並加入 `--replay-stored`。指令會用資料庫內的來源紀錄及同一個原檔目錄重新核對雜湊與首頁識別，補入缺少的 PDF 頁面，無需連線智財局。來源檢查日期仍保留原值。
 
 遷移至 `0020_gazette_pdf_pages` 後，重跑舊版已附加的 PDF 可擷取文字層。詳情展開該 PDF 的來源，按「讀取公報文字」即可在瀏覽器內查找文字並依原始頁碼對照。掃描圖像需查看官方原檔。

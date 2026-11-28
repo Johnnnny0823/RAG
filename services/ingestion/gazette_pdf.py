@@ -9,6 +9,7 @@ import time
 import unicodedata
 from dataclasses import dataclass
 from http.client import HTTPException, HTTPSConnection
+from pathlib import Path
 from uuid import UUID
 
 from psycopg.types.json import Jsonb
@@ -26,6 +27,7 @@ from services.ingestion.import_issue import link_artifact
 from services.retrieval.lexical import tokenize
 
 HOST = "cloud.tipo.gov.tw"
+MAX_CASE_BYTES = 1024 * 1024
 MAX_PDF_BYTES = 2 * 1024 * 1024
 MAX_PAGE_CHARACTERS = 20_000
 
@@ -94,6 +96,14 @@ def fetch(path: str, media_type: str, limit: int) -> bytes:
 
 def pdf_path(application: str, issue: str, gazette: Gazette) -> str:
     return f"/S220/downloads/{gazette.file_directory}{issue}/pdfdata/{application}.pdf"
+
+
+def read_archive(path: Path, limit: int) -> bytes:
+    with path.open("rb") as source:
+        data = source.read(limit + 1)
+    if not data or len(data) > limit:
+        raise ValueError("Archived gazette file is empty or exceeds the size limit")
+    return data
 
 
 def checked_pdf_path(
@@ -263,6 +273,10 @@ def main() -> None:
         action="store_true",
         help="Read an already verified attachment without contacting TIPO",
     )
+    parser.add_argument("--archive-case", type=Path, help="Archived TIPO case JSON")
+    parser.add_argument(
+        "--archive-pdf", type=Path, help="Archived official gazette PDF"
+    )
     add_objects_argument(parser)
     args = parser.parse_args()
     gazette = GRANT if args.grant is not None else PUBLICATION
@@ -278,6 +292,15 @@ def main() -> None:
         parser.error("Expected SHA-256 must be 64 lowercase hexadecimal digits")
     if args.replay_stored and not (args.apply_to and args.expected_sha256):
         parser.error("--replay-stored requires --apply-to and --expected-sha256")
+    archive = args.archive_case is not None or args.archive_pdf is not None
+    if archive and not (
+        args.archive_case and args.archive_pdf and args.expected_sha256
+    ):
+        parser.error(
+            "Archive mode requires --archive-case, --archive-pdf and --expected-sha256"
+        )
+    if archive and args.replay_stored:
+        parser.error("Archive mode cannot be combined with --replay-stored")
     store = LocalObjectStore(args.objects)
     try:
         if args.apply_to:
@@ -300,11 +323,19 @@ def main() -> None:
             catalog_path = (
                 f"/S220/gazette/api/patents/{gazette.case_endpoint}/{args.application}"
             )
-            metadata = json.loads(fetch(catalog_path, "application/json", 1024 * 1024))
+            metadata = json.loads(
+                read_archive(args.archive_case, MAX_CASE_BYTES)
+                if archive
+                else fetch(catalog_path, "application/json", MAX_CASE_BYTES)
+            )
             path = checked_pdf_path(
                 metadata, args.application, number, args.issue, gazette
             )
-            data = fetch(path, "application/pdf", MAX_PDF_BYTES)
+            data = (
+                read_archive(args.archive_pdf, MAX_PDF_BYTES)
+                if archive
+                else fetch(path, "application/pdf", MAX_PDF_BYTES)
+            )
         checksum = hashlib.sha256(data).hexdigest()
         if args.expected_sha256 and checksum != args.expected_sha256:
             raise ValueError("Gazette PDF does not match its expected SHA-256")

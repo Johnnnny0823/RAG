@@ -410,3 +410,13 @@ npx playwright test --reporter=list
 同一隔離庫於預熱後連續執行 25 次就緒查詢。每次以受限帳號建立連線並檢查 30 張資料表，本機中位數 28.34 毫秒。此數字僅適用於該環境，未量測公開入口或併發負載。
 
 `0199ddd` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46107072790)通過 PostgreSQL 整合、HTTP 冒煙、核心 Playwright 及 HTTPS 部署。
+
+## 官源公報 PDF 首次離線匯入
+
+2026-11-28 從 TIPO 取得 `202640162`、`I941082` 的原始個案 JSON 與對應 PDF。兩份 PDF 的 SHA-256 分別與[來源記錄](DATA_SOURCES.md#發明公告公報個案-pdf)相符。沿用既有隔離 PostgreSQL，以固定雜湊的公開索引、公開全文及公告索引建立兩個官源版本。依[離線匯入指令](SETUP.md#從已取得的官方公報原件首次匯入)預覽、附加兩次、再執行 `--replay-stored`。驗收結果如下。
+
+- 預覽沒有寫入附件。錯誤 SHA-256 在解析前被拒絕，錯版附加無法執行，透過公開版本讀取公告 PDF 頁面回傳 404。
+- 兩份 PDF 都只建立一筆來源，頁碼分別為 2 及 9 頁。兩份首頁可用文件號從公報搜尋找回，兩版原有各 13 項 XML 請求項內容未改。
+- 設定 `PATENTSCOPE_E2E_TIPO=versions`、`PATENTSCOPE_E2E_GAZETTE_PDFS=1` 及 `PATENTSCOPE_E2E_CROSS_BROWSER=1` 並對封裝測試站執行 `npm run test:e2e --prefix apps/web -- patent-number.spec.ts`，Chromium 桌面／平板／手機及桌面 Firefox、WebKit 共 5 項通過。
+
+離線模式另有 pytest 斷言阻止呼叫下載函式。GitHub runner 直接從 TIPO 即時取件的 HTTP 403 結果沿用[先前紀錄](#官方公報-pdf-回歸)。
