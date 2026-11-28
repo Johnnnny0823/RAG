@@ -10,25 +10,37 @@ from sqlalchemy.exc import SQLAlchemyError
 from services.api.db import check_database
 from services.api.comparisons import router as comparisons_router
 from services.api.accounts import router as accounts_router
+from services.api.admin_ingestion import router as admin_ingestion_router
 from services.api.search_runs import router as search_runs_router
+from services.api.search_jobs import router as search_jobs_router
 from services.api.patents import router as patents_router
 from services.api.projects import router as projects_router
 from services.api.bookmarks import router as bookmarks_router
 from services.api.sessions import router as sessions_router
 from services.api.reports import router as reports_router
+from services.api.report_jobs import router as report_jobs_router
 from services.api.queries import router as queries_router
+from services.api.audit import router as audit_router
+from services.api.corpus import router as corpus_router
+from services.api.security import SecurityHeaders
 
 logger = logging.getLogger(__name__)
 app = FastAPI(title="PatentScope AI", version="0.1.0")
+app.add_middleware(SecurityHeaders)
+app.include_router(audit_router)
+app.include_router(corpus_router)
 app.include_router(patents_router)
 app.include_router(queries_router)
 app.include_router(comparisons_router)
 app.include_router(accounts_router)
+app.include_router(admin_ingestion_router)
 app.include_router(search_runs_router)
+app.include_router(search_jobs_router)
 app.include_router(projects_router)
 app.include_router(bookmarks_router)
 app.include_router(sessions_router)
 app.include_router(reports_router)
+app.include_router(report_jobs_router)
 
 
 class HealthResponse(BaseModel):

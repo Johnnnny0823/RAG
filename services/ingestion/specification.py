@@ -1,4 +1,4 @@
-"""Parse the verified TIPO invention-specification A103.1.0 format."""
+"""Parse verified TIPO specification XML formats by patent type."""
 
 import re
 from dataclasses import dataclass
@@ -6,7 +6,15 @@ from dataclasses import dataclass
 from services.ingestion.patentpub import parse_xml
 
 DOCTYPE = b'<!DOCTYPE invention-specification SYSTEM "../invention-specification.dtd">'
+GRANT_DOCTYPE = b'<!DOCTYPE specification SYSTEM "../specification.dtd">'
 DTD_VERSION = "A103.1.0"
+GRANT_DTD_VERSIONS = {
+    "I": (DTD_VERSION,),
+    "M": ("1.0.0", "2.0.1"),
+    "D": ("1.0.0", "2.0.1"),
+}
+UTILITY_SPEC_PARSER_VERSION = "tipo-issue-2"
+ABSTRACT_LANGUAGES = {"tw": "zh", "en": "en"}
 
 
 @dataclass(frozen=True)
@@ -26,13 +34,21 @@ class Claim:
 
 
 def parse_specification(
-    data: bytes, application_no: str
+    data: bytes, application_no: str, *, grant_number: str | None = None
 ) -> tuple[list[Section], list[Claim]]:
     # The publisher's known external DTD is inert. All other declarations fail in parse_xml.
-    root = parse_xml(data.replace(DOCTYPE, b"", 1))
+    grant = grant_number is not None
+    grant_prefix = grant_number[:1] if grant_number is not None else None
+    expected_versions = (
+        GRANT_DTD_VERSIONS.get(grant_prefix, ())
+        if grant_prefix is not None
+        else (DTD_VERSION,)
+    )
+    root_name = "specification" if grant else "invention-specification"
+    root = parse_xml(data.replace(GRANT_DOCTYPE if grant else DOCTYPE, b"", 1))
     if (
-        root.tag != "invention-specification"
-        or root.get("dtd-version") != DTD_VERSION
+        root.tag != root_name
+        or root.get("dtd-version") not in expected_versions
         or root.get("application-num") != application_no
     ):
         raise ValueError("Unexpected specification format or application number")
@@ -49,7 +65,7 @@ def parse_specification(
                         group.tag,
                         index,
                         text,
-                        f"/invention-specification/description/{group.tag}/p[{index}]",
+                        f"/{root_name}/description/{group.tag}/p[{index}]",
                     )
                 )
 
@@ -75,9 +91,35 @@ def parse_specification(
                 number,
                 text,
                 independent,
-                f"/invention-specification/claims/claim[{index}]",
+                f"/{root_name}/claims/claim[{index}]",
             )
         )
-    if not sections or not claims:
-        raise ValueError("Specification is missing description paragraphs or claims")
+    if not sections:
+        raise ValueError("Specification is missing description paragraphs")
+    if grant_prefix == "D" and root.find("claims") is not None:
+        raise ValueError("Unexpected claims in design specification")
+    if grant_prefix != "D" and not claims:
+        raise ValueError("Specification is missing claims")
+    if grant_prefix == "M":
+        abstracts = []
+        seen = set()
+        for index, item in enumerate(root.findall("abstract"), 1):
+            language = ABSTRACT_LANGUAGES.get(item.get("lang", ""))
+            paragraphs = item.findall("abstract-dtext")
+            if language is None or not paragraphs:
+                continue
+            if language in seen or len(paragraphs) != 1:
+                raise ValueError("Ambiguous abstract in utility model specification")
+            text = "".join(paragraphs[0].itertext())
+            if text.strip():
+                abstracts.append(
+                    Section(
+                        f"abstract-{language}",
+                        1,
+                        text,
+                        f"/{root_name}/abstract[{index}]/abstract-dtext[1]",
+                    )
+                )
+            seen.add(language)
+        sections.extend(abstracts)
     return sections, claims

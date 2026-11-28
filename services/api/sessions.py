@@ -174,7 +174,12 @@ def delete_session(session_id: UUID, account: Owner):
     return Response(status_code=204, headers={"Cache-Control": "no-store"})
 
 
-@router.post("/{session_id}/messages", response_model=list[Message], status_code=201)
+@router.post(
+    "/{session_id}/messages",
+    response_model=list[Message],
+    status_code=201,
+    responses={429: {"model": PatentErrorEnvelope}},
+)
 def add_turn(
     session_id: UUID, payload: AnalyzeRequest, account: Owner, response: Response
 ):

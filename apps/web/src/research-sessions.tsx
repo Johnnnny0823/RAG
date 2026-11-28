@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { MAX_INVENTION_LENGTH } from "./invention";
 import type { Feature } from "./research";
 
 type Session = { id: string; title: string };
@@ -129,8 +130,8 @@ export function ResearchSessions({ projectId, token, request, run, busy, onUse }
         event.preventDefault();
         if (idea.trim() && !busy) void run("正在拆解並保存至 AI Session…", () => analyzeIdea(active));
       }}>
-        <label className="research-field">Session 構想（最多 160 字）
-          <textarea value={idea} onChange={(event) => setIdea(event.target.value)} disabled={busy} maxLength={160} rows={3} required />
+        <label className="research-field">Session 構想（最多 {MAX_INVENTION_LENGTH} 字）
+          <textarea value={idea} onChange={(event) => setIdea(event.target.value)} disabled={busy} maxLength={MAX_INVENTION_LENGTH} rows={4} required />
         </label>
         <button type="submit" disabled={busy || !idea.trim()}>拆解並保存至 Session</button>
       </form>

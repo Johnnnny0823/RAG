@@ -60,3 +60,20 @@ def test_success_is_cached_and_failure_is_retried(tmp_path, monkeypatch):
     assert set(cached) == set(urls)
     assert "No cached TIPO XML" in failed["absent"]
     assert "absent-url" not in calls
+
+
+def test_grant_manifest_binds_certificate_and_application():
+    root = b"""<tw-patent-grants total-count="1">
+      <tw-patent-grant certificate-number="I000001"><specification-files
+        xml-file="/PatentPubXML_053030/5330I000001/000000001-DEMO.xml"/>
+      </tw-patent-grant>
+    </tw-patent-grants>"""
+    url = "ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index_all.xml"
+    assert resolve_spec_urls(
+        root, url, "053030", {"I000001": APPLICATION}, grant=True
+    ) == {
+        "I000001": "ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330I000001/000000001-DEMO.xml"
+    }
+    wrong = root.replace(b"5330I000001", b"5330I000002")
+    with pytest.raises(ValueError, match="Invalid or duplicate"):
+        resolve_spec_urls(wrong, url, "053030", {"I000001": APPLICATION}, grant=True)

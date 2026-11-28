@@ -55,13 +55,14 @@ def smoke(base_url):
     absent = read(
         path + "/compare",
         {
+            "semantic_evidence": False,
             "features": [
                 {
                     **feature,
                     "description_zh": "不存在的測試字串甲乙丙丁",
                     "keywords_zh": [],
                 }
-            ]
+            ],
         },
     )
     assert absent["items"][0]["verdict"] == "not_found_in_checked_content"

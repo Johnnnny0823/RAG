@@ -1,23 +1,30 @@
 """Read-only endpoints for indexed Taiwanese patent document versions."""
 
 import logging
+import os
 import re
 import unicodedata
 from datetime import date, datetime
+from pathlib import Path as FilesystemPath
+from time import perf_counter
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Path, Query
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import SQLAlchemyError
 
+from services.api.activity import record_activity
 from services.api.db import engine
 from services.api.identity import IdentityError, IdentityUnavailable
+from services.api.model_limits import ModelBusy, model_slot
+from services.ingestion.artifacts import LocalObjectStore, RawArtifact
+from services.ingestion.patentpub import APPLICATION_NUMBER_PATTERN
 from services.retrieval.embeddings import (
     EmbeddingError,
     LocalEmbeddingModel,
@@ -26,7 +33,12 @@ from services.retrieval.embeddings import (
     vector_literal,
 )
 from services.retrieval.lexical import TOKENIZER_VERSION, tokenize
-from services.retrieval.query_features import TechnicalFeature, expand_query
+from services.retrieval.query_features import (
+    MAX_INVENTION_LENGTH,
+    QUERY_EXPANSION_VERSION,
+    TechnicalFeature,
+    expand_query,
+)
 from services.retrieval.ollama import LocalModelError, LocalOllamaModel
 from services.retrieval.rerank import RERANK_LIMIT, RERANK_VERSION, rerank_order
 from services.retrieval.fusion import CANDIDATE_LIMIT, RRF_K, fuse_rankings
@@ -44,6 +56,7 @@ ErrorCode = Literal[
     "SEMANTIC_INDEX_UNAVAILABLE",
     "ANALYSIS_UNAVAILABLE",
     "AUTH_REQUIRED",
+    "ADMIN_REQUIRED",
     "ACCOUNT_EXISTS",
     "RUN_NOT_FOUND",
     "PROJECT_NOT_FOUND",
@@ -51,8 +64,13 @@ ErrorCode = Literal[
     "BOOKMARK_NOT_FOUND",
     "SESSION_NOT_FOUND",
     "REPORT_UNAVAILABLE",
+    "REPORT_NOT_FOUND",
+    "REPORT_NOT_READY",
     "PASSWORD_CONFIRMATION_FAILED",
     "LOGIN_THROTTLED",
+    "MODEL_BUSY",
+    "SEARCH_JOB_ACTIVE",
+    "SEARCH_JOB_NOT_FOUND",
 ]
 
 
@@ -73,8 +91,19 @@ class PatentRoute(APIRoute):
                 return response
             except IdentityUnavailable:
                 return unavailable()
+            except ModelBusy:
+                response = api_error(429, "MODEL_BUSY", "本機模型忙碌中，請稍後重試。")
+                response.headers["Retry-After"] = "5"
+                response.headers["Cache-Control"] = "no-store"
+                return response
 
-        return handle
+        async def track_activity(request):
+            started = perf_counter()
+            response = await handle(request)
+            record_activity(request.method, self.path, response.status_code, started)
+            return response
+
+        return track_activity
 
 
 class PatentError(BaseModel):
@@ -133,9 +162,11 @@ class LexicalSearchResults(BaseModel):
 class RankedSearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=160)
     ipc: str | None = Field(default=None, max_length=24)
+    loc: str | None = Field(default=None, max_length=12)
     published_from: date | None = None
     published_to: date | None = None
     document_stage: DocumentStage | None = None
+    content_scope: ContentScope | None = None
     applicant: (
         Annotated[
             str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)
@@ -147,8 +178,10 @@ class RankedSearchRequest(BaseModel):
 
 
 class HybridSearchRequest(RankedSearchRequest):
+    query: str = Field(min_length=1, max_length=MAX_INVENTION_LENGTH)
     features: list[TechnicalFeature] = Field(default_factory=list, max_length=5)
     rerank: bool = False
+    sort_by: Literal["relevance", "date_desc", "date_asc"] = "relevance"
 
 
 class SemanticSearchResults(PatentSearchResults):
@@ -156,6 +189,11 @@ class SemanticSearchResults(PatentSearchResults):
     model_name: str
     model_digest: str
     pipeline: str
+
+
+class PartyName(BaseModel):
+    zh: str | None = None
+    en: str | None = None
 
 
 class HybridPatentHit(PatentVersion):
@@ -166,6 +204,12 @@ class HybridPatentHit(PatentVersion):
     semantic_score: float | None
     fusion_rank: int
     rerank_rank: int | None
+    abstract_excerpt: str | None = None
+    applicants: list[PartyName] = Field(default_factory=list)
+    ipc_codes: list[str] = Field(default_factory=list)
+    loc_codes: list[str] = Field(default_factory=list)
+    official_source_url: str | None = None
+    lexical_match_fields: list[str] = Field(default_factory=list)
 
 
 class RerankMetadata(BaseModel):
@@ -175,24 +219,28 @@ class RerankMetadata(BaseModel):
     candidate_count: int
 
 
+class CorpusCoverage(BaseModel):
+    observed_at: datetime
+    lexical_versions: int
+    semantic_versions: int
+    latest_document_date: date | None
+
+
 class HybridSearchResults(BaseModel):
     items: list[HybridPatentHit]
     tokenizer_version: str
     model_name: str
     model_digest: str
     pipeline: str
+    query_expansion_version: str
     rrf_k: int
     candidate_limit: int
     applied_feature_ids: list[str]
     reranker: RerankMetadata | None
+    corpus_coverage: CorpusCoverage | None = None
     limit: int
     offset: int
     has_more: bool
-
-
-class PartyName(BaseModel):
-    zh: str | None = None
-    en: str | None = None
 
 
 class Classification(BaseModel):
@@ -225,6 +273,28 @@ class PatentSection(BaseModel):
     source: SourceLocation
 
 
+class PatentLegalEvent(BaseModel):
+    kind: Literal["extinguishment", "gazette_correction"]
+    certificate_no: str
+    effective_on: date | None
+    detail: str | None
+    source_url: str | None
+    dataset_url: str | None
+    batch_key: str
+    ingested_at: datetime
+    artifact_sha256: str
+    record_locator: str
+
+
+class PatentPriority(BaseModel):
+    country: str
+    priority_no: str
+    priority_date: date
+    source_url: str | None
+    dataset_url: str | None
+    source: SourceLocation
+
+
 class PatentDetail(PatentVersion):
     abstract_zh: str | None
     abstract_en: str | None
@@ -235,18 +305,52 @@ class PatentDetail(PatentVersion):
     parser_version: str
     sources: list[SourceArtifact]
     sections: list[PatentSection]
+    legal_events: list[PatentLegalEvent]
+    priorities: list[PatentPriority]
 
 
 class PatentClaim(BaseModel):
     claim_number: int
     text: str
     independent: bool | None
+    referenced_claim_numbers: list[int]
     source: SourceLocation
 
 
 class PatentClaims(BaseModel):
     document_id: UUID
     claims: list[PatentClaim]
+
+
+class GazettePdfPage(BaseModel):
+    page_number: int
+    extracted_text: str
+
+
+class GazettePdfPages(BaseModel):
+    document_id: UUID
+    artifact_sha256: str
+    pages: list[GazettePdfPage]
+
+
+class GazettePdfQuery(BaseModel):
+    query: str = Field(min_length=1, max_length=120)
+    document_stage: DocumentStage | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+    offset: int = Field(default=0, ge=0, le=10000)
+
+
+class GazettePdfHit(PatentVersion):
+    artifact_sha256: str
+    page_number: int
+    source_url: str
+
+
+class GazettePdfResults(BaseModel):
+    items: list[GazettePdfHit]
+    has_more: bool
+    limit: int
+    offset: int
 
 
 SUMMARY_FIELDS = """
@@ -287,6 +391,7 @@ SEARCH_FILTERS = """
     AND (%s::date IS NULL OR d.publication_date >= %s)
     AND (%s::date IS NULL OR d.publication_date <= %s)
     AND (%s::text IS NULL OR d.document_stage = %s)
+    AND (%s::text IS NULL OR d.metadata_jsonb->>'content_scope' = %s)
     AND (%s::text IS NULL OR EXISTS (
         SELECT 1 FROM jsonb_array_elements(
             CASE WHEN jsonb_typeof(d.metadata_jsonb->'applicants') = 'array'
@@ -294,6 +399,10 @@ SEARCH_FILTERS = """
         ) AS applicant(entry)
         WHERE strpos(lower(applicant.entry->>'zh'), lower(%s)) > 0
            OR strpos(lower(applicant.entry->>'en'), lower(%s)) > 0
+    ))
+    AND (%s::text IS NULL OR EXISTS (
+        SELECT 1 FROM patent_classifications c
+        WHERE c.document_id=d.id AND c.scheme='LOC' AND c.code=%s
     ))
 """
 
@@ -309,13 +418,14 @@ LEXICAL_SEARCH = f"""
         SELECT t.document_id, max(
             ts_rank(t.terms, q.terms) *
             CASE WHEN t.field IN ('title_zh', 'title_en') THEN 3
-                 WHEN t.field IN ('abstract_zh', 'abstract_en') THEN 2 ELSE 1 END
-        ) AS score
+                 WHEN t.field IN ('abstract_zh', 'abstract_en', 'section:abstract-zh', 'section:abstract-en')
+                    THEN 2 ELSE 1 END
+        ) AS score, array_agg(DISTINCT t.field ORDER BY t.field) AS lexical_match_fields
         FROM patent_lexical_chunks t CROSS JOIN query q
         WHERE t.tokenizer_version = %s AND t.terms @@ q.terms
         GROUP BY t.document_id
     )
-    SELECT {SUMMARY_FIELDS}, m.score
+    SELECT {SUMMARY_FIELDS}, m.score, m.lexical_match_fields
     {DOCUMENTS_FROM} JOIN matches m ON m.document_id = d.id
     {PUBLIC_DOCUMENT_FILTER}
     {SEARCH_FILTERS}
@@ -323,12 +433,44 @@ LEXICAL_SEARCH = f"""
     LIMIT %s OFFSET %s
 """
 
-SEMANTIC_SEARCH = f"""
+SEMANTIC_CANDIDATES = f"""
     WITH candidates AS (
         SELECT {SUMMARY_FIELDS}
         {PUBLIC_DOCUMENTS}
         {SEARCH_FILTERS}
-    ), matches AS (
+    )
+"""
+CORPUS_COVERAGE = (
+    SEMANTIC_CANDIDATES
+    + """
+    , coverage AS (
+        SELECT c.publication_date,
+            EXISTS (
+                SELECT 1 FROM patent_lexical_chunks t
+                WHERE t.document_id = c.document_id AND t.tokenizer_version = %s
+                  AND t.terms <> ''::tsvector
+            ) AS lexical,
+            EXISTS (
+                SELECT 1 FROM patent_dense_chunks t
+                WHERE t.model_id = %s AND t.document_id = c.document_id
+            ) AS semantic
+        FROM candidates c
+    )
+    SELECT transaction_timestamp() AS observed_at,
+        count(*) FILTER (WHERE lexical) AS lexical_versions,
+        count(*) FILTER (WHERE semantic) AS semantic_versions,
+        max(publication_date) FILTER (WHERE lexical OR semantic) AS latest_document_date
+    FROM coverage
+"""
+)
+SEMANTIC_ORDER = f"""
+    ORDER BY m.score DESC, {SCOPE_ORDER.format("c.content_scope")}, c.document_id
+    LIMIT %s OFFSET %s
+"""
+SEMANTIC_SEARCH = (
+    SEMANTIC_CANDIDATES
+    + """
+    , matches AS (
         SELECT t.document_id, 1 - min(t.embedding <=> %s::vector) AS score
         FROM patent_dense_chunks t JOIN candidates c ON c.document_id = t.document_id
         WHERE t.model_id = %s
@@ -336,9 +478,24 @@ SEMANTIC_SEARCH = f"""
     )
     SELECT c.*, m.score
     FROM candidates c JOIN matches m ON m.document_id = c.document_id
-    ORDER BY m.score DESC, {SCOPE_ORDER.format("c.content_scope")}, c.document_id
-    LIMIT %s OFFSET %s
 """
+    + SEMANTIC_ORDER
+)
+
+# For an exact IPC code, look up each candidate's vectors by (model_id, document_id).
+SEMANTIC_IPC_SEARCH = (
+    SEMANTIC_CANDIDATES
+    + """
+    SELECT c.*, m.score
+    FROM candidates c CROSS JOIN LATERAL (
+        SELECT 1 - min(t.embedding <=> %s::vector) AS score
+        FROM patent_dense_chunks t
+        WHERE t.model_id = %s AND t.document_id = c.document_id
+    ) m
+    WHERE m.score IS NOT NULL
+"""
+    + SEMANTIC_ORDER
+)
 
 
 def normalize_ipc(value: str | None) -> str | None:
@@ -352,6 +509,11 @@ def normalize_ipc(value: str | None) -> str | None:
 
 def search_filter_params(request: RankedSearchRequest) -> tuple:
     ipc = normalize_ipc(request.ipc)
+    loc = None
+    if request.loc is not None:
+        loc = unicodedata.normalize("NFKC", request.loc).strip()
+        if not re.fullmatch(r"[0-9]{2}-[0-9]{2}", loc):
+            raise ValueError("LOC 格式不符，例如 13-99。")
     if (
         request.published_from
         and request.published_to
@@ -363,7 +525,10 @@ def search_filter_params(request: RankedSearchRequest) -> tuple:
         *((request.published_from,) * 2),
         *((request.published_to,) * 2),
         *((request.document_stage,) * 2),
+        *((request.content_scope,) * 2),
         *((request.applicant,) * 3),
+        loc,
+        loc,
     )
 
 
@@ -385,11 +550,21 @@ def indexed_model_id(model: LocalEmbeddingModel) -> int:
     return identity
 
 
+def lexical_statement(terms: str, filters: tuple, limit: int, offset: int):
+    return LEXICAL_SEARCH, (terms, TOKENIZER_VERSION, *filters, limit, offset)
+
+
+def semantic_statement(
+    embedding: str, identity: int, filters: tuple, limit: int, offset: int
+):
+    ipc = filters[0]
+    sql = SEMANTIC_IPC_SEARCH if ipc and "/" in ipc else SEMANTIC_SEARCH
+    return sql, (*filters, embedding, identity, limit, offset)
+
+
 def lexical_rows(conn: Connection, terms: str, filters: tuple, limit: int, offset: int):
     return (
-        conn.exec_driver_sql(
-            LEXICAL_SEARCH, (terms, TOKENIZER_VERSION, *filters, limit, offset)
-        )
+        conn.exec_driver_sql(*lexical_statement(terms, filters, limit, offset))
         .mappings()
         .all()
     )
@@ -405,7 +580,7 @@ def semantic_rows(
 ):
     return (
         conn.exec_driver_sql(
-            SEMANTIC_SEARCH, (*filters, embedding, identity, limit, offset)
+            *semantic_statement(embedding, identity, filters, limit, offset)
         )
         .mappings()
         .all()
@@ -418,7 +593,11 @@ def missing_semantic_index():
 
 def normalize_number(number: str, number_type: NumberType) -> str:
     normalized = unicodedata.normalize("NFKC", number).strip().upper()
-    pattern = r"I[0-9]{1,12}" if number_type == "grant" else r"[0-9]{9}"
+    pattern = {
+        "grant": r"[IMD][0-9]{1,12}",
+        "application": APPLICATION_NUMBER_PATTERN,
+        "publication": r"[0-9]{9}",
+    }[number_type]
     if not re.fullmatch(pattern, normalized):
         raise ValueError("專利號碼格式與查詢類型不符。")
     return normalized
@@ -501,6 +680,52 @@ def document_sources_by_id(
     return sources
 
 
+def add_candidate_previews(conn: Connection, ranked: list[dict]) -> None:
+    if not ranked:
+        return
+    ids = [hit["document_id"] for hit in ranked]
+    rows = conn.exec_driver_sql(
+        """SELECT d.id, left(coalesce(d.abstract_zh, d.abstract_en), 240) AS abstract_excerpt,
+                  d.metadata_jsonb->'applicants' AS applicants,
+                  ARRAY(
+                    SELECT DISTINCT c.code FROM patent_classifications c
+                    WHERE c.document_id = d.id AND c.scheme = 'IPC'
+                    ORDER BY c.code LIMIT 4
+                  ) AS ipc_codes,
+                  ARRAY(
+                    SELECT DISTINCT c.code FROM patent_classifications c
+                    WHERE c.document_id = d.id AND c.scheme = 'LOC'
+                    ORDER BY c.code LIMIT 4
+                  ) AS loc_codes
+           FROM patent_documents d WHERE d.id = ANY(%s::uuid[])""",
+        (ids,),
+    ).mappings()
+    previews = {row["id"]: row for row in rows}
+    sources = document_sources_by_id(conn, ids)
+    for hit in ranked:
+        version = hit["document_id"]
+        row = previews[version]
+        source_urls = [
+            artifact.dataset_url
+            for artifact in sources.get(version, [])
+            if artifact.dataset_url
+        ]
+        hit.update(
+            abstract_excerpt=row["abstract_excerpt"],
+            applicants=row["applicants"] or [],
+            ipc_codes=row["ipc_codes"],
+            loc_codes=row["loc_codes"],
+            official_source_url=next(
+                (
+                    url
+                    for url in source_urls
+                    if url.startswith("https://data.gov.tw/dataset/")
+                ),
+                next(iter(source_urls), None),
+            ),
+        )
+
+
 @router.get(
     "",
     response_model=PatentSearchResults,
@@ -524,6 +749,7 @@ def search_patents(
                     ORDER BY d.document_stage, d.publication_no,
                        CASE d.metadata_jsonb->>'content_scope'
                          WHEN 'fulltext' THEN 0 WHEN 'claims_only' THEN 1 ELSE 2 END,
+                       d.parser_version DESC,
                        d.id
                     LIMIT %s OFFSET %s""",
                     (number, limit + 1, offset),
@@ -564,7 +790,11 @@ def lexical_search(request: RankedSearchRequest):
     )
 
 
-@router.post("/search/semantic", response_model=SemanticSearchResults)
+@router.post(
+    "/search/semantic",
+    response_model=SemanticSearchResults,
+    responses={429: {"model": PatentErrorEnvelope}},
+)
 def semantic_search(request: RankedSearchRequest):
     query = request.query.strip()
     if not query:
@@ -576,7 +806,8 @@ def semantic_search(request: RankedSearchRequest):
     try:
         model = LocalEmbeddingModel.from_env()
         identity = indexed_model_id(model)
-        embedding = vector_literal(model.embed_query(query))
+        with model_slot():
+            embedding = vector_literal(model.embed_query(query))
         with engine.connect() as conn:
             rows = semantic_rows(
                 conn, embedding, identity, filters, request.limit + 1, request.offset
@@ -598,7 +829,11 @@ def semantic_search(request: RankedSearchRequest):
     )
 
 
-@router.post("/search/hybrid", response_model=HybridSearchResults)
+@router.post(
+    "/search/hybrid",
+    response_model=HybridSearchResults,
+    responses={429: {"model": PatentErrorEnvelope}},
+)
 def hybrid_search(request: HybridSearchRequest):
     return run_hybrid(request)
 
@@ -615,12 +850,11 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
     if len(set(feature_ids)) != len(feature_ids):
         return api_error(422, "INVALID_REQUEST", "技術特徵 ID 必須唯一。")
     terms, semantic_query = expand_query(query, request.features)
-    if len(semantic_query) > 1600:
-        return api_error(422, "INVALID_REQUEST", "技術特徵展開後超過 1,600 字元。")
     try:
         model = LocalEmbeddingModel.from_env()
         identity = indexed_model_id(model)
-        embedding = vector_literal(model.embed_query(semantic_query))
+        with model_slot():
+            embedding = vector_literal(model.embed_query(semantic_query))
         with engine.connect().execution_options(
             isolation_level="REPEATABLE READ"
         ) as conn:
@@ -630,19 +864,15 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
             semantic = semantic_rows(
                 conn, embedding, identity, filters, CANDIDATE_LIMIT, 0
             )
-            ranked = fuse_rankings(lexical, semantic)
-            abstracts = {}
-            if request.rerank and len(ranked) > 1:
-                ids = [hit["document_id"] for hit in ranked[:RERANK_LIMIT]]
-                abstracts = dict(
-                    conn.exec_driver_sql(
-                        """SELECT id, left(coalesce(abstract_zh, abstract_en, ''), 180)
-                       FROM patent_documents WHERE id = ANY(%s::uuid[])""",
-                        (ids,),
-                    )
-                    .tuples()
-                    .all()
+            coverage = CorpusCoverage.model_validate(
+                conn.exec_driver_sql(
+                    CORPUS_COVERAGE, (*filters, TOKENIZER_VERSION, identity)
                 )
+                .mappings()
+                .one()
+            )
+            ranked = fuse_rankings(lexical, semantic)
+            add_candidate_previews(conn, ranked)
     except SemanticIndexUnavailable:
         return missing_semantic_index()
     except EmbeddingError:
@@ -653,19 +883,20 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
     for rank, hit in enumerate(ranked, 1):
         hit.update(fusion_rank=rank, rerank_rank=None)
     reranker = None
-    if abstracts:
+    if request.rerank and len(ranked) > 1:
         prefix = ranked[:RERANK_LIMIT]
         candidates = [
             {
                 "id": i,
                 "title": (hit["title_zh"] or hit["title_en"] or "")[:100],
-                "abstract": abstracts.get(hit["document_id"], ""),
+                "abstract": (hit["abstract_excerpt"] or "")[:180],
             }
             for i, hit in enumerate(prefix, 1)
         ]
         try:
             analyzer = LocalOllamaModel.from_env("ANALYSIS")
-            order = rerank_order(analyzer, semantic_query, candidates)
+            with model_slot():
+                order = rerank_order(analyzer, semantic_query, candidates)
         except LocalModelError:
             return api_error(
                 503, "ANALYSIS_UNAVAILABLE", "本機模型目前無法重排專利候選。"
@@ -679,10 +910,18 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
             version=RERANK_VERSION,
             candidate_count=len(prefix),
         )
+    if request.sort_by != "relevance":
+        dated = [hit for hit in ranked if hit["publication_date"] is not None]
+        dated.sort(
+            key=lambda hit: hit["publication_date"],
+            reverse=request.sort_by == "date_desc",
+        )
+        ranked = dated + [hit for hit in ranked if hit["publication_date"] is None]
     start = 0 if full_snapshot else request.offset
     end = len(ranked) if full_snapshot else start + request.limit
     return HybridSearchResults(
         items=[HybridPatentHit.model_validate(row) for row in ranked[start:end]],
+        query_expansion_version=QUERY_EXPANSION_VERSION,
         tokenizer_version=TOKENIZER_VERSION,
         model_name=model.name,
         model_digest=model.digest,
@@ -691,6 +930,7 @@ def run_hybrid(request: HybridSearchRequest, *, full_snapshot: bool = False):
         candidate_limit=CANDIDATE_LIMIT,
         applied_feature_ids=feature_ids,
         reranker=reranker,
+        corpus_coverage=coverage,
         limit=request.limit,
         offset=request.offset,
         has_more=len(ranked) > end,
@@ -738,6 +978,43 @@ def patent_detail(document_id: UUID):
                 .all()
             )
             sources = document_sources(conn, document_id)
+            priorities = (
+                conn.exec_driver_sql(
+                    """SELECT p.country, p.priority_no, p.priority_date, ia.source_locator,
+                              s.official_url, ia.checksum AS artifact_sha256,
+                              p.record_locator || '/tw-bibliographic-data-grant/priority-claims/priority-claim['
+                                || p.ordinal || ']' AS xpath
+                       FROM patent_priorities p
+                       JOIN ingestion_artifacts ia ON ia.id = p.artifact_id
+                       JOIN ingestion_batches b ON b.id = ia.batch_id
+                       JOIN source_datasets s ON s.id = b.dataset_id
+                       WHERE p.document_id = %s AND NOT s.is_demo AND s.dataset_key = 'TIPO-15987'
+                         AND ia.status = 'parsed' AND b.status IN ('partial', 'complete')
+                       ORDER BY p.ordinal, p.priority_date, p.country, p.priority_no""",
+                    (document_id,),
+                )
+                .mappings()
+                .all()
+            )
+            events = (
+                conn.exec_driver_sql(
+                    """SELECT e.kind,e.certificate_no,e.effective_on,e.detail,e.record_locator,
+                              ia.source_locator,ia.checksum AS artifact_sha256,b.batch_key,
+                              b.finished_at AS ingested_at,s.official_url
+                       FROM patent_documents d
+                       JOIN patent_legal_events e ON e.application_id = d.application_id
+                       JOIN ingestion_artifacts ia ON ia.id = e.artifact_id
+                       JOIN ingestion_batches b ON b.id = ia.batch_id
+                       JOIN source_datasets s ON s.id = b.dataset_id
+                       WHERE d.id=%s AND (d.document_stage='publication' OR d.publication_no=e.certificate_no)
+                         AND NOT s.is_demo AND s.dataset_key='TIPO-15974'
+                         AND ia.status='parsed' AND b.status='complete'
+                       ORDER BY b.batch_key DESC,e.effective_on DESC NULLS LAST,e.id""",
+                    (document_id,),
+                )
+                .mappings()
+                .all()
+            )
     except SQLAlchemyError:
         return unavailable()
     return PatentDetail.model_validate(
@@ -748,7 +1025,172 @@ def patent_detail(document_id: UUID):
             "classifications": classifications,
             "sections": sections,
             "sources": sources,
+            "priorities": [
+                {
+                    **priority,
+                    "source_url": source_url(priority["source_locator"]),
+                    "dataset_url": source_url(priority["official_url"]),
+                    "source": {
+                        "xpath": priority["xpath"],
+                        "artifact_sha256": priority["artifact_sha256"],
+                    },
+                }
+                for priority in priorities
+            ],
+            "legal_events": [
+                {
+                    **event,
+                    "source_url": source_url(event["source_locator"]),
+                    "dataset_url": source_url(event["official_url"]),
+                }
+                for event in events
+            ],
         }
+    )
+
+
+def gazette_pdf_statement(request: GazettePdfQuery):
+    terms = " & ".join(dict.fromkeys(tokenize(request.query)))
+    if not terms:
+        return None
+    return (
+        f"""WITH q AS (SELECT to_tsquery('simple', %s) AS terms)
+                    SELECT {SUMMARY_FIELDS}, p.page_number, ia.checksum AS artifact_sha256,
+                           ia.source_locator, ts_rank(p.search_terms, q.terms) AS score
+                    {DOCUMENTS_FROM}
+                    JOIN document_artifacts da ON da.document_id = d.id
+                    JOIN ingestion_artifacts ia ON ia.id = da.artifact_id
+                    JOIN ingestion_batches b ON b.id = ia.batch_id
+                    JOIN source_datasets s ON s.id = b.dataset_id
+                    JOIN gazette_pdf_pages p ON p.artifact_id = ia.id
+                    CROSS JOIN q
+                    WHERE p.search_terms @@ q.terms
+                      AND d.jurisdiction='TW' AND a.jurisdiction='TW'
+                      AND (%s::text IS NULL OR d.document_stage=%s)
+                      AND NOT s.is_demo AND ia.status='parsed' AND b.status='complete'
+                      AND s.dataset_key = CASE d.document_stage
+                          WHEN 'publication' THEN 'TIPO-INVENTION-GAZETTE-PDF'
+                          WHEN 'grant' THEN 'TIPO-GRANT-GAZETTE-PDF'
+                      END
+                    ORDER BY score DESC, d.publication_no, d.id, ia.checksum,
+                             p.page_number, ia.id, da.record_locator
+                    LIMIT %s OFFSET %s""",
+        (
+            terms,
+            request.document_stage,
+            request.document_stage,
+            request.limit + 1,
+            request.offset,
+        ),
+    )
+
+
+@router.post("/gazette-pdfs/search", response_model=GazettePdfResults)
+def search_gazette_pdfs(request: GazettePdfQuery):
+    statement = gazette_pdf_statement(request)
+    if statement is None:
+        return api_error(422, "INVALID_REQUEST", "請輸入可檢索的公報文字。")
+    try:
+        with engine.connect() as conn:
+            rows = conn.exec_driver_sql(*statement).mappings().all()
+    except SQLAlchemyError:
+        return unavailable()
+    items = []
+    for row in rows:
+        if (url := source_url(row["source_locator"])) is not None:
+            items.append(GazettePdfHit.model_validate({**row, "source_url": url}))
+    return GazettePdfResults(
+        items=items[: request.limit],
+        has_more=len(rows) > request.limit and request.offset + request.limit <= 10000,
+        limit=request.limit,
+        offset=request.offset,
+    )
+
+
+@router.get(
+    "/{document_id}/drawings/{artifact_sha256}",
+    responses={
+        200: {"content": {"image/jpeg": {}}, "description": "Verified official JPEG"}
+    },
+    response_class=Response,
+)
+def patent_drawing(
+    document_id: UUID,
+    artifact_sha256: Annotated[str, Path(pattern=r"^[0-9a-f]{64}$")],
+):
+    try:
+        with engine.connect() as conn:
+            row = conn.exec_driver_sql(
+                """SELECT DISTINCT ia.checksum, ia.object_key, ia.size_bytes
+                   FROM document_artifacts da
+                   JOIN patent_documents d ON d.id=da.document_id
+                   JOIN ingestion_artifacts ia ON ia.id=da.artifact_id
+                   JOIN ingestion_batches b ON b.id=ia.batch_id
+                   JOIN source_datasets s ON s.id=b.dataset_id
+                   WHERE d.id=%s AND d.jurisdiction='TW' AND d.document_stage='grant'
+                     AND ia.checksum=%s AND ia.size_bytes BETWEEN 1 AND 2097152
+                     AND ia.status='parsed' AND b.status='complete' AND NOT s.is_demo
+                     AND s.dataset_key='TIPO-15987-DRAWINGS'
+                     AND starts_with(da.record_locator, '/specification/drawings/figure[')""",
+                (document_id, artifact_sha256),
+            ).one_or_none()
+        if row is None:
+            return not_found()
+        root = os.environ.get("PATENT_OBJECTS_DIR")
+        if not root:
+            return unavailable()
+        data = LocalObjectStore(FilesystemPath(root)).read(RawArtifact(*row))
+    except (SQLAlchemyError, OSError, ValueError):
+        return unavailable()
+    return Response(
+        data, media_type="image/jpeg", headers={"X-Content-Type-Options": "nosniff"}
+    )
+
+
+@router.get(
+    "/{document_id}/gazette-pdfs/{artifact_sha256}/pages",
+    response_model=GazettePdfPages,
+    responses={404: {"model": PatentErrorEnvelope}},
+)
+def gazette_pdf_pages(
+    document_id: UUID,
+    artifact_sha256: Annotated[str, Path(pattern=r"^[0-9a-f]{64}$")],
+):
+    try:
+        with engine.connect() as conn:
+            rows = (
+                conn.exec_driver_sql(
+                    """SELECT DISTINCT p.page_number, p.extracted_text
+                       FROM patent_documents d
+                       JOIN document_artifacts da ON da.document_id = d.id
+                       JOIN ingestion_artifacts ia ON ia.id = da.artifact_id
+                       JOIN ingestion_batches b ON b.id = ia.batch_id
+                       JOIN source_datasets s ON s.id = b.dataset_id
+                       LEFT JOIN gazette_pdf_pages p ON p.artifact_id = ia.id
+                       WHERE d.id=%s AND d.jurisdiction='TW' AND ia.checksum=%s
+                         AND NOT s.is_demo AND ia.status='parsed' AND b.status='complete'
+                         AND s.dataset_key = CASE d.document_stage
+                            WHEN 'publication' THEN 'TIPO-INVENTION-GAZETTE-PDF'
+                            WHEN 'grant' THEN 'TIPO-GRANT-GAZETTE-PDF'
+                         END
+                       ORDER BY p.page_number""",
+                    (document_id, artifact_sha256),
+                )
+                .mappings()
+                .all()
+            )
+    except SQLAlchemyError:
+        return unavailable()
+    if not rows:
+        return not_found()
+    return GazettePdfPages(
+        document_id=document_id,
+        artifact_sha256=artifact_sha256,
+        pages=[
+            GazettePdfPage.model_validate(row)
+            for row in rows
+            if row["page_number"] is not None
+        ],
     )
 
 
@@ -767,9 +1209,13 @@ def patent_claims(document_id: UUID):
                 return not_found()
             rows = (
                 conn.exec_driver_sql(
-                    """SELECT claim_number, text, independent_flag_nullable AS independent,
-                          source_locator_jsonb AS source
-                   FROM patent_claims WHERE document_id = %s ORDER BY claim_number""",
+                    """SELECT c.claim_number, c.text, c.independent_flag_nullable AS independent,
+                          c.source_locator_jsonb AS source,
+                          ARRAY(SELECT d.parent_number FROM claim_dependencies d
+                                WHERE d.document_id = c.document_id
+                                  AND d.child_number = c.claim_number
+                                ORDER BY d.parent_number) AS referenced_claim_numbers
+                   FROM patent_claims c WHERE c.document_id = %s ORDER BY c.claim_number""",
                     (document_id,),
                 )
                 .mappings()

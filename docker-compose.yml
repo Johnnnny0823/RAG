@@ -3,10 +3,10 @@ x-api: &api
   build:
     context: .
     dockerfile: services/api/Dockerfile
-  environment:
+  environment: &api-env
     PGHOST: db
-    PGUSER: ${POSTGRES_USER:?Copy .env.example to .env}
-    PGPASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env}
+    PGUSER: patentscope_api
+    PGPASSWORD: ${API_DB_PASSWORD:?Set API_DB_PASSWORD using .env.example}
     PGDATABASE: ${POSTGRES_DB:?Copy .env.example to .env}
     EMBEDDING_URL: ${EMBEDDING_URL:-}
     EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
@@ -14,6 +14,12 @@ x-api: &api
     ANALYSIS_URL: ${ANALYSIS_URL:-}
     ANALYSIS_MODEL: ${ANALYSIS_MODEL:-}
     ANALYSIS_DIGEST: ${ANALYSIS_DIGEST:-}
+    MODEL_MAX_CONCURRENT: ${MODEL_MAX_CONCURRENT:-2}
+x-ingestion-env: &ingestion-env
+  <<: *api-env
+  PGUSER: ${POSTGRES_USER:?Copy .env.example to .env}
+  PGPASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env}
+  PATENT_OBJECTS_DIR: /var/lib/patentscope/objects
 services:
   db:
     image: pgvector/pgvector:0.8.2-pg16
@@ -30,12 +36,60 @@ services:
       retries: 30
   migrate:
     <<: *api
-    command: ["python", "-m", "alembic", "upgrade", "head"]
+    environment:
+      <<: *ingestion-env
+      API_DB_PASSWORD: ${API_DB_PASSWORD:?Set API_DB_PASSWORD using .env.example}
+    volumes: &patent-object-volumes
+      - patent-objects:/var/lib/patentscope/objects
+    command: ["sh", "-ec", "python -m alembic upgrade head && python -m services.api.provision_db_role"]
     depends_on:
       db:
         condition: service_healthy
+  patent-refresh:
+    <<: *api
+    profiles: ["patent-refresh"]
+    environment: *ingestion-env
+    volumes: *patent-object-volumes
+    command:
+      - python
+      - -m
+      - services.ingestion.refresh_publications
+      - --interval
+      - "${TIPO_REFRESH_INTERVAL:-86400}"
+      - --retry-interval
+      - "${TIPO_REFRESH_RETRY_INTERVAL:-900}"
+      - --limit
+      - "${TIPO_REFRESH_LIMIT:-100}"
+      - --index-mode
+      - "${TIPO_REFRESH_INDEX_MODE:-lexical}"
+      - "--archive-year=${TIPO_REFRESH_ARCHIVE_YEAR:-}"
+      - "--gazette-year=${TIPO_REFRESH_GAZETTE_YEAR:-}"
+      - "--include-grants=${TIPO_REFRESH_INCLUDE_GRANTS:-no}"
+      - "--grant-types=${TIPO_REFRESH_GRANT_TYPES:-invention}"
+      - "--catch-up-year=${TIPO_REFRESH_CATCH_UP_YEAR:-}"
+      - "--publication-from=${TIPO_REFRESH_PUBLICATION_FROM:-}"
+      - "--grant-from=${TIPO_REFRESH_GRANT_FROM:-}"
+      - "--catch-up-max-issues=${TIPO_REFRESH_CATCH_UP_MAX_ISSUES:-2}"
+      - "--legal-year=${TIPO_REFRESH_LEGAL_YEAR:-}"
+      - "--legal-from=${TIPO_REFRESH_LEGAL_FROM:-}"
+    stop_grace_period: 2m
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
   api:
     <<: *api
+    volumes:
+      - patent-objects:/var/lib/patentscope/objects:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      <<: *api-env
+      INGESTION_ADMIN_USER_IDS: ${INGESTION_ADMIN_USER_IDS:-}
+      PATENT_OBJECTS_DIR: /var/lib/patentscope/objects
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -46,6 +100,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
+  search-worker:
+    <<: *api
+    command: ["python", "-m", "services.api.search_worker"]
+    stop_grace_period: 3m
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
   web:
     build: ./apps/web
     environment:
@@ -57,3 +118,4 @@ services:
       - "127.0.0.1:${WEB_PORT:-5173}:5173"
 volumes:
   postgres-data:
+  patent-objects:

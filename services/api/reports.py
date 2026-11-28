@@ -25,7 +25,7 @@ from services.api.patents import (
     document_sources_by_id,
     unavailable,
 )
-from services.api.search_runs import Owner, RunDetails, load_search
+from services.api.search_runs import Owner, RunDetails, read_saved_search
 
 router = APIRouter(
     prefix="/api/v1/search-runs", tags=["research"], route_class=PatentRoute
@@ -121,17 +121,28 @@ def build_report(run: RunDetails, sources: dict[UUID, list[SourceArtifact]]) -> 
     paragraph(
         "供研發前調查使用。結果限於檢索時已索引的 TIPO 樣本與候選範圍。判定只涵蓋已檢查片段，未找到證據不代表技術不存在。相似度與排名不能用來判定侵權、新穎性或可專利性。"
     )
-    paragraph(
-        "本報告的來源批次以匯出時可查證的候選文件來源為準。系統尚無保存完整語料快照，無法由本報告重建當時所有索引資料。"
-    )
+    paragraph("來源批次以匯出時可查證的候選文件來源為準。")
+    if coverage := run.settings.get("corpus_coverage"):
+        paragraph(
+            f"搜尋涵蓋範圍 · 記錄於 {coverage['observed_at']} · "
+            f"詞彙索引 {coverage['lexical_versions']} 個文件版本 · "
+            f"向量索引 {coverage['semantic_versions']} 個文件版本 · "
+            f"最新文件日期 {coverage['latest_document_date'] or '未提供'}"
+        )
+        paragraph("數量依本次篩選條件計算。同一文件版本可同時出現在兩種索引。")
+    else:
+        paragraph("這筆搜尋未記錄檢索時的索引涵蓋範圍。")
+    paragraph("報告可供核對保存的候選與引用，重建當時的索引仍需原始語料與索引備份。")
     paragraph("構想與檢索策略", heading)
     paragraph(run.request.query)
     filters = [
         ("IPC", run.request.ipc),
+        ("LOC", run.request.loc),
         ("日期起日", run.request.published_from),
         ("日期迄日", run.request.published_to),
         ("申請人", run.request.applicant),
         ("文件類型", STAGES.get(run.request.document_stage or "")),
+        ("文件內容", SCOPES.get(run.request.content_scope or "")),
     ]
     paragraph(
         "篩選條件 · "
@@ -237,7 +248,14 @@ def build_report(run: RunDetails, sources: dict[UUID, list[SourceArtifact]]) -> 
     },
 )
 def export_report(run_id: UUID, account: Owner):
-    run = load_search(run_id, account, Response())
+    pdf = render_saved_report(run_id, account.id)
+    if isinstance(pdf, JSONResponse):
+        return pdf
+    return pdf_attachment(run_id, pdf)
+
+
+def render_saved_report(run_id: UUID, user_id: UUID) -> bytes | JSONResponse:
+    run = read_saved_search(run_id, user_id)
     if isinstance(run, JSONResponse):
         return run
     try:
@@ -248,11 +266,14 @@ def export_report(run_id: UUID, account: Owner):
     except SQLAlchemyError:
         return unavailable()
     try:
-        pdf = build_report(run, sources)
+        return build_report(run, sources)
     except (OSError, TTFError, ValueError):
         return api_error(
             503, "REPORT_UNAVAILABLE", "目前無法產生 PDF，請確認報告字型設定。"
         )
+
+
+def pdf_attachment(run_id: UUID, pdf: bytes) -> Response:
     return Response(
         pdf,
         media_type="application/pdf",

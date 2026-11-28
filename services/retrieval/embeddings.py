@@ -20,7 +20,7 @@ class LocalEmbeddingModel(LocalOllamaModel):
     def identity(self):
         return "ollama", self.name, self.digest, PIPELINE
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
+    def embed(self, texts: list[str], *, timeout: int = 90) -> list[list[float]]:
         self.verify_digest()
         response = self.request_json(
             "/api/embed",
@@ -28,8 +28,11 @@ class LocalEmbeddingModel(LocalOllamaModel):
                 "model": self.name,
                 "input": texts,
                 "truncate": False,
-                "options": {"num_ctx": 4096},
+                "options": {
+                    "num_ctx": 8192 if any(len(text) > 1000 for text in texts) else 4096
+                },
             },
+            timeout=timeout,
         )
         self.verify_digest()
         if not isinstance(response, dict) or response.get("model") != self.name:
@@ -53,7 +56,12 @@ class LocalEmbeddingModel(LocalOllamaModel):
         return vectors
 
     def embed_query(self, query: str) -> list[float]:
-        return self.embed([f"Instruct: {QUERY_INSTRUCTION}\nQuery:{query}"])[0]
+        return self.embed_queries([query])[0]
+
+    def embed_queries(self, queries: list[str]) -> list[list[float]]:
+        return self.embed(
+            [f"Instruct: {QUERY_INSTRUCTION}\nQuery:{query}" for query in queries]
+        )
 
 
 def vector_literal(vector: list[float]) -> str:

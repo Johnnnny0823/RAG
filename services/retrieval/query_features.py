@@ -1,5 +1,6 @@
 """Validate model-proposed and user-edited technical query features."""
 
+import re
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
@@ -8,6 +9,36 @@ from services.retrieval.lexical import tokenize
 from services.retrieval.ollama import LocalModelError, LocalOllamaModel
 
 ANALYSIS_VERSION = "technical-features-v1"
+MAX_INVENTION_LENGTH = 1200
+SHORT_QUERY_LENGTH = 160
+LONG_QUERY_BOUNDARIES = re.compile(r"[。！？；!?;\n]+")
+QUERY_EXPANSION_VERSION = "sentence-expansion-v2"
+FEATURE_OUTPUT_FIELDS = {
+    "description_zh": {"type": "string"},
+    "keywords_zh": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
+    "keywords_en": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
+    "must_have": {"type": "boolean"},
+    "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+    "ipc_candidates": {"type": "array", "items": {"type": "string"}, "maxItems": 3},
+}
+LONG_ANALYSIS_FORMAT = {
+    "type": "object",
+    "properties": {
+        "features": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5,
+            "items": {
+                "type": "object",
+                "properties": FEATURE_OUTPUT_FIELDS,
+                "required": list(FEATURE_OUTPUT_FIELDS),
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["features"],
+    "additionalProperties": False,
+}
 Keyword = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=48)
 ]
@@ -39,17 +70,18 @@ class FeatureDraft(BaseModel):
 
 
 def analyze_features(model: LocalOllamaModel, query: str) -> list[TechnicalFeature]:
+    is_long = len(query) > SHORT_QUERY_LENGTH
     model.verify_digest()
     response = model.request_json(
         "/api/chat",
         {
             "model": model.name,
             "stream": False,
-            "format": "json",
+            "format": LONG_ANALYSIS_FORMAT if is_long else "json",
             "options": {
                 "temperature": 0,
-                "num_ctx": 4096,
-                "num_predict": 900,
+                "num_ctx": 8192 if is_long else 4096,
+                "num_predict": 1500 if is_long else 900,
                 "num_gpu": 0,
             },
             "messages": [
@@ -87,14 +119,17 @@ def analyze_features(model: LocalOllamaModel, query: str) -> list[TechnicalFeatu
 
 
 def expand_query(query: str, features: list[TechnicalFeature]) -> tuple[str, str]:
-    phrases = [query]
+    is_long = len(query) > SHORT_QUERY_LENGTH
+    phrases = LONG_QUERY_BOUNDARIES.split(query) if is_long else [query]
     if features:
         phrases.extend(
             keyword
             for feature in features
             for keyword in (*feature.keywords_zh, *feature.keywords_en)
         )
-    groups = dict.fromkeys(" & ".join(tokenize(phrase)) for phrase in phrases)
+    groups = dict.fromkeys(
+        " & ".join(dict.fromkeys(tokenize(phrase))) for phrase in phrases
+    )
     lexical = " | ".join(f"({group})" for group in groups if group)
     if not features:
         return lexical, query
@@ -103,4 +138,10 @@ def expand_query(query: str, features: list[TechnicalFeature]) -> tuple[str, str
         for feature in features
     ]
     semantic = "\n".join((query, *details))
+    if is_long or len(semantic) > 1600:
+        # Preserve the full invention and each reviewed description. Expanded
+        # keywords still participate in lexical retrieval.
+        semantic = "\n".join(
+            dict.fromkeys((query, *(feature.description_zh for feature in features)))
+        )
     return lexical, semantic

@@ -1,0 +1,16 @@
+# Apply after docker-compose.deploy.yml.
+services:
+  web:
+    ports: !override
+      - "${TLS_BIND_ADDRESS:-127.0.0.1}:${TLS_PORT:-18443}:5443"
+    volumes:
+      - ./apps/web/nginx-tls.conf:/etc/nginx/patentscope-tls/listener.conf:ro
+    secrets:
+      - tls_certificate
+      - tls_key
+
+secrets:
+  tls_certificate:
+    file: ${TLS_CERTIFICATE_FILE:?Set TLS_CERTIFICATE_FILE to the certificate chain file}
+  tls_key:
+    file: ${TLS_KEY_FILE:?Set TLS_KEY_FILE to the private key file}

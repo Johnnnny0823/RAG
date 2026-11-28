@@ -1,6 +1,15 @@
+from datetime import date
+
 import pytest
 
-from services.ingestion.grant_index import parse_grant
+from services.ingestion.artifacts import MAX_XML_BYTES
+from services.ingestion.grant_index import (
+    discover_grant_issue,
+    parse_grant,
+    parse_priorities,
+    parse_selected_grants,
+)
+from services.ingestion.patentpub import parse_xml
 
 GRANT = b"""<tw-patent-grants total-count="1">
   <tw-patent-grant certificate-number="I000001">
@@ -17,11 +26,144 @@ GRANT = b"""<tw-patent-grants total-count="1">
 
 
 def test_grant_preserves_separate_certificate_and_application_identifiers():
+    assert discover_grant_issue(GRANT) == ("053028", ["I000001"])
     grant, [claim] = parse_grant(GRANT, "053028", "I000001")
     assert grant.publication_no == "I000001"
     assert grant.application_no == "000000001"
+    assert grant.priorities == ()
     assert claim.text == "DEMO exact text"
     assert claim.independent is None
     assert claim.locator == "/tw-patent-grants/tw-patent-grant[1]/claims/claim[1]"
     with pytest.raises(ValueError, match="requested issue"):
         parse_grant(GRANT, "053029", "I000001")
+
+
+def test_priority_keeps_verbatim_country_number_and_xpath_position():
+    data = b"""<bibliography><priority-claims>
+      <priority-claim sequence="7"><country>DEMO</country><doc-number>00/01,2</doc-number><date>20240229</date></priority-claim>
+    </priority-claims></bibliography>"""
+    [priority] = parse_priorities(parse_xml(data))
+    assert (priority.ordinal, priority.country, priority.number, priority.date) == (
+        1,
+        "DEMO",
+        "00/01,2",
+        date(2024, 2, 29),
+    )
+    with pytest.raises(ValueError, match="Invalid TIPO priority date"):
+        parse_priorities(parse_xml(data.replace(b"20240229", b"20230229")))
+
+
+def test_selected_grants_bind_each_publication_to_its_own_claims():
+    first = GRANT.split(b"<tw-patent-grant ", 1)[1].split(b"</tw-patent-grants>", 1)[0]
+    second = (
+        first.replace(b"I000001", b"I000002")
+        .replace(b"000000001", b"000000002")
+        .replace(b"DEMO exact text", b"Second DEMO")
+    )
+    combined = (
+        b'<tw-patent-grants total-count="2"><tw-patent-grant '
+        + first
+        + b"<tw-patent-grant "
+        + second
+        + b"</tw-patent-grants>"
+    )
+    parsed = parse_selected_grants(combined, "053028", ["I000002", "I000001"])
+    assert [(record.publication_no, claims[0].text) for record, claims in parsed] == [
+        ("I000002", "Second DEMO"),
+        ("I000001", "DEMO exact text"),
+    ]
+    assert parsed[0][1][0].locator.endswith("tw-patent-grant[2]/claims/claim[1]")
+    with pytest.raises(ValueError, match="Missing selected"):
+        parse_selected_grants(combined, "053028", ["I000001", "I000003"])
+
+
+def test_large_grant_issue_is_accepted_without_raising_the_individual_xml_limit():
+    issue = GRANT.ljust(MAX_XML_BYTES + 1, b" ")
+
+    grant, claims = parse_grant(issue, "053028", "I000001")
+
+    assert grant.publication_no == "I000001" and len(claims) == 1
+    with pytest.raises(ValueError, match="exceeds the size limit"):
+        parse_xml(issue)
+
+
+def test_utility_model_preserves_claims_and_rejects_mismatched_application_type():
+    model = GRANT.replace(b"I000001", b"M000001").replace(b'"invention"', b'"model"')
+    grant, [claim] = parse_grant(model, "053028", "M000001")
+    assert grant.publication_no == "M000001"
+    assert claim.text == "DEMO exact text"
+    with pytest.raises(ValueError, match="application type"):
+        parse_grant(model.replace(b'"model"', b'"invention"'), "053028", "M000001")
+
+
+def test_design_keeps_bibliography_without_creating_claims():
+    design = GRANT.replace(b"I000001", b"D000001").replace(b'"invention"', b'"design"')
+    with pytest.raises(ValueError, match="Unexpected claims"):
+        parse_grant(design, "053028", "D000001")
+    design = design.replace(b'<claim num="1"><p>DEMO exact text</p></claim>', b"")
+    grant, claims = parse_grant(design, "053028", "D000001")
+    assert grant.publication_no == "D000001"
+    assert grant.title_en == "DEMO"
+    assert claims == []
+    derived = design.replace(b"000000001", b"000300001D01")
+    grant, _ = parse_grant(derived, "053028", "D000001")
+    assert grant.application_no == "000300001D01"
+
+
+def test_latest_design_refresh_selects_only_designs_and_enriches_all_grant_types(
+    monkeypatch, tmp_path, capsys
+):
+    from services.ingestion import latest_publication
+
+    original = GRANT.split(b"<tw-patent-grant ", 1)[1].split(b"</tw-patent-grants>", 1)[
+        0
+    ]
+    design = (
+        original.replace(b"I000001", b"D000001")
+        .replace(b"000000001", b"000300001D01")
+        .replace(b'"invention"', b'"design"')
+        .replace(b'<claims><claim num="1"><p>DEMO exact text</p></claim></claims>', b"")
+    )
+    index = (
+        b'<tw-patent-grants total-count="2"><tw-patent-grant '
+        + original
+        + b"<tw-patent-grant "
+        + design
+        + b"</tw-patent-grants>"
+    )
+    monkeypatch.setattr(latest_publication, "download_grant_index", lambda: index)
+    monkeypatch.setattr(latest_publication, "download_ftps_xml", lambda _: b"gazette")
+
+    def verify_dates(data, stage, year, issue, *, include_other_grants):
+        assert (data, stage, year, issue) == (b"gazette", "grant", "115", "053028")
+        assert include_other_grants
+
+    def import_index(args, *_args, **_kwargs):
+        assert args.grant_number == ["D000001"]
+        return 0
+
+    monkeypatch.setattr(latest_publication, "parse_gazette", verify_dates)
+    monkeypatch.setattr(latest_publication, "run_pipeline", import_index)
+    monkeypatch.setattr(
+        latest_publication,
+        "apply_dates",
+        lambda data, _store, *args, **kwargs: verify_dates(data, *args, **kwargs),
+    )
+    assert (
+        latest_publication.main(
+            [
+                "--grants",
+                "--grant-type",
+                "design",
+                "--apply",
+                "--limit",
+                "1",
+                "--gazette-year",
+                "115",
+                "--objects",
+                str(tmp_path),
+            ]
+        )
+        == 0
+    )
+    assert '"requested_scope": "metadata_and_abstract"' in capsys.readouterr().out

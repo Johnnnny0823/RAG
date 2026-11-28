@@ -4,9 +4,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from services.api.main import app
+from services.api.patents import HybridSearchRequest, RankedSearchRequest
+from services.api.queries import AnalyzeRequest
 from services.retrieval.ollama import LocalModelError, LocalOllamaModel
 from services.retrieval.query_features import (
     TechnicalFeature,
+    MAX_INVENTION_LENGTH,
     analyze_features,
     expand_query,
 )
@@ -21,14 +24,21 @@ FEATURE = {
 }
 
 
-def test_analysis_validates_schema_and_assigns_stable_feature_ids(monkeypatch):
+@pytest.mark.parametrize("query", ["量測導通電阻", "量測導通電阻。" * 40])
+def test_analysis_validates_schema_and_assigns_stable_feature_ids(monkeypatch, query):
     model = LocalOllamaModel("http://127.0.0.1:11434", "demo:tag", "a" * 64)
     monkeypatch.setattr(LocalOllamaModel, "verify_digest", lambda self: None)
 
     def request(self, path, payload, *, timeout):
         assert path == "/api/chat" and not payload["stream"]
         assert timeout == 180
-        assert payload["format"] == "json" and "tools" not in payload
+        if len(query) > 160:
+            assert payload["format"]["properties"]["features"]["maxItems"] == 5
+            assert payload["options"]["num_ctx"] == 8192
+        else:
+            assert payload["format"] == "json"
+        assert "tools" not in payload
+        assert payload["messages"][1]["content"] == query
         assert "keywords_en" in payload["messages"][0]["content"]
         return {
             "model": model.name,
@@ -41,7 +51,7 @@ def test_analysis_validates_schema_and_assigns_stable_feature_ids(monkeypatch):
         }
 
     monkeypatch.setattr(LocalOllamaModel, "request_json", request)
-    [feature] = analyze_features(model, "量測導通電阻")
+    [feature] = analyze_features(model, query)
     assert feature.feature_id == "f1"
     assert feature.keywords_en == ["on resistance"]
     assert "technology_category" not in feature.model_dump()
@@ -60,6 +70,42 @@ def test_expansion_uses_only_reviewed_fields_and_preserves_original():
     assert "(wthermal & wsheet)" in lexical and "wresistance" not in lexical
     assert "thermal sheet" in semantic and "on resistance" not in semantic
     assert "G01R" not in semantic
+
+
+def test_long_query_retains_original_and_all_reviewed_feature_descriptions():
+    query = ("量測導通電阻。" * MAX_INVENTION_LENGTH)[:MAX_INVENTION_LENGTH]
+    features = [
+        TechnicalFeature(
+            **{
+                **FEATURE,
+                "feature_id": f"f{i}",
+                "description_zh": f"技術特徵{i}" * 20,
+                "keywords_en": ["thermal resistance"],
+            }
+        )
+        for i in range(1, 6)
+    ]
+    request = HybridSearchRequest(query=query, features=features)
+    assert request.model_dump()["query"] == query
+    assert AnalyzeRequest(query=query).query == query
+    lexical, semantic = expand_query(request.query, request.features)
+    assert len(lexical.split(" | ")) == 4
+    assert "(wthermal & wresistance)" in lexical
+    assert semantic.splitlines() == [
+        query,
+        *(feature.description_zh for feature in features),
+    ]
+    with pytest.raises(ValueError):
+        RankedSearchRequest(query=query)
+
+
+@pytest.mark.parametrize("path", ["/queries/analyze", "/patents/search/hybrid"])
+def test_overlong_invention_rejected_before_model_access(path):
+    response = TestClient(app).post(
+        "/api/v1" + path, json={"query": "甲" * (MAX_INVENTION_LENGTH + 1)}
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "INVALID_REQUEST"
 
 
 def test_duplicate_feature_ids_fail_before_model_call():

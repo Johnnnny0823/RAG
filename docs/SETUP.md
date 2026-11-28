@@ -17,7 +17,7 @@ Linux/macOS 可用 `cp .env.example .env`，虛擬環境的 Python 路徑為 `.v
 
 ## 部署狀態
 
-M0 的 Compose 設定用於本機開發，包含 Vite 開發伺服器、開發用帳密和本機連接埠。正式部署的環境及帳密管理方式待後續里程碑決定。
+預設 Compose 提供本機 Vite、開發用帳密和回環連接埠。靜態 Nginx 與 HTTPS 覆蓋檔已在隔離環境驗收。正式部署仍需在目標主機核對實際網域、憑證、代理拓樸、專用帳密與備份還原。
 
 ## 靜態前端部署
 
@@ -26,19 +26,36 @@ M0 的 Compose 設定用於本機開發，包含 Vite 開發伺服器、開發�
 ```powershell
 $env:WEB_PORT = '18123'
 $deployArgs = @('-f', 'docker-compose.yml', '-f', 'docker-compose.deploy.yml', '-p', 'patentscope-deploy')
-foreach ($service in 'migrate', 'api', 'web') {
-    docker compose @deployArgs build $service
-    if ($LASTEXITCODE) { throw "Build failed: $service" }
-}
-docker compose @deployArgs up -d --no-build --wait --wait-timeout 120
-python scripts/smoke.py --api http://127.0.0.1:18123 --web http://127.0.0.1:18123
+docker compose @deployArgs up -d --build --wait --wait-timeout 180
+python scripts/smoke.py --api http://127.0.0.1:18123 --web http://127.0.0.1:18123 --deployment
 ```
 
-瀏覽器使用 `http://127.0.0.1:18123`。前端為已編譯的靜態檔，API 透過同源 `/api/v1/` 代理。API 與 PostgreSQL 沒有主機連接埠。全新資料卷會先遷移。依下節使用同一 Compose 專案匯入官方資料，再建立詞彙與向量索引。部署覆蓋檔只改動 API 與 Web 的連接方式，匯入可沿用同一組 `$deployArgs` 呼叫 `run`。
+瀏覽器使用 `http://127.0.0.1:18123`。Nginx 提供已編譯的靜態檔，API 透過同源 `/api/v1/` 代理。API、背景工作與 PostgreSQL 沒有主機連接埠。全新資料卷會先遷移。依下節使用同一 Compose 專案匯入官方資料，再建立詞彙與向量索引。匯入可沿用同一組 `$deployArgs` 呼叫 `run`。
+
+部署冒煙驗收會核對網頁的安全標頭。內容安全政策限制前端資源來源、內嵌物件與框架載入。套件內容新增外部資源前需更新政策並重跑瀏覽器測試。
+
+正式 Nginx 依直接連線來源 IP 套用兩組速率限制。登入、註冊及以密碼確認的帳號刪除合計每分鐘 30 次，可額外突發 6 次。技術分析、搜尋、比對、Session 訊息及產生 PDF 合計每分鐘 120 次，可額外突發 12 次。健康檢查、工作進度及一般文件讀取照常由 API 處理。入口拒絕會回傳 JSON `RATE_LIMITED` 和 HTTP 429。
+
+如果前面再加反向代理，同一代理的使用者會共用來源配額。實際外部部署應依可信代理拓樸配置來源識別並重新驗收，勿直接信任客戶端提供的轉送位址。
 
 匯入公開文件 `202639611` 的全文並索引後，建立測試帳號，輸入「光硬化性樹脂組成物」。執行 AI 拆解後保留該技術特徵，選擇「搜尋並保存」，再開啟該文件的全文版本執行「比對並保存證據」及「匯出 PDF 報告」。在瀏覽器網路面板可核對回應的 `application/pdf` 與 `Cache-Control: private, no-store`。
 
-此設定綁定回環位址。若開放給其他裝置，需由部署端設定 TLS、存取與速率限制，並管理 PostgreSQL 與原始物件備份。這些外部服務設定尚未實測。
+此設定綁定回環位址。跨裝置使用時可啟用下列 HTTPS 覆蓋檔，並依主機拓樸管理防火牆、存取及備份。
+
+### 使用自備憑證啟用 HTTPS
+
+準備與部署網域相符的 PEM 憑證鏈和私鑰，放在版本庫之外。使用支援 `!override` 的 Docker Compose，將 HTTPS 覆蓋檔放在靜態部署覆蓋檔之後。
+
+```powershell
+$env:TLS_CERTIFICATE_FILE = 'C:/secure/patentscope/fullchain.pem'
+$env:TLS_KEY_FILE = 'C:/secure/patentscope/privkey.pem'
+$tlsArgs = $deployArgs + @('-f', 'docker-compose.tls.yml')
+docker compose @tlsArgs up -d --build --wait --wait-timeout 180
+```
+
+預設只將 HTTPS 發布在 `127.0.0.1:18443`。對外部署時設定 `TLS_BIND_ADDRESS` 為指定對外介面、`TLS_PORT` 為對外連接埠，並依憑證網域及連接埠執行 `scripts/smoke.py --deployment`。如果由內部 CA 簽發，可加 `--ca-file <CA 憑證>` 進行憑證及主機名稱驗證。API、資料庫和工作程序沒有主機連接埠，API 僅信任隔離容器網路上的代理標頭。憑證續期後更新憑證和私鑰路徑，執行 `docker compose @tlsArgs up -d --no-deps --force-recreate --wait web`，再重跑 HTTPS 冒煙。若需回復，使用上一組仍有效的憑證和私鑰，重跑相同命令。此操作會重建 Web 容器。見[換證及回復驗收](TESTING.md#隔離-https-換證及回復)。外部網域、公開 CA 續期與防火牆仍須在目標主機驗證。
+
+正式語料驗收時加上 `--require-official-index`，確認同源閘道可取得官方 corpus 狀態，以及詞彙與向量索引都有涵蓋文件。此檢查為唯讀。還需依部署語料另選已知的官方案號，透過語意與混合檢索驗證模型可用及結果回溯。只有在獨立測試站驗證限流時才加 `--deployment-rate-limit`，因為它會短暫用盡該來源 IP 的配額。
 
 ## M1 官方樣本重現
 
@@ -80,6 +97,10 @@ docker compose -p $project run --rm --no-deps -v "$($data.FullName):/inputs" mig
 docker compose -p $project run --rm --no-deps -v "$($data.FullName):/inputs" migrate python -m services.ingestion.import_issue --verified-tipo --index /inputs/grant-s01.xml --grant-number I941082 --batch 053028 --objects /inputs/objects
 docker compose -p $project run --rm --no-deps -v "$($data.FullName):/inputs:ro" migrate python -m services.ingestion.verify_document I941082 --grant-issue 053028 --objects /inputs/objects
 ```
+
+### 舊公告優先權補入
+
+升至 `0023_patent_priorities` 後，沿用原 Compose 專案、官方公告索引及原匯入參數重跑 `services.ingestion.import_issue`。若批次已存在並顯示 `reused: true`，會從同一筆已登錄的原件及文件定位新增優先權。維持原文件 UUID、原匯入批次及來源雜湊。資料按公告版本呈現。詳見[測試紀錄](TESTING.md#官方公告優先權驗收)。
 
 ### 第二期增量匯入
 
@@ -146,6 +167,83 @@ docker compose -p $project run --rm --no-deps -p 127.0.0.1:18006:8000 api
 python scripts/smoke_hybrid.py
 ```
 
+## 從官方公報書目補齊日期
+
+如已匯入同一期的新型及設計公告，可對獨立專案執行 `python -m services.ingestion.gazette_dates --stage grant --year 115 --issue 053028 --include-other-grants`。程式從官方封存書目核對公告號、申請號和卷期，再補入日期、可取得的 LOC 及版次。預設公告排程仍採已驗證的發明模式。[LOC 來源](DATA_SOURCES.md#新型與設計日期及-loc-分類)
+
+先匯入指定卷期的官方公開或公告文件，再執行日期補齊。操作員需使用具有匯入權限的 Compose `migrate` 服務。下列指令以固定驗收語料的兩個卷期為例，可用同一 Compose 專案重跑。
+
+```powershell
+docker compose run --rm migrate python -m services.ingestion.gazette_dates --stage publication --year 115 --issue 024019
+docker compose run --rm migrate python -m services.ingestion.gazette_dates --stage grant --year 115 --issue 053028
+```
+
+程式下載官方固定卷期 XML，核對階段、卷期、申請號及文件號，將缺少的日期與其來源在同一資料庫交易保存。若同案已有不同日期，該交易會回滾，需核對來源。再次執行相同檔案不會新增版本或重複來源連結。既有檢索索引可繼續使用，日期篩選從 PostgreSQL 欄位讀取。公開及公告的來源見 [資料來源](DATA_SOURCES.md#公報書目的申請日公開日與公告日)。
+
+### 附加發明公報個案 PDF
+
+用相同的 Compose 專案與官方 XML 資料庫。先預覽公報 PDF 的來源、頁數和雜湊，再從對應公開或公告號的詳情或號碼查詢 API 取得要附加的文件版本 UUID。加上 `--apply-to` 只在該版本符合文件階段、申請號、公開或公告號、卷期及官方出處時建立連結。
+
+```powershell
+docker compose @deployArgs run --rm --no-deps migrate python -m services.ingestion.gazette_pdf --application 113133932 --publication 202639611 --issue 024019
+docker compose @deployArgs run --rm --no-deps migrate python -m services.ingestion.gazette_pdf --application 114106690 --grant I941082 --issue 053028
+# Repeat with --apply-to followed by the verified document version UUID.
+```
+
+驗收後，專利詳情的來源批次會顯示官方 PDF、雜湊及首頁定位。重跑相同 PDF 會重用已保存來源。此指令目前支援有可讀繁中書目首頁的近期發明公開及公告公報，檔案上限 2 MiB、32 頁。全文索引仍使用已驗證的 XML。
+
+可用 `--expected-sha256` 指定先前已核對的官方原檔雜湊。回傳內容不符時，指令會在解析及資料庫寫入前中止。
+
+#### 從已取得的官方公報原件首次匯入
+
+如果部署主機無法直接取得官方個案，從有合法存取權的環境保存 TIPO 原始個案 JSON 及其指定 PDF。保留來源網址、取件日期及先前核對的 PDF SHA-256。已驗證的成對樣本見 [官方來源紀錄](DATA_SOURCES.md#發明公告公報個案-pdf)。將檔案放在版本庫以外的資料夾，在部署匯入時掛載成唯讀。
+
+以下以公告 `I941082` 為例。將原始個案 JSON 和 PDF 分別放在絕對路徑 `$inputs` 下的 `I941082.json` 與 `I941082.pdf`。要預覽可省略 `--apply-to $documentId`，要附加則指定官方公告版本 UUID。Windows 宿主機可沿用既有 `$deployArgs`。
+
+```powershell
+docker compose @deployArgs run --rm --no-deps -v "${inputs}:/archive:ro" migrate python -m services.ingestion.gazette_pdf --application 114106690 --grant I941082 --issue 053028 --archive-case /archive/I941082.json --archive-pdf /archive/I941082.pdf --expected-sha256 7b9fd5dcb190a7108770a812999e556b5126f2d0333dcf3a914ed20c91f1a615 --apply-to $documentId
+```
+
+匯入不會連線 TIPO。程式核對申請案、證書、卷期、正式來源路徑、固定雜湊與 PDF 首頁欄標，才會寫入附件及頁面索引。離線執行的日期是驗證時間，官源取件日期應與原件一併保存。若已附加到資料庫，可用下一節方式重建頁面。
+
+#### 從已附加的官方 PDF 補建頁面索引
+
+若資料庫已附加該版本的官方 PDF，可在上述命令保留 `--apply-to`、補上 `--expected-sha256`，並加入 `--replay-stored`。指令會用資料庫內的來源紀錄及同一個原檔目錄重新核對雜湊與首頁識別，補入缺少的 PDF 頁面，無需連線智財局。來源檢查日期仍保留原值。
+
+遷移至 `0020_gazette_pdf_pages` 後，重跑舊版已附加的 PDF 可擷取文字層。詳情展開該 PDF 的來源，按「讀取公報文字」即可在瀏覽器內查找文字並依原始頁碼對照。掃描圖像需查看官方原檔。
+
+## 匯入官方異動公報
+
+先匯入要關聯的官方發明案件，再對相同 Compose 專案執行。下列第 53 卷第 33 期用於驗證消滅與更正 XML。操作員可依實際取得的官方卷期重跑。事件只會關聯已存在的同申請號案件，重跑同一檔案不會重複新增。
+
+```powershell
+docker compose run --rm migrate python -m services.ingestion.legal_events --year 115 --issue 053033 --type sud08
+docker compose run --rm migrate python -m services.ingestion.legal_events --year 115 --issue 053033 --type sud24
+```
+
+輸出含該公報發明事件數、配對數、新增數與原檔雜湊。舉例來說，對隔離索引前 500 筆公開書目執行第 53 卷第 33 期更正匯入，可核對公開案 `202639186` 和 `202639081`。 [原始資料](DATA_SOURCES.md#專利權異動公報)
+
+要驗證具日期的消滅紀錄，先從官方固定卷期下載並校驗第 52 卷第 6 期索引，再將公告案 `I874215` 匯入相同隔離環境。以 Windows PowerShell 為例，使用一個尚未存在的 `index-052006.xml` 檔名。
+
+```powershell
+$grantUrl = 'ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/114/PatentIsuRegSpecXMLA_052006/index.xml'
+$rawDir = Join-Path (Get-Location).Path '.patent-data/gazette-check'
+New-Item -ItemType Directory -Path $rawDir -Force | Out-Null
+$grantFile = Join-Path $rawDir 'index-052006.xml'
+python -m services.ingestion.download --index-url $grantUrl --index-out $grantFile
+if ((Get-FileHash -LiteralPath $grantFile).Hash.ToLowerInvariant() -ne '99cde994594aa622cf9469ecb6541403b3567b4597342a6915c35ce5dab526f8') {
+    throw 'Unexpected official grant index checksum'
+}
+docker compose run --rm -v "${rawDir}:/inputs:ro" migrate python -m services.ingestion.import_issue --verified-tipo --index /inputs/index-052006.xml --index-source-url $grantUrl --batch 052006 --grant-number I874215
+docker compose run --rm migrate python -m services.ingestion.legal_events --year 115 --issue 053033 --type sud08
+docker compose run --rm migrate python -m services.retrieval.index_lexical
+docker compose run --rm migrate python -m services.retrieval.index_semantic
+```
+
+上述命令請在已有 `.env` 的隔離 Compose 專案執行，依嵌入設定準備本機模型。原始 XML 應放在未追蹤的資料目錄。讀取前會依來源類別套用 XML 上限。
+
+同一資料庫和嵌入模型版本同時只接受一個向量索引程序。若指令回報 `This embedding model is already being indexed`，待既有工作結束後重跑。已完成的文件版本會被略過。
+
 ## M3 本機技術特徵驗收
 
 保留嵌入模型設定，另外配置本機 Ollama 分析模型。以 `ollama pull qwen2.5:1.5b` 取得模型，並從本機 `/api/tags` 核對 digest。分析請求使用 CPU。共用模型服務僅用公開測試查詢驗收。
@@ -202,6 +300,10 @@ npx --yes --package @playwright/cli@0.1.23 playwright-cli -s=patent-private clos
 
 Compose 開發環境預設只把 Web 與 API 映射到本機回環位址。模型傳輸限制為設定的本機 Ollama 位址，拒絕重新導向及環境代理，並核對模型摘要。模型仍會收到執行所需的構想、檢索詞或比對片段。Ollama 程序與主機端的記錄、存取及備份由部署者管理。
 
+`MODEL_MAX_CONCURRENT` 設定單一 API 工作程序可同時執行的模型操作，預設 2，可設為 1–32。修改後需重啟 API。每個工作程序各有自己的限制，多個執行個體應依模型主機容量設定。離線建索引、直接呼叫 Ollama 及跨程序的請求配額需由部署者獨立管理。
+
+登入後可在研究頁選擇「匯出我的研究資料（JSON）」下載已保存的研究資料。匯出檔可能含未公開構想與筆記，請保存在本人可控的位置。
+
 瀏覽器只在頁面記憶體保留憑證。登出撤銷當前憑證。已保存的搜尋、AI Session、收藏與筆記留在 PostgreSQL 資料卷，尚無自動保留期限。可在研究頁面逐筆移除，也可展開「刪除帳號與私人資料」，重新輸入密碼以清除帳號及其全部私人研究資料與登入憑證。已下載的 PDF 與部署者備份須在各自位置管理。
 
 ### Windows 全新資料卷啟動
@@ -221,3 +323,190 @@ python scripts/smoke.py --api http://127.0.0.1:18019 --web http://127.0.0.1:1811
 重建 API 映像以安裝 ReportLab 及 AR PL UMing 臺灣字型。從私人歷史開啟已保存搜尋，完成至少一份候選比對，點選「匯出 PDF 報告」。在 Windows 直接執行 API 時，將 `REPORT_FONT_PATH` 設為可嵌入的繁中字型 TTF 或 TTC 路徑。自訂 TTC 可用 `REPORT_FONT_INDEX` 選擇字型。
 
 以隔離語料執行 `python scripts/smoke_search_runs.py --api http://127.0.0.1:18017 --pdf-output <驗收路徑.pdf>`，核對擁有者可下載，訪客及其他帳號無法取得。腳本會建立兩個測試帳號及公開測試紀錄。
+## 原始 XML 持久保存、備份及還原
+
+官方圖式和已驗證的 XML 原件使用同一個 `patent-objects` 資料卷。API 以唯讀方式掛載圖檔，匯入和備份仍由操作員執行。若早期匯入使用另外掛載的 `--objects` 路徑，先使用同一套原件重建隔離資料，或依下列備份及還原步驟讓原始物件與資料庫紀錄一致。[圖式驗收與指令](TESTING.md#官方公告圖式回歸)
+
+Compose 的 `migrate` 容器將原始物件儲存在專案自己的 `patent-objects` 資料卷。依前述步驟準備官方輸入檔，再把檔案目錄掛載至 `/inputs:ro`。匯入和驗證可以省略 `--objects`，容器會使用資料卷。既有流程若明確指定 `--objects`，仍使用指定目錄，適合獨立測試。請保留資料卷，避免使用 `docker compose down -v`。
+
+以下 PowerShell 範例使用已套用遷移的 Compose 專案。將 `$backup` 設成備份裝置上已建立的絕對路徑。備份期間暫停匯入，先將 PostgreSQL 一併備份，再複製原始物件，讓兩份備份可配對。
+
+```powershell
+docker compose run --rm --no-deps migrate python -m services.ingestion.sync_objects
+docker compose exec -T db pg_dump -U patentscope -Fc -f /tmp/patentscope-backup.dump patentscope
+docker compose cp db:/tmp/patentscope-backup.dump (Join-Path $backup 'db.dump')
+Get-FileHash -LiteralPath (Join-Path $backup 'db.dump') -Algorithm SHA256
+docker compose run --rm --no-deps -v "${backup}:/backup" migrate python -m services.ingestion.sync_objects --copy-to /backup
+```
+
+還原前先比對備份的 SHA-256 記錄。請用獨立 Compose 專案的新資料庫，以單一交易還原 PostgreSQL，再套用遷移及 API 專用角色權限。等同批原件複製及逐筆校驗通過後，再啟動 Web 和 API。
+
+```powershell
+docker compose up -d --wait db
+docker compose build migrate
+docker compose cp (Join-Path $backup 'db.dump') db:/tmp/patentscope-backup.dump
+docker compose exec -T db pg_restore -U patentscope --single-transaction --no-acl -d patentscope /tmp/patentscope-backup.dump
+docker compose run --rm --no-deps migrate
+docker compose run --rm --no-deps -v "${backup}:/backup:ro" migrate python -m services.ingestion.sync_objects --objects /backup --copy-to /var/lib/patentscope/objects
+docker compose run --rm --no-deps migrate python -m services.ingestion.sync_objects
+docker compose run --rm --no-deps migrate python -m services.ingestion.verify_document 202639611
+```
+
+最後一個指令適用於已匯入 `202639611` 全文的語料。校驗指令會依資料庫逐筆核對物件大小及 SHA-256，也包含已隔離、但留有原始檔記錄的物件。遇到遺失或損毀會以非零狀態退出，已成功複製的檔案可保留供重跑。舊物件若分散於不同目錄，可在來源備份時把它們以唯讀路徑掛載，並依優先順序重複指定 `--fallback-objects`。備份會先讀主資料卷，只有找不到檔案時才循序查看舊目錄。檔案存在但大小或雜湊不符時會停止。所有路徑都缺檔時，需從原來源找回與資料庫雜湊相符的檔案。未列入資料庫的下載快取不在備份範圍。
+
+範例使用預設資料庫名稱和帳號 `patentscope`。若已自訂，請調整 `-U` 與資料庫名稱。每次備份使用新目錄，並將備份視同私有資料庫管理，因為其中也包含研究紀錄。
+## 主要操作日誌
+
+在隔離或正式部署中可執行 `docker compose logs api search-worker` 查看操作紀錄。API 的 `api_activity` 事件列出方法、路由樣板、HTTP 狀態與耗時。背景工作送入資料庫的最終狀態後，會輸出 `search_job_finished` 或 `report_job_finished`。請求內容、實際路徑參數、帳號、令牌與報告內容不會寫入這些事件。
+
+API 容器已關閉原始 Uvicorn 存取日誌。Compose 的 API 日誌每檔最多 10 MiB，保留最多三檔。工作程序與代理的診斷日誌仍需由部署者配置留存、存取與傳輸。
+
+## PostgreSQL 執行帳號
+
+Compose 在遷移完成後建立 `patentscope_api` 並授權。API 使用這個帳號讀取專利與索引，並依功能存取研究資料。遷移與離線匯入則使用 `POSTGRES_USER`。API 的容器環境只取得自己的資料庫密碼。
+
+既有環境須在 `.env` 新增獨立的 `API_DB_PASSWORD`，然後用原專案名稱執行 `docker compose up -d --build --wait`。沿用既有 PostgreSQL 磁碟卷及管理帳密。若宿主機直接啟動 API，`PGUSER` 與 `PGPASSWORD` 應改用對應的執行帳號與密碼。
+
+使用 `patentscope_api` 作為本專案專用角色。若同一 PostgreSQL 叢集已存在同名帳號，先核對既有角色及授權再執行，因為重新配置會設定該角色的密碼。API 的各使用者資料仍依應用層的所有權檢查及資料庫約束隔離。
+
+### 輪替 PostgreSQL 執行帳號密碼
+
+沿用既有部署的 Compose 覆蓋檔、專案名稱和 `.env`。安排維護窗口，先停止背景程序及 API。待 `stop` 完成後，在部署用 `.env` 更新 `API_DB_PASSWORD`，確認目前 shell 若有同名變數也已更新，再使用遷移容器的管理帳號套用新密碼。只輪替執行帳號時，可執行現有的角色設定程式。
+
+```powershell
+docker compose @deployArgs stop search-worker api
+# Update API_DB_PASSWORD in the deployment environment before continuing.
+docker compose @deployArgs run --rm --no-deps migrate python -m services.api.provision_db_role
+docker compose @deployArgs up -d --no-deps --force-recreate --wait api search-worker
+```
+
+每個命令成功後再繼續。若部署採用 HTTPS，使用同一組 `$tlsArgs`。資料庫與 Web 容器可保留，但 API 在維護期間暫停服務。完成後重跑同源冒煙，並以有授權的測試帳號驗證一次背景搜尋或私人 PDF 工作。若需回復，套用相同程序，使用另一組已知有效且未外洩的密碼。如果舊密碼疑似外洩，換用新的密碼。詳見[隔離輪替驗收](TESTING.md#隔離的資料庫執行帳號輪替)。
+
+## 背景搜尋工作程序
+
+一般 `docker compose up -d --build --wait` 會啟動 `search-worker`，並在資料庫遷移後開始取件。若只啟動 `api web`，也須執行 `docker compose up -d --build search-worker` 才會處理背景搜尋。工作程序使用與 API 相同的資料庫執行角色與模型設定。
+
+`docker compose stop search-worker` 會讓工作程序完成手上的搜尋或 PDF 工作後退出。Compose 最長等待三分鐘。逾時、程序當機或主機斷電時，既有工作逾時機制會在工作程序再次運行後標記中斷的工作。
+
+目前預設一個工作程序，每次處理一項搜尋。工作程序會將等待超過 10 分鐘或執行超過 6 分鐘的工作標為逾時，並於完成狀態保存一日後清理工作狀態。成功的研究紀錄有自己的生命週期，可以持續從歷史查看。
+
+同一工作程序也處理私人 PDF 匯出，每輪各取一項搜尋與報告（若有）。自訂字型時，API 容器與工作程序需採用相同設定。PDF 在資料庫暫存一小時，刪除來源搜尋時會一併清除。
+## 官方匯入與索引監控
+
+### 更新最新發明公開書目
+
+有網路時可先預覽官方 S10 回傳的卷期、筆數和雜湊。預覽不寫入資料庫。加上 `--apply` 後才會保存來源 XML、匯入書目並預設補建詞彙索引。此命令的 `--limit` 預設 100，允許 1–500 筆。
+
+```powershell
+docker compose run --rm --build migrate python -m services.ingestion.latest_publication --limit 5
+docker compose run --rm migrate python -m services.ingestion.latest_publication --apply --limit 5
+```
+
+同一份來源和相同匯入上限可重跑，既有批次與索引會重用。追蹤工作會把只有書目摘要的批次列為部分完成。若已設定嵌入模型，可用 `--index-mode hybrid` 同時補建向量。
+
+要匯入全文，按已查證的封存目錄指定三位數民國年。命令會取得同一卷期的 `index_all.xml`，核對所選公開號、申請號及個案路徑。以下是第 024020 期驗收用的民國年。使用前先確認 S10 當下的卷期仍在該年目錄。
+
+```powershell
+docker compose run --rm migrate python -m services.ingestion.latest_publication --archive-year 115 --limit 2
+docker compose run --rm migrate python -m services.ingestion.latest_publication --archive-year 115 --apply --limit 2
+```
+
+預覽只確認清單與所選書目的對應。套用時才下載個案全文並建立索引。部分個案取得或解析失敗時，已驗證資料會保留並顯示部分完成，命令以非零代碼回報。若部署容器無法連到官方 FTPS，可先依 [以官方清單補入全文](#以官方清單補入全文) 在可連線的主機下載，再由既有匯入命令處理。
+
+### 定期更新
+
+在已設定的 Compose 部署中，可選用 `patent-refresh` profile。下例用開發 Compose 執行。在正式部署環境中請沿用該專案的 `-p`、`--env-file` 和部署覆蓋檔。
+
+```powershell
+docker compose --profile patent-refresh up -d --build patent-refresh
+docker compose --profile patent-refresh logs --tail 30 patent-refresh
+docker compose --profile patent-refresh stop patent-refresh
+```
+
+服務啟動先執行一次。預設成功後等 24 小時，失敗後等 15 分鐘再試。可用 `TIPO_REFRESH_INTERVAL`、`TIPO_REFRESH_RETRY_INTERVAL`（秒）、`TIPO_REFRESH_LIMIT` 和 `TIPO_REFRESH_INDEX_MODE` 設定，預設取 100 筆並補詞彙索引。要定期補全文，另設定已核對的 `TIPO_REFRESH_ARCHIVE_YEAR`。跨民國年度時請重新核對封存目錄並更新該值；錯誤年份會使該次全文更新失敗。設定變更後需重新建立容器。
+
+排程輪詢 S10 當次提供的卷期。停機期間可能錯過中間期別，可用[封存卷期補匯](#封存卷期補匯)補齊。各次匯入可在管理員監控查閱，來源取得失敗也可在容器日誌查到。
+
+若要在同一服務內另外更新公告，設定 `TIPO_REFRESH_INCLUDE_GRANTS=yes` 並重新建立容器。S01 及 S10 會各自驗證卷期與來源，各取設定上限。任一來源失敗時，另一來源仍可執行，下一輪使用重試間隔。公告預設保存書目與請求項；如有設定該年官方封存目錄，亦可補建全文。
+
+可另設 `TIPO_REFRESH_GAZETTE_YEAR=115`，讓每期匯入後以同卷期官方公報補上申請、公開或公告日期。此設定預設留空，可獨立於全文封存年度設定。單次操作以 `latest_publication --gazette-year 115` 預覽公報網址與雜湊，加上 `--apply` 才寫入。下載及卷期驗證在書目寫入前執行。若後續日期與已存資料衝突，該次日期寫入會回滾，先前成功匯入的書目版本仍可查閱。跨年度須更新設定。
+
+公告也可單次預覽及執行。省略公告類型與證書號時，依 S01 順序取前幾件發明公告。可用 `--grant-type model` 選新型、`--grant-type design` 選設計，或重複指定 `--grant-number`。設計的基礎範圍為書目，並保存來源所提供的摘要。新型亦保存請求項。
+
+定期更新公告時，可另設 `TIPO_REFRESH_GRANT_TYPES=invention,model,design`。各類型各自套用 `TIPO_REFRESH_LIMIT`，與歷史補期設定搭配時各自保存卷期檢查點。未設定時仍只更新發明。每份索引與書目原件按 SHA-256 保存。加入書目日期與分類時設 `TIPO_REFRESH_GAZETTE_YEAR`，設計書目將保留來源提供的 LOC。
+
+```powershell
+docker compose run --rm migrate python -m services.ingestion.latest_publication --grants --limit 3
+docker compose run --rm migrate python -m services.ingestion.latest_publication --grants --apply --limit 3
+```
+
+### 封存卷期補匯
+
+以官方 FTPS 目錄核對民國年、資料類型與指定範圍。預覽只列計畫卷期，範圍缺任一期會以錯誤退出。每次可指定同一卷內最多 20 個連續期別。以下兩期使用第 53 卷公告的封存資料。
+
+```powershell
+docker compose run --rm migrate python -m services.ingestion.archive_backfill --stage grant --year 115 --from-issue 053031 --through-issue 053032 --limit 1
+docker compose run --rm migrate python -m services.ingestion.archive_backfill --stage grant --year 115 --from-issue 053031 --through-issue 053032 --limit 1 --apply
+```
+
+每期依官方索引順序取 `--limit` 筆。公告預設選發明，手動補匯可用 `--grant-type model` 或 `--grant-type design`。預設補公開書目摘要或公告請求項並建立詞彙索引。`--fulltext` 使用同年的個案封存清單，`--dates` 使用同期日期公報，`--index-mode hybrid` 可另建向量。某期失敗時停止，已提交的期別保留，重跑相同選擇可重用既有批次。這項補匯以指定範圍和每期上限為準，涵蓋範圍不等於完整卷期。
+
+#### 排程自動補期
+
+啟用前先以 `archive_backfill` 預覽核對起始卷期。以民國 115 年發明公告為例，設 `TIPO_REFRESH_CATCH_UP_YEAR=115`、`TIPO_REFRESH_INCLUDE_GRANTS=yes`、`TIPO_REFRESH_GRANT_FROM=053031` 並重新建立 `patent-refresh` 容器。公開可獨立設定 `TIPO_REFRESH_PUBLICATION_FROM`。設有起始卷期的資料類型會依同年、同卷的官方 FTPS 封存目錄順序處理，其他資料類型沿用最新索引。
+
+每輪每種資料預設最多補 2 期，可用 `TIPO_REFRESH_CATCH_UP_MAX_ISSUES` 調整。尚有待補、缺期或匯入失敗時採重試間隔。缺期之後的卷期會等該期恢復後再補。每期成功完成指定匯入、索引與日期步驟後，才寫入 PostgreSQL 進度。重啟會跳過同設定已完成的期別。變更案件上限、索引模式或模型版本等條件時，同一期會依新設定重新評估。這項設定預設關閉，跨年或換卷需設新起點。已完成期別如有修訂可手動重跑封存匯入。
+
+#### 最新異動公報定期更新
+
+設定 `TIPO_REFRESH_LEGAL_YEAR=115` 並重建 `patent-refresh` 容器，可在每輪更新中納入官方異動公報。也可先獨立執行預覽。
+
+```powershell
+docker compose run --rm migrate python -m services.ingestion.legal_refresh --year 115
+docker compose run --rm migrate python -m services.ingestion.legal_refresh --year 115 --apply
+```
+
+服務將 P10 原檔與該年度最近 8 期的封存索引逐位元比對，再核對消滅公告及更正公報的發明案件清單和原文卷期。無法核對時以錯誤回報並按重試間隔重試。只有可對應既有申請案的事件會加入詳情，重跑可補上新匯入案件並避免重複。設定預設留空，跨年度須更新。歷史卷期仍可使用既有指定期別命令。來源只涵蓋這兩類公報及其已匯入案件，個案即時權利狀態須另外向官方查證。
+
+#### 歷史異動公報補匯
+
+可用封存索引與類別 XML 核對單一期別。同一指令拿掉 `--apply` 只預覽。
+
+```powershell
+docker compose run --rm migrate python -m services.ingestion.legal_refresh --year 115 --archive-issue 053032 --apply
+```
+
+若要定期補匯，另設 `TIPO_REFRESH_LEGAL_FROM=053032`。服務會從同年同卷的起始期依序核對封存，沿用 `TIPO_REFRESH_CATCH_UP_MAX_ISSUES` 限制每輪期數，並以 PostgreSQL 記錄成功期別。歷史補匯發生錯誤時，最新 P10 仍會繼續核對。已保存的歷史事件會在案件入庫時自動配對。
+
+升級前保存的原檔會由異動排程補建一次索引，也可在有相同原始物件資料卷的環境手動執行 `docker compose run --rm migrate python -m services.ingestion.legal_events --replay-stored`。重播會核對雜湊。個別原檔缺漏或損壞時，其他原檔仍可處理，命令以非零代碼回報。
+
+### 追蹤匯入及建立索引
+
+同一卷期的發明公告可以在一個工作中匯入多件。先以 `python -m services.ingestion.download --latest-grants --index-out <本機輸出路徑>` 下載 S01。核對原檔記載的卷期及欲匯入的證書號後，把檔案目錄唯讀掛到 `/inputs`。以下以第 053030 期為例。
+
+```powershell
+docker compose run --rm -v "${inputs}:/inputs:ro" migrate python -m services.ingestion.run_pipeline --index-mode lexical -- --verified-tipo --index /inputs/s01.xml --index-source-url https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01 --batch 053030 --grant-number I942697 --grant-number I942698
+```
+
+每件保留獨立的公告版本和原文請求項定位。選取的證書號必須全部出現在同份索引。對同一原檔、同一批證書號重跑會重用批次，證書號順序不影響判定。
+
+若要補入公告個案全文，先下載同一期的官方 `index_all.xml` 並保留原檔。以下範例使用已核對的第 053030 期封存清單。
+
+```powershell
+python -m services.ingestion.download --index-out "${inputs}/grant-index_all.xml" --index-url ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index_all.xml
+docker compose run --rm -v "${inputs}:/inputs:ro" migrate python -m services.ingestion.run_pipeline --index-mode lexical -- --verified-tipo --index /inputs/s01.xml --index-source-url https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01 --batch 053030 --grant-number I942741 --grant-number I942850 --manifest /inputs/grant-index_all.xml --manifest-url ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index_all.xml
+docker compose run --rm migrate python -m services.ingestion.verify_document I942741 --grant-issue 053030 --grant-fulltext
+```
+
+全文版的請求項與說明書來自同一份個案原檔。已保存的 S01 請求項版仍可獨立查閱。個案檔取得或解析失敗時仍可保存可用的 S01 請求項，管理員監控會顯示部分完成。驗證 S01 請求項版時省略 `--grant-fulltext`。
+
+先依前述官方樣本流程取得檔案並核對來源與 SHA-256。以下 PowerShell 範例以 `$inputs` 指定已有 `index.xml` 與 `spec.xml` 的絕對路徑，用已配置模型的 Compose 專案在背景執行。
+
+```powershell
+docker compose run -d --name patentscope-024019-import --no-deps -v "${inputs}:/inputs:ro" migrate python -m services.ingestion.run_pipeline --index-mode hybrid --embedding-batch-size 2 --embedding-timeout 180 -- --verified-tipo --index /inputs/index.xml --index-source-url ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index.xml --spec 202639611=/inputs/spec.xml --batch 024019 --limit 20
+docker logs -f patentscope-024019-import
+```
+
+`--index-mode` 可選 `none`、`lexical` 或 `hybrid`，預設為 `lexical`。索引處理本資料庫缺少的文件版本，因此新增索引筆數可能包含前次匯入的文件。將管理者自己的 `GET /api/v1/me` 回傳的 `id` 填入 `INGESTION_ADMIN_USER_IDS`，多個 UUID 以逗號分隔，再重建 API 容器。登入該帳號後，工作台可手動刷新最近的工作狀態。環境變數留空時，不授予任何帳號監控權限。
+
+每次執行使用不同的容器名稱。跟著日誌時，中止終端等待不會停止背景容器。每個資料庫一次允許一條受監控的匯入流程。若容器異常中斷，下一次取得同一資料庫鎖的流程會把未結束的舊工作標成已中斷。匯入部分成功時仍保存可用資料，請依隔離與下載失敗筆數處理。既有單獨匯入／索引指令可繼續使用，其執行不會出現在這個監控清單。

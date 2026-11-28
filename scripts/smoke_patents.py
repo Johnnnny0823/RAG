@@ -7,8 +7,16 @@ from urllib.parse import urlencode
 from urllib.request import urlopen
 from uuid import UUID
 
+INDEX_SHA256 = "7befed78be2cc6067266f13afd4a34f6feca4730b9a717f3f99890d551da9b69"
+INDEX_URL = (
+    "ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index.xml"
+)
+SPEC_SHA256 = "0537aedd633f9c63e7fe06790732cb0bf06e240e0bebf360c725abf9bc98d70a"
 
-def smoke(base_url: str) -> None:
+
+def smoke(
+    base_url: str, *, official_e2e: bool = False, expanded_corpus: bool = False
+) -> None:
     def read(path, expected_status=200):
         try:
             with urlopen(base_url + path, timeout=10) as response:
@@ -67,11 +75,35 @@ def smoke(base_url: str) -> None:
         read(f"/api/v1/patents/{publications[1]['document_id']}/claims")["claims"] == []
     )
 
-    [second_issue] = lookup("202637274", "publication")["items"]
-    detail = read(f"/api/v1/patents/{second_issue['document_id']}")
-    assert detail["sources"][0]["source_url"].endswith(
-        "/InventionPubXML_024018/index.xml"
-    )
+    if official_e2e:
+        samples = lookup("202639611", "publication")["items"]
+        expected_scopes = ["fulltext"]
+        if expanded_corpus:
+            expected_scopes.append("metadata_and_abstract")
+        assert [sample["content_scope"] for sample in samples] == expected_scopes
+        sample = samples[0]
+        path = f"/api/v1/patents/{sample['document_id']}"
+        detail = read(path)
+        assert detail["application_no"] == "113133932"
+        assert detail["content_scope"] == "fulltext"
+        assert any(
+            source["source_url"] == INDEX_URL
+            and source["artifact_sha256"] == INDEX_SHA256
+            for source in detail["sources"]
+        )
+        claims = read(f"{path}/claims")["claims"]
+        assert [claim["claim_number"] for claim in claims] == list(range(1, 20))
+        assert len(detail["sections"]) == 122
+        assert all(
+            entry["source"]["artifact_sha256"] == SPEC_SHA256
+            for entry in (*claims, *detail["sections"])
+        )
+    else:
+        [second_issue] = lookup("202637274", "publication")["items"]
+        detail = read(f"/api/v1/patents/{second_issue['document_id']}")
+        assert detail["sources"][0]["source_url"].endswith(
+            "/InventionPubXML_024018/index.xml"
+        )
     missing = read("/api/v1/patents/00000000-0000-0000-0000-000000000000", 404)
     assert missing["error"]["code"] == "PATENT_NOT_FOUND"
     assert UUID(missing["error"]["request_id"])
@@ -83,4 +115,11 @@ def smoke(base_url: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--api", default="http://127.0.0.1:18003")
-    smoke(parser.parse_args().api)
+    parser.add_argument("--official-e2e", action="store_true")
+    parser.add_argument("--expanded-corpus", action="store_true")
+    args = parser.parse_args()
+    if args.expanded_corpus and not args.official_e2e:
+        parser.error("--expanded-corpus requires --official-e2e")
+    smoke(
+        args.api, official_e2e=args.official_e2e, expanded_corpus=args.expanded_corpus
+    )

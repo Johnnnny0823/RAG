@@ -1,5 +1,71 @@
 # Agent Handoff
 
+## 2026-11-28 Claude Code 接手核對
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Claude Code。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `9ca924a`（比遠端多一個 Codex 的交接文件提交）。產品基準 `d7f4f56`。
+- Current milestone and status: M5 IN_PROGRESS；交付驗收（Goal M6）BLOCKED，等待人工複核結果與目標主機授權。
+- Goal of this session: 依下一節的接手順序核對現況並以實測結果更新進度。
+- Files changed (with purpose): 本節及 PROGRESS 記錄核對結果。產品原始碼、API、資料庫無變更。
+- Database migrations added/applied: 無。Alembic 唯一 head 為 `0023_patent_priorities`，以 `ScriptDirectory.get_heads()` 核對。
+- API/Schema changes: 無。
+- Commands actually run and results:
+  - `git fetch --no-auto-maintenance`、`git status -sb`：工作樹乾淨，遠端 `main` 為 `3c4bbbc`，分支遠端為 `d7f4f56`。`AGENTS.md`、`CLAUDE.md` 自 `5d13594` 起未變更。
+  - `gh pr view 1`、`gh pr checks 1`：PR 為草稿、可合併，兩項 `checks` 通過（[46109014368](https://github.com/Johnnnny0823/RAG/actions/runs/46109014368)、[46109018368](https://github.com/Johnnnny0823/RAG/actions/runs/46109018368)）。`gh run list --workflow "Official patent E2E"`：最近三次（`89d991f`、`f85c79b`、`6d76efc`）成功，`850523a` 的一次失敗已被後續成功取代。
+  - 於獨立 venv 安裝 `requirements-dev.txt` 後，Ruff 格式（135 檔）與 lint 通過，pytest 148 通過、14 略過、1 則既有 Starlette 警告。略過項目需 PostgreSQL 或官方語料。前端 Oxlint 與 `tsc --noEmit` 通過。
+  - `evaluation/tipo_official_117_review.json`：`label_status` 仍為 `pending_human_review`，複核者空白，34 組判定皆未評分。`.patent-data/review/patentscope-review.html` 存在（1,035,869 bytes）。下載、桌面與 `.patent-data` 下沒有找到已填寫的複核 JSON。
+  - 本機 Docker 引擎一度無回應（`docker version` 20 秒未回應）。經使用者同意重啟 Docker Desktop 後恢復為 28.5.1，設有自動重啟的 Ollama、Qdrant 與其他專案容器自行啟動。
+  - 首次重跑時 Docker 回報 `all predefined address pools have been fully subnetted`，DB 未建立，該次 14 項皆為環境錯誤而非測試結果。未刪除任何既有網路，改以暫存覆蓋檔讓新專案 `patentscope-claude-pg-1128` 共用閒置網路 `patentscope-priority-upgrade_default`，資料卷仍為新建。
+  - 全新資料卷遷移前文件 0 筆，遷移至 `0023_patent_priorities`。`tests/integration` 14 項通過（73.8 秒）。
+  - 同一專案啟動 API 與 Web：`scripts/smoke.py` 通過。`PATENTSCOPE_E2E_PENDING_SEARCH=1` 的 `search-resume.spec.ts` 3 項通過，一般 Playwright 套件 12 項通過，皆為 Chromium 桌面、平板、手機。
+  - 依 `.github/workflows/tipo-e2e.yml`（coverage=full，未開啟選用的公報 PDF）在本機另一個全新專案 `patentscope-claude-tipo-1128` 逐步重跑。模型改用主機 Ollama，`qwen3-embedding:0.6b` 與 `qwen2.5:1.5b` 摘要與工作流程固定值相同。24 個官方檔案以 FTPS 重新下載且雜湊相符。匯入 99 書目加 1 全文、17 全文加 3 隔離、1 筆公告，三份文件與封存 XML 核對一致，建立 1,560 個詞彙片段與 117 版本 1,624 筆向量。打包 Web 冒煙、部署標頭、正式索引與部署限流冒煙通過。Playwright 共 34 項通過：PWA 離線 1、編號查詢 3、全文／歷史／PDF 五種瀏覽器 5、跨版本／分頁／重排 12、新型與設計 3、公告異動五種瀏覽器 10。
+- Tests NOT run and reason: 選用的遠端公報 PDF 步驟未執行，TIPO 個案端點先前回 HTTP 403。檢索評估需要人工複核檔，未執行。正式主機未提供。
+- Data sources checked (exact URL/date) and license/access notes: 無新增取件。
+- Known bugs / risks / blockers: 人工複核須由真人完成，AI 不得代填。目標主機、網域、存取方式、備份位置與授權尚未提供。舊驗收專案的 Compose 網路曾占滿位址池，已移除。`D:\專利RAG` 工作樹仍有 2026-11-26 的未提交修改（含另一個 `0018` 遷移），與整合分支的 `0018_audit_logs` 衝突，本次未處理。
+- Decisions made (ADR links): 無。
+- Uncommitted changes / file ownership warnings: 無。獨立 venv 位於 `%TEMP%\patentscope-m6-venv`，不在專案內。
+- Next 1–3 concrete actions: 收到人工複核 JSON 後依下一節第 1 步執行評估。取得部署主機與授權後依第 2 步驗收。使用者同意清理後已移除 209 個停止的舊驗收容器與 24 個網路，資料卷待確認。
+- Exact reproduction steps: 見下一節的指令與連結。
+
+## 2026-11-28 交由 Claude Code 接續
+
+| 項目 | 接手基準 |
+| --- | --- |
+| 日期與交接者 | 2026-11-28（Asia/Taipei），Codex |
+| 工作目錄 | `D:\patentscope-m6-integration`。原開發目錄為 `D:\專利RAG`，請在整合工作樹接續。 |
+| Git | `codex/gemini-m6-integration`，產品與驗收基準 `d7f4f56`。遠端 `main` 為 `3c4bbbc`。整合內容集中於 [Draft PR #1](https://github.com/Johnnnny0823/RAG/pull/1)。 |
+| 里程碑 | M0–M4 已有驗收，M5 人工評估與 Goal M6 外部部署為 BLOCKED。原規格的 M6 選配延伸另列於 [進度](PROGRESS.md)。 |
+| 本次變更 | 更新 HANDOFF 與 PROGRESS，產品原始碼、API、資料庫均無新變更。 |
+| 遷移 | 唯一 head `0023_patent_priorities`。已有空白庫、既有公告補入及有資料時的降版保護證據。 |
+
+### 接手邊界
+
+先完整閱讀 `AGENTS.md`、`CLAUDE.md`，再查 `git status --short --branch`、`git log -3 --oneline` 和 [交付證據索引](PROGRESS.md#2026-11-28-交付證據索引)。本機檢查開始時工作樹乾淨。沿用既有分支與新版遷移。依使用者要求，請勿重套 Gemini 的 `patentscope-m6-complete.patch` 或覆蓋整合內容。PR 保持草稿。涉及正式部署、合併或正式資料時，先取得使用者針對目標環境的授權。
+
+### 已核對的證據
+
+- `d7f4f56` 的 [PR CI](https://github.com/Johnnnny0823/RAG/actions/runs/46109018368) 與 [分支 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46109014368) 均成功，涵蓋單元測試、PostgreSQL 整合、一般 Playwright、HTTP 冒煙與隔離 HTTPS。
+- `89d991f` 的[完整官源 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46106199884) 成功。固定官方 XML 以雜湊核對，建立 117 個文件版本與 1,624 筆向量，34 項 Playwright 通過，包含歷史重用、跨版引證、私人 PDF 與法律異動。本機 `68f97b8` 另以桌面、手機模擬完成整條研究流程。[重現方式](TESTING.md#官源歷史重用與-pdf-回歸)
+- 選用的遠端即時公報 PDF 在個案 JSON 端點收到 HTTP 403。先前合法取得的公開 `202640162` 與公告 `I941082` 已實測離線首次匯入、SHA-256、2 與 9 頁、版本隔離及跨瀏覽器查閱。這與系統生成的私人研究 PDF 是兩條獨立驗收。[來源與限制](DATA_SOURCES.md#發明公告公報個案-pdf) · [離線測試](TESTING.md#官源公報-pdf-首次離線匯入)
+- 本次實際執行 `git status`、`git log`、`gh pr view`、`gh pr checks` 與 `gh run view` 核對以上狀態。本次是文件交接，產品測試證據沿用列明的提交與執行結果。此輪沒有新增 TIPO 取件，也未在正式主機執行測試。
+
+### 下一位接手順序
+
+1. **收取人工複核 JSON。** 本機離線表為 `D:\patentscope-m6-integration\.patent-data\review\patentscope-review.html`，驗證時檔案存在。`evaluation/tipo_official_117_review.json` 有 34 組待複核候選。由真人填入標註者、0–2 分與依據後匯出，核對 `label_status` 為 `human_reviewed` 且文件指紋完整。異機接手可依評估文件重新匯出離線表。使用同一固定 117 版本的隔離語料執行下方命令，記錄 Precision@10、Recall@10、nDCG@10、MRR、延遲和未評候選數。AI 不得代填。[評估與資料集](EVALUATION.md#人工複核候選池)
+2. **等待部署主機資訊及明確授權。** 需要主機、網域、可用存取方式及備份位置。依 SETUP 先準備 Docker、Ollama、專用資料庫帳密及憑證。驗收正式 HTTPS、同源 API、真實索引、帳號及私人 PDF，並將備份還原到獨立目標資料庫核對元資料、原始物件與可搜尋索引。本機隔離 TLS、換證及備份還原有既有通過證據。[部署方式](SETUP.md#使用自備憑證啟用-https) · [還原驗收](TESTING.md#隔離部署的備份還原驗收)
+3. **以實際結果收尾。** 更新 PROGRESS、HANDOFF、TESTING 和草稿 PR。保留新舊修訂、樣本、CI 與正式環境驗收的證據範圍。人工複核或目標主機尚缺時維持對應未驗收狀態。先備份、再驗收，合併另依維護者授權。
+
+```powershell
+Set-Location D:/patentscope-m6-integration
+git -c safe.directory=D:/patentscope-m6-integration status --short --branch
+gh pr checks 1 -R Johnnnny0823/RAG
+python -X utf8 scripts/evaluate_search.py --api http://127.0.0.1:18038 --dataset "C:/path/to/reviewed.json" --repeats 2
+```
+
+Windows 若遇 Git `dubious ownership`，沿用上述單次 `safe.directory`。需要 fetch 時可加 `--no-auto-maintenance`，避開已觀察到的磁碟 pack index 權限問題。測試資料、PDF、追蹤檔及憑證留在適當的隔離目錄和 Git 忽略路徑。
+
+
 ## M5 靜態前端部署驗收
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。
@@ -940,3 +1006,1930 @@
 - Uncommitted changes / file ownership warnings: 無。
 - Next 1–3 concrete actions: 手動執行 `Official patent E2E` 並依實測調整逾時。處理 CI 的兩則警告。人工複核 35 組候選後重跑評估。
 - Exact reproduction steps: `gh run list --repo Johnnnny0823/RAG`。
+## 2026-11-25 CPU 向量索引逾時修復工作範圍
+
+- Codex 負責 embeddings.py、index_semantic.py、seed_tipo_e2e.py、對應測試、官方 E2E 工作與驗收文件。目標為讓離線建索引可指定較小批量及有上限的推論等待，並保留逐文件群組的交易一致性。
+
+## M6 CPU 離線索引可設定批量與等待上限
+
+- Date/time (timezone): 2026-11-25 12:58（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `28a8c0c`；本紀錄隨修復提交。
+- Current milestone and status: M6 IN_PROGRESS（完整目標檔定義）；M0–M5 稽核估計 22/30，整體 Goal 尚未完成。
+- Goal of this session: 承接稽核確認的遠端 CPU embedding 逾時，提供受限批量／等待設定與失敗一致性測試。
+- Files changed (with purpose): `services/retrieval/embeddings.py` 傳遞離線等待；`index_semantic.py` 提供受限參數與 CLI；`scripts/seed_tipo_e2e.py` 傳遞設定；`.github/workflows/tipo-e2e.yml` 指定 2／180；`tests/test_embeddings.py`、`tests/test_semantic_index.py` 驗證傳輸、範圍與部分失敗；`docs/AUDIT-2026-11-25.md` 保存修復前唯讀稽核；PROGRESS、TESTING、本文件更新實際狀態。
+- Database migrations added/applied: 無新增／變更。使用既有隔離 `patentscope_test`，head `0010_login_failures`；沒有修改真實研究資料。
+- API/Schema changes: 無。線上預設等待 90 秒未變；模型 digest、pipeline、向量維度不變。
+- Commands actually run and results:
+  - 修復前 `pytest -q tests/test_semantic_index.py`：2 failed，尚不支援批量參數；修復後目標套件 6 passed，之後補參數及傳輸案例。
+  - `pytest -q --basetemp <unique-temp>`：57 passed、3 skipped、1 既有 Starlette 警告。首次未指定暫存目錄為 48 passed、3 skipped、4 errors，原因 WinError 5，並非通過。
+  - 設定隔離 PG 環境後 `pytest -q tests/integration --basetemp <unique-temp>`：3 passed，驗證 migration head、pgvector、API readiness、帳號／專案隔離與節流。
+  - `ruff format --check .`：73 files already formatted；`ruff check .`：All checks passed。CLI `--batch-size 0` 在啟動模型前拒絕。
+  - 隔離 `patentscope-cpu-index-proof`：2 CPU、4 GiB、DeviceRequests=null，使用唯讀既有模型卷；長 DEMO 兩段 21.45 秒；已核對官方原文兩段 2.01 秒，均 2 個 1024 維向量。這不是全量 CPU 索引或 GitHub runner 驗收。
+- Tests NOT run and reason: 本修復尚未重跑 GitHub 官方 E2E，需推送修復分支後觸發。未重跑 Playwright／前端建置，本輪只改離線索引與設定；修復前稽核已有 37 項瀏覽器測試通過，完整結果見 AUDIT。未執行 1624 向量 CPU 全量重建／模型品質人工評估。
+- Data sources checked (exact URL/date) and license/access notes: 本輪使用稽核重新取得的 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639611/113133932-A0304.xml`（2026-11-25 取得），核對 SHA-256 `0537aedd633f9c63e7fe06790732cb0bf06e240e0bebf360c725abf9bc98d70a`。未新增資料集或改變既有授權判斷。
+- Known bugs / risks / blockers: 遠端官方工作 42837679581 已失敗，尚無修復後成功證據；CPU 小批量成功不可證明全量能在 90 分鐘完成。人工標註、持久 raw store／復原、DB 最小權限、高成本端點資源上限仍未完成。既有煙霧腳本與種子期別不符。見 AUDIT 詳細分類。
+- Decisions made (ADR links): 無架構變更，不新增依賴；離線選項維持既有預設，官方 CI 明確選擇 CPU 設定。
+- Uncommitted changes / file ownership warnings: 修復檔案由 Codex 單獨修改；本機 `main` 起點較 origin/main 超前 1 個既有文件提交，未重寫歷史。測試容器完成後停止，資料卷保留。
+- Next 1–3 concrete actions: 1. 推送修復分支並觸發官方 E2E，按 runner 全量時間調整並記錄。2. 統一煙霧腳本語料契約、持久保存官方原始物件並驗證備份復原。3. 優先處理資源上限與 DB 最小權限，再由人員標註候選並執行品質評估。
+- Exact reproduction steps: 見 [TESTING CPU 離線向量索引](TESTING.md#cpu-離線向量索引)。一般單元測試用唯一 `--basetemp`；PG 使用專用 `patentscope_test`、回環連線與 `PATENTSCOPE_PG_INTEGRATION=1`，切勿改成真實資料庫。
+
+## 2026-11-25 關機前接續點
+
+- 修復提交 `8cea2f1` 已推送至 `origin/fix/cpu-embedding-index`。目前未合併 main。
+- 已手動觸發 [Official patent E2E 45550486217](https://github.com/Johnnnny0823/RAG/actions/runs/45550486217)，最後查核狀態 `in_progress`，不是通過；GitHub 雲端 runner 可在本機關機後繼續執行。下次先用 `gh run view 45550486217 --repo Johnnnny0823/RAG` 查詢，若失敗收集 `--log-failed`，不要未查狀態就重啟同一工作。
+- 已開始調查原始檔持久保存：Compose 目前只有 PostgreSQL named volume；匯入與驗證要求明確 `--objects`，常用文件指向暫存快取。尚未修改保存機制，也未建立備份還原功能。
+- 本機沒有新啟動的開發服務或新程式碼修改。下一步先確認遠端完整 CPU 索引與瀏覽器結果，再補持久 raw store 與實測備份／還原。整體 Goal 保持未完成。
+
+## 原始 XML 保存工作範圍
+
+- Codex 負責 Compose 的原始物件卷、匯入與驗證 CLI、校驗複製指令、測試及操作文件。
+
+## 官方 E2E 結果與原始 XML 復原
+
+- Date/time (timezone): 2026-11-25 20:51（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `d806ca9`，本節隨持久保存提交。
+- Current milestone and status: M1 原始物件保存切片已實測，完整 Goal 的 M6 仍 IN_PROGRESS。
+- Goal of this session: 驗收遠端 CPU 修復，並補足開發環境的 XML 備份還原。
+- Files changed (with purpose): `docker-compose.yml` 配置遷移服務的物件卷。匯入與驗證 CLI 共用目錄設定。新增 `services/ingestion/sync_objects.py`，依資料庫校驗或複製原始物件。測試驗證損毀來源會保留已有備份。SETUP、PROGRESS、HANDOFF 記錄操作與結果。
+- Database migrations added/applied: 無新增。在隔離專案套用到 `0010_login_failures`，以 `pg_dump -Fc`／`pg_restore --exit-on-error` 復原至第二套隔離資料庫。
+- API/Schema changes: 無。實測復原後 readiness 與專利請求項端點。
+- Commands actually run and results:
+  - `gh run view 45550486217 --log`（對應工作 `138990245525`）：提交 `8cea2f1` 成功，CPU 117 個版本、1,624 個向量；Playwright 兩套分別 5／12 通過。
+  - `pytest -q --basetemp <unique-temp>`：58 passed、3 skipped、1 則既有 Starlette 警告。Ruff 74 檔格式通過且 lint 通過。
+  - `docker compose --env-file .env.example config --quiet` 通過。隔離專案匯入 19 筆書目、1 份全文。不同一次性容器讀回資料卷並核對 19 項請求項和 122 段。複製 2 份原始物件，復原 PostgreSQL 後再複製到第二個新資料卷，原文再校驗通過。復原後 API readiness 正常，公開號 `202639611` 回傳 19 項請求項。
+- Tests NOT run and reason: 此提交未重跑完整官方 Playwright 或所有歷史語料的復原。本機使用第 024019 期前 20 筆及一份全文驗證備份流程，遠端 17 項屬上一項 CPU 修復的結果。三項預設停用的 PostgreSQL 套件本輪未另執行。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-25 從 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index.xml` 及 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639611/113133932-A0304.xml` 重新下載，分別符合既有固定雜湊 `7befed78…`、`0537aedd…`。沿用 [DATA_SOURCES](DATA_SOURCES.md) 的既有來源紀錄。
+- Known bugs / risks / blockers: 備份會在遇到首個遺失或損毀物件時退出，既有語料需用其成對的檔案和 DB 備份核對。最小權限、資源配額與人工品質評估仍待完成。
+- Decisions made (ADR links): 沿用現有雜湊物件儲存。開發環境以 Compose 專案資料卷持久保存，顯式傳入 `--objects` 的呼叫保留自訂路徑。
+- Uncommitted changes / file ownership warnings: 獨立測試專案停止，保留資料卷。無正式資料變更。
+- Next 1–3 concrete actions: 統一舊冒煙測試所需的期別語料，補上資源配額及資料庫最小權限，準備人工標註與檢索量測。
+- Exact reproduction steps: 見 [SETUP 原始 XML 備份操作](SETUP.md#原始-xml-持久保存備份及還原)，使用空白還原專案。
+
+## 官方語料 API 驗收工作範圍
+
+- Codex 負責三支既有 API 冒煙腳本、官方 E2E workflow 與驗收文件。保留雙期樣本的驗收，另接入可由 CI 重建的官方語料。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `914f8ef`。
+- Current milestone and status: M2 API 測試語料驗收，完整 Goal 仍 IN_PROGRESS。
+- Goal of this session: 讓同一套官方 CI 種子可執行 API 及瀏覽器驗收，保留舊雙期語料的測試方式。
+- Files changed (with purpose): `scripts/smoke_{patents,lexical,semantic}.py` 新增語料選項，`.github/workflows/tipo-e2e.yml` 在種子後執行三支腳本，更新 TESTING、PROGRESS、HANDOFF。
+- Database migrations added/applied: 無。在既有隔離庫讀取 117 個版本。
+- API/Schema changes: 無。
+- Commands actually run and results: 三支腳本以 `--official-e2e --api http://127.0.0.1:18035` 均通過。詞彙 4 組、語意 2 組已知案均排第 1，API 同時驗證全文來源與版本、分頁及錯誤。修改前的舊腳本在該庫缺 024018 期而失敗。Ruff 格式 74 檔、lint 通過。
+- Tests NOT run and reason: 沒有 API 或前端程式變更，未另跑單元套件、舊雙期樣本及 Playwright。新增 workflow 步驟待遠端驗收。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 2026-11-25 驗證的第 024019 期 FTPS 與封存公告；這輪未重新下載。精確 URL 及授權備註見 DATA_SOURCES。
+- Known bugs / risks / blockers: 已知案排名只測固定小語料。人工相關性及正式檢索效能仍未驗收。
+- Decisions made (ADR links): 舊腳本預設保留雙期前置條件；CI 明確選擇官方 E2E 語料。
+- Uncommitted changes / file ownership warnings: 專用本機 API 及隔離資料庫於驗收後停止。
+- Next 1–3 concrete actions: 查核新增的遠端 API 步驟，然後處理 DB 角色與高成本端點資源限額。
+- Exact reproduction steps: 依 TESTING 的官方語料章節重建並執行三支腳本。
+
+## 模型併發限制工作範圍
+
+- Codex 負責模型呼叫的 API 共用限制、錯誤回應、相關設定及測試。範圍含直接搜尋、分析、重排、比對及研究工作台的相同操作。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `073c076`。
+- Current milestone and status: 完整目標 M6 安全性 IN_PROGRESS。
+- Goal of this session: 限制線上推論的併發並提供可重試的 API 回應。
+- Files changed (with purpose): `services/api/model_limits.py`、模型呼叫所在 API 路由、Compose、環境範例，及 `tests/test_model_limits.py`。API、SETUP、PROGRESS 與本文件更新。
+- Database migrations added/applied: 無。
+- API/Schema changes: `429 MODEL_BUSY`，含 `Retry-After: 5` 及禁止快取。預設每程序兩個推論名額。
+- Commands actually run and results: 首輪 pytest 58 pass、3 skip、1 fail，指出缺少快取標頭。修正後啟用 `PATENTSCOPE_PG_INTEGRATION=1` 並指定隔離 PostgreSQL 與獨立 `--basetemp`，62 項全部通過，保留既有 Starlette 警告。Ruff 格式及 lint、`docker compose --env-file .env.example config --quiet` 通過。
+- Tests NOT run and reason: 本輪未在本機重跑瀏覽器測試。上一提交的官方 [45618424111](https://github.com/Johnnnny0823/RAG/actions/runs/45618424111) 查核時執行中，並不涵蓋這次的併發修復。
+- Data sources checked (exact URL/date) and license/access notes: 無新來源。
+- Known bugs / risks / blockers: 限制以程序為單位，跨程序／逐使用者配額、直接模型端點隔離及 DB 最小權限仍待完成。離線索引不占 API 名額。
+- Decisions made (ADR links): 採每程序非阻塞名額，沿用現有 FastAPI 錯誤格式，未新增基礎設施。
+- Uncommitted changes / file ownership warnings: 隔離資料庫於測試後停止。
+- Next 1–3 concrete actions: 確認遠端官方驗收，實作 API 與遷移帳號的資料庫權限分離，補足逐客戶與多程序的資源限制。
+- Exact reproduction steps: `python -m pytest -q tests/test_model_limits.py`。含 DB 的重跑環境見 TESTING 的 PostgreSQL 與 API 整合章節。
+
+## PostgreSQL 帳號分離工作範圍
+
+- Codex 負責 API 資料庫角色、Compose 啟動流程、隔離整合測試、CI 及操作文件。所有測試使用獨立資料庫。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `5bf5fa7`。
+- Current milestone and status: 完整目標 M6 安全性 IN_PROGRESS。
+- Goal of this session: 限制線上 API 的 PostgreSQL 權限。
+- Files changed (with purpose): `services/api/provision_db_role.py` 設定專用登入與明確授權，Compose 與環境範例分離帳密，CI、整合測試與操作文件更新。
+- Database migrations added/applied: 無新增。空白測試環境套用既有遷移到 `0010_login_failures`，接著建立角色。另實測對同一測試庫重跑配置。
+- API/Schema changes: 無，資料庫執行角色改為 `patentscope_api`。
+- Commands actually run and results: 隔離 Compose 新卷啟動成功。開啟 PostgreSQL 整合後 `pytest -q --basetemp <unique-temp>` 共 63 pass，既有 Starlette 警告 1 則。Ruff lint 與格式通過。專用 Playwright 設定的 Chromium 三種螢幕各 4 項，共 12 pass。初次透過 Windows npm 傳 `--output` 時參數被誤作過濾器，改用本機 Playwright CLI 後正常執行。重跑角色配置後，以管理帳號匯入已驗證官方 XML 並建立詞彙索引，透過受限 API 查到 `202639611` 及 19 項請求項。
+- Tests NOT run and reason: 本修訂尚未跑完官方全文／向量瀏覽器 suite 或正式部署。前一提交的 [45618424111](https://github.com/Johnnnny0823/RAG/actions/runs/45618424111) 仍在建置語料。
+- Data sources checked (exact URL/date) and license/access notes: 本輪沿用先前核對雜湊的 024019 期索引與個案原文，未重新下載。見 DATA_SOURCES。
+- Known bugs / risks / blockers: 既有 `.env` 需補設定。API 角色提供跨研究資料的功能性權限，應用所有權檢查仍須維持。多程序及逐客戶配額尚未完成。
+- Decisions made (ADR links): 權限清單置於角色配置程式，遷移及匯入保留管理帳號。資料庫還原後重跑角色配置以套用授權。
+- Uncommitted changes / file ownership warnings: 專用測試容器停止，保留隔離資料卷。
+- Next 1–3 concrete actions: 確認官方 CI 及當前分支回歸，補跨程序與逐客戶配額，進行人工檢索評估。
+- Exact reproduction steps: 用 `docker-compose.test.yml` 啟動隔離環境，再依 TESTING 的 PostgreSQL 整合章節執行。Playwright 使用獨立 Web origin。
+
+## 請求項原文援引工作範圍
+
+- Codex 負責原文援引擷取、關聯遷移與匯入、請求項 API／畫面及驗收。維持來源標記與文本援引的不同語義。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `433c02d`。
+- Current milestone and status: M1／M3 請求項結構與定位的增量，完整 Goal IN_PROGRESS。
+- Goal of this session: 保存同版本請求項正文的明確援引，並提供詳情頁跳轉。
+- Files changed (with purpose): `0011_claim_dependencies.py` 建表與回填，`claim_references_v1.py` 解析，匯入與 API 讀權限更新，請求項 JSON 和詳情頁互動加欄位。新增解析測試及擴增官方 Playwright 案例。
+- Database migrations added/applied: 空白隔離庫升至 `0011_claim_dependencies`；原有小語料庫從 `0010` 回填。以隔離 DB 降版確認原文仍有 19 項，再升版回填 128 筆。
+- API/Schema changes: `GET /api/v1/patents/{document_id}/claims` 新增 `referenced_claim_numbers`。每個外鍵只允許目標在同一文件版本內，父項須先於子項。
+- Commands actually run and results: pytest 啟用 PostgreSQL 整合後 65 passed、1 則既有 Starlette 警告。Ruff 格式及 lint、前端 lint 和 TypeScript 通過。固定官方全文的初次匯入與回填各得到 128 筆，API 第 2／3／4 項分別回傳 `[1]`、`[1,2]`、`[1,2,3]`。用隔離 PostgreSQL 實測拒絕自我援引與不存在的子項。
+- Commands actually run and results（續）: 本機以隔離小語料 20 個版本、230 個向量與真實模型執行 `PATENTSCOPE_E2E_TIPO=1` 的 `desktop-chromium`，1 passed。新增援引跳轉斷言及既有引文、歷史、PDF 斷言均通過。
+- Tests NOT run and reason: 本輪尚未以此提交重跑遠端全文、公告版本與全瀏覽器套件。本機 E2E 範圍限新增 UI 所在的官方文件案例。
+- Data sources checked (exact URL/date) and license/access notes: 本輪重用已驗證的 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639611/113133932-A0304.xml`，固定 SHA-256 為 `0537aedd…`。來源 XML 第 2–4 項標為 `independent-claim`，正文仍有援引。
+- Known bugs / risks / blockers: 規則只涵蓋已支援的明確正文形式，結果不等同法律上的依附性判定；未覆蓋含糊或其他語言的表述。
+- Decisions made (ADR links): 獨立項來源標記保持原值。使用兩個指向同版本複合鍵的 FK，衍生關係可重建。
+- Uncommitted changes / file ownership warnings: 隔離 Compose 服務驗收後停止，保留測試卷，沒有改動正式語料。
+- Next 1–3 concrete actions: 以封存公告交叉驗證，繼續改進證據語義與完整工作流程。
+- Exact reproduction steps: 用測試 Compose 匯入固定官方 XML 或對現有隔離庫升版，再查 `202639611` 請求項。依 TESTING 執行 `PATENTSCOPE_E2E_TIPO=1` 的官方流程。
+
+## 比對證據的語意候選工作範圍
+
+- Codex 負責比對候選檢索、API 及保存相容性、測試和技術文件。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `a10678a`。
+- Current milestone and status: M3 語意證據候選增量，完整 Goal IN_PROGRESS。
+- Goal of this session: 對字詞未命中的特徵補充同版本語意證據，保留引用的精確可追溯性。
+- Files changed (with purpose): `comparisons.py` 檢索及保存兼容欄位，`evidence.py` 驗證原文位置，`embeddings.py` 批量查詢向量，更新證據單元測試、官方 Playwright、舊字詞基準腳本及 API 文件。
+- Database migrations added/applied: 無。沿用 `0011` 測試庫的 20 版本與 230 向量。
+- API/Schema changes: 比對預設補語意候選，直接比較可傳 `semantic_evidence: false` 回到字詞行為。每特徵回傳 `evidence_method`，比對回傳 `evidence_embedding_digest`，舊保存結果欄位預設空值。
+- Commands actually run and results: 啟用 PostgreSQL 整合執行 pytest 共 66 passed、1 則既有 Starlette 警告。Ruff 格式與 lint、前端 lint 與型別查核通過。使用真實模型，官方 `202639611` 對「Polymer composition curable by light above 500 nanometers」字詞結果無片段，語意結果回傳第 9 項 [0,53) 與模型判定 `supported`，用 GET claims 驗證原文逐字相符，查詢耗時 3.77 秒。Chromium 官方案例 1 passed，涵蓋新增語意引文與原有保存／歷史／PDF。
+- Tests NOT run and reason: 尚未以新提交重跑遠端完整官方 suite，也未做人工作業以驗證語意判定品質。首次 Ruff 因測試 import 位置及空白未通過，整理後通過。
+- Data sources checked (exact URL/date) and license/access notes: 沿用先前核對的官方 `202639611` XML（FTPS 來源與雜湊見上節）。未取得新資料。
+- Known bugs / risks / blockers: 每特徵最多給模型一段原文，未做多段綜合。嵌入或分析判定可能出錯，尚無真人相關性覆核與大量語料效能驗收。
+- Decisions made (ADR links): 原文字詞命中保有優先順序，語意候選只使用同模型、同文件版本及通過來源篩選的請求項或說明書。
+- Uncommitted changes / file ownership warnings: 測試環境驗收後停止，保留資料卷。無正式資料變更。
+- Next 1–3 concrete actions: 接續人工證據品質評估及多段候選驗證，補完整遠端瀏覽器回歸。
+- Exact reproduction steps: 用 TESTING 的官方語料及模型設定執行桌面 `PATENTSCOPE_E2E_TIPO=1`；案例會比對純字詞與語意的可核對引文差異。
+
+## 長篇發明構想工作範圍
+
+- Codex 負責前端構想欄位、分析與搜尋需求驗證、查詢展開、測試及文件。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `f8323e4`。
+- Current milestone and status: M2／M3 長篇構想流程已實測，整體 Goal IN_PROGRESS。
+- Goal of this session: 長描述可直接拆解、送入混合搜尋、保存並重開研究結果。
+- Files changed (with purpose): 分析、混合搜尋 Schema，查詢展開、模型上下文、前端兩個構想欄位、pytest／Playwright 與文件。短篇專用詞彙及語意端點保留原上限。
+- Database migrations added/applied: 無新增。使用既有隔離庫 `0011`、20 版本／230 向量。
+- API/Schema changes: 混合搜尋、獨立分析、Session 共用 1,200 字元限制。混合回應與已保存設定加入 `query_expansion_version`。
+- Commands actually run and results: 70 項 pytest 通過，含 PostgreSQL 整合及超限 422；Ruff、前端 lint、TypeScript 通過。第一次官方 Chromium 案例到達歷史重開，但仍以短句檢查畫面而失敗。改為核對完整長文，瀏覽器案例驗證真實模型、已保存查詢、引文和 PDF 中的各句。1,200 字真實模型實測最初回傳 `503 ANALYSIS_UNAVAILABLE`，完整輸出結構曾導致本機模型中斷連線，外層結構仍允許不符規則的巢狀 IPC 值。用 Ollama 可接受的欄位型別與陣列上限約束，並保留 Pydantic 驗證後，1,200 字的 Session 成功生成 1 項特徵、重讀的原文逐字相符，混合檢索命中 `202639611`。
+- Tests NOT run and reason: 未於本輪重跑新版完整遠端官方與跨瀏覽器 suite；桌面使用本機模型及小語料。前一筆 `f8323e4` 的一般遠端 CI `45621413069` 通過。
+- Data sources checked (exact URL/date) and license/access notes: 沿用既有官方封存第 024019 期，未重新下載。來源與授權見 DATA_SOURCES。
+- Known bugs / risks / blockers: 長描述的相對檢索品質尚待人工評估；仍缺非同步搜尋、進度及取消。報告只證明已驗收樣本的呈現。
+- Decisions made (ADR links): 長描述先按句段做詞彙查詢，語意檢索保留完整構想與確認的特徵描述。特徵詞另外參與詞彙查詢。
+- Uncommitted changes / file ownership warnings: 本機測試專案驗收後停止，原服務及資料卷保留。
+- Next 1–3 concrete actions: 驗收新版遠端官方流程，優先補任務狀態及人工相關性評估。
+- Exact reproduction steps: 依 TESTING 的官方語料步驟啟動隔離環境並執行 `PATENTSCOPE_E2E_TIPO=1` 桌面 Chromium。
+
+## 背景搜尋工作範圍
+
+- Codex 負責工作表遷移、背景搜尋 API 與工作程序、研究介面、測試及文件。本輪在隔離資料庫驗收。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `0949898`。
+- Current milestone and status: M3／M4 背景搜尋與狀態，完整 Goal IN_PROGRESS。
+- Goal of this session: 登入後可將混合搜尋排入背景、查看進度、取消，以及完成後取得一般研究快照。
+- Files changed (with purpose): `0012_search_jobs.py` 遷移、工作 API 與工作程序、搜尋快照共用寫入、受限角色授權、Compose／CI、前端輪詢與取消、整合和 Playwright 驗收及對應文件。
+- Database migrations added/applied: 在既有隔離資料庫與新空白隔離庫驗證 `0012_search_jobs`。活動工作按帳號限制一筆；取消或終止後清除暫存的構想。研究快照在成功交易中一次保存。
+- API/Schema changes: `/api/v1/search-jobs` 增加 HTTP 202 接收、狀態、目前工作與取消。前端「搜尋並保存」走新流程，已保存搜尋讀取 API 維持原來的路徑。
+- Commands actually run and results: 啟用 PostgreSQL 整合的 pytest 71 passed、1 則既有 Starlette 警告。Ruff、前端 lint 與 TypeScript 通過。測試使用真實資料庫與替身檢索，核對跨帳號 404、重複送出 409、工作完成保存，以及執行中取消不留快照。
+- Commands actually run and results（續）: 隔離 Compose 啟動工作程序後，真實模型及官方 `202639611` 的 Chromium 桌面案例 1 passed。瀏覽器收到 202，輪詢成功後開啟已保存的快照，並完成引文、歷史與 PDF 驗收。
+- Tests NOT run and reason: 這版尚無遠端官方及其他瀏覽器的結果。取消路徑由 PostgreSQL 整合測試執行，瀏覽器官方流程驗收成功保存。
+- Data sources checked (exact URL/date) and license/access notes: 沿用已核對雜湊的第 024019 期與小語料索引，沒有新增來源。
+- Known bugs / risks / blockers: 取消屬盡力取消，已送出的模型請求仍可能執行到回應或逾時。Worker 漏失的工作會由後續工作程序標為逾時，不自動重試。報告、向量索引及匯入的任務狀態尚未整合。
+- Decisions made (ADR links): 使用 PostgreSQL 佇列與單獨 Compose 工作程序。匿名預覽仍使用現有同步搜尋；已登入保存流程使用背景工作。
+- Uncommitted changes / file ownership warnings: 隔離工作程序、Web、API 與 DB 驗證後停止，保留測試卷。
+- Next 1–3 concrete actions: 驗收遠端官方流程；補報告及匯入任務狀態；進行相關性評估。
+- Exact reproduction steps: 在 worker 停止時跑 PostgreSQL 整合 pytest。以 `docker compose up -d --build search-worker` 啟動後，依 TESTING 執行官方 Playwright。
+
+## 私人 PDF 背景匯出工作範圍
+
+- Codex 負責 PDF 工作狀態、暫存及授權，整合既有資料庫工作程序、研究介面及端到端驗收。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `f8b6f47`。
+- Current milestone and status: M5 私人報告背景生成；完整 Goal IN_PROGRESS。
+- Goal of this session: 讓 PDF 生成脫離 HTTP 請求，並維持授權與原文驗證。
+- Files changed (with purpose): `0013_generated_reports.py`、`report_jobs.py` 提供工作與暫存；現有工作程序取件，PDF 共用原產生器與授權查詢。研究介面改為排隊、輪詢、下載；新增 PostgreSQL 測試，擴充官方 E2E。
+- Database migrations added/applied: `0013_generated_reports`，已在空白與既有隔離庫驗證。報告與搜尋紀錄級聯刪除，下載有效期一小時。
+- API/Schema changes: `/api/v1/search-runs/{run_id}/reports` 為 HTTP 202 入口，另有狀態與 PDF 端點；同步端點保留。
+- Commands actually run and results: PostgreSQL 整合開啟後 pytest 72 passed、1 則既有 Starlette 警告。Ruff 格式與 lint、前端 lint 與 TypeScript 通過。隔離 DB 測試涵蓋重複送出、未完成回傳 409、跨帳號 404、PDF 欄位與禁止快取、過期遮蔽和級聯刪除。
+- Commands actually run and results（續）: 真實官方資料的 Chromium 桌面案例 1 passed，驗證排入報告工作回傳 HTTP 202，工作完成後下載私人 PDF，核對繁中構想、原文引證、雜湊及官方連結。上一提交 `f8b6f47` 的一般遠端 CI [45624748266](https://github.com/Johnnnny0823/RAG/actions/runs/45624748266) 通過。
+- Tests NOT run and reason: 本提交尚未完成遠端官方與其他瀏覽器套件；本機以小語料和桌面 Chromium 驗收報告流程。
+- Data sources checked (exact URL/date) and license/access notes: 沿用早前已校驗的第 024019 期官方小語料，未下載新資料。
+- Known bugs / risks / blockers: 報告和搜尋共用單工作程序，長搜尋可能推遲報告。尚未完成匯入與嵌入的任務管控、人工品質評估及正式部署。
+- Decisions made (ADR links): 暫存 PDF 以 PostgreSQL 保存，每份上限 8 MiB。直接在來源搜尋紀錄上檢查所有權及刪除關係。
+- Uncommitted changes / file ownership warnings: 專用 Compose 專案驗收後停止，測試資料卷保留。
+- Next 1–3 concrete actions: 補匯入任務的管理及狀態；查核最新版遠端官方驗收；執行 RAG 人工評估。
+- Exact reproduction steps: 依 TESTING 在 worker 停止時執行 PostgreSQL 整合測試；啟動 worker 後執行 `PATENTSCOPE_E2E_TIPO=1` 的官方案例。
+
+## 官方匯入與索引監控工作範圍
+
+- Codex 負責既有匯入／索引的操作員背景指令、狀態紀錄、管理員唯讀 API 與工作台查詢。
+
+- Date/time (timezone): 2026-11-25（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `5db035c`。
+- Current milestone and status: M1／M5 官方匯入及索引狀態，完整 Goal IN_PROGRESS。
+- Goal of this session: 以既有官方流程執行可追蹤的背景匯入，並供授權帳號查看。
+- Files changed (with purpose): 遷移 `0014_ingestion_jobs`、`run_pipeline.py`、唯讀管理路由、帳號授權能力標記、Compose 環境設定、研究工作台及 PostgreSQL 測試。
+- Database migrations added/applied: `0014_ingestion_jobs` 已在既有與空白隔離庫成功套用。API 角色可讀工作紀錄，實測不可更新。
+- API/Schema changes: `GET /api/v1/admin/ingestion/jobs`，及 `GET /api/v1/me` 新增 `can_monitor_ingestion`。以 UUID 白名單授權。
+- Commands actually run and results: PostgreSQL 整合啟用後 pytest 73 passed、1 則既有 Starlette 警告，Ruff 格式與 lint、前端 lint、TypeScript 皆通過。隔離空白庫實際用 detached Docker job 匯入 1 份固定官方全文、建 145 個詞彙片段與 157 個向量，容器退出 0，狀態為 `succeeded`。另一隔離庫重跑既有批次為 `partial`；不存在的輸入退出 1 並標記 `failed`。以真實 Chromium 登入隔離版管理帳號並核對兩種狀態。測試帳號於完成後刪除。
+- Tests NOT run and reason: 未重跑完整遠端官方瀏覽器套件。此輪本機 Chromium 驗收範圍為管理頁，既有瀏覽器主要研究流程的紀錄見前節。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 2026-11-25 核對的官方 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index.xml` 及 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639611/113133932-A0304.xml`，未重新下載。
+- Known bugs / risks / blockers: 監控按階段更新，沒有逐向量進度。背景容器異常終止後由下一次受監控操作標記舊工作中斷。尚缺自動排程與人工相關性評估。
+- Decisions made (ADR links): 管理介面唯讀，匯入由操作員在部署環境啟動，沿用官方來源與既有入庫程序。
+- Uncommitted changes / file ownership warnings: 測試專案停止，保留隔離資料卷及已結束的驗收容器紀錄。
+- Next 1–3 concrete actions: 查核遠端官方流程，完成評估基準與人工標註，補作較大規模規劃分析。
+- Exact reproduction steps: 依 SETUP 官方匯入監控段落設定輸入與管理者 UUID，執行 detached 流程後以管理帳號查看。
+
+## PostgreSQL 檢索計畫驗收範圍
+
+- Codex 負責檢索 SQL 的重現指令、隔離語料量測、測試與效能證據文件。
+
+- Date/time (timezone): 2026-11-26 01:51（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `fbe109e`。
+- Current milestone and status: M2／M6 PostgreSQL 小語料基線完成，完整 Goal IN_PROGRESS。
+- Goal of this session: 量測真實 SQL，避免精確 IPC 案例仍掃描全部向量。
+- Files changed (with purpose): `patents.py` 新增精確 IPC 的候選向量查詢，`scripts/explain_search.py` 以生產 SQL 重現量測，`test_explain_search.py` 驗證計畫只輸出所需欄位，更新評估、資料庫與交接文件。
+- Database migrations added/applied: 無新增。將已核對的公開資料備份還原至新建隔離庫，從空白遷移到 `0014`，對隔離語料執行 `ANALYZE`。
+- API/Schema changes: 無。精確 IPC 向量分支改用先篩文件的查詢；無 IPC 或四碼子類使用原查詢。兩個精確 IPC 案例的結果、順序及分數逐筆一致。
+- Commands actually run and results: PostgreSQL 整合開啟後 pytest 74 passed、1 則既有 Starlette 警告。Ruff 格式及 lint 通過。隔離真實 API 的三支 `--official-e2e` 冒煙通過。117 版本／1,560 詞彙片段／1,624 向量，用唯讀快照及 7 次量測比對兩個精確 IPC 案例。完整本機輸出在 `%TEMP%/patentscope-sql-plans-520c713b-a4ea-43dd-a28a-fa04c1d6fd46.json`，數字見 EVALUATION。
+- Tests NOT run and reason: 本機未重跑全瀏覽器套件，此輪沒有前端修改。更早提交 `073c076` 的遠端官方 E2E 45618424111 通過，含三支冒煙及 17 項 Playwright。本次變更另需自己的遠端結果。
+- Data sources checked (exact URL/date) and license/access notes: 沿用已驗證的 TIPO 第 024019／053028 期封存檔形成的公開資料備份，未重新下載。來源及授權見 DATA_SOURCES。
+- Known bugs / risks / blockers: 小語料、預熱查詢、未加併發負載。未量測大規模資料及向量索引的速度／召回取捨。人工相關性標註仍待完成。
+- Decisions made (ADR links): 目前保留精確向量排序，不加入近似索引。候選查詢優化限精確 IPC，保留較寬查詢的行為。
+- Uncommitted changes / file ownership warnings: 隔離 API 與 DB 停止，保留測試卷。
+- Next 1–3 concrete actions: 核對新版官方工作；準備人工標註並量測代表性負載；檢查尚未完成的產品與部署驗收。
+- Exact reproduction steps: 依 [EVALUATION SQL 計畫](EVALUATION.md#2026-11-26-postgresql-查詢計畫基線) 執行。
+
+## 搜尋涵蓋範圍工作範圍
+
+- Codex 負責混合搜尋索引涵蓋範圍、既有快照設定、研究介面、PDF、測試及對應文件。
+- Codex 同步處理官方 E2E 的 TIPO FTPS 暫時性 425 錯誤，範圍限既有下載器及測試。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `4154d66`。
+- Current milestone and status: M4／M5 搜尋涵蓋範圍通過本機官方案例，M6 官方遠端驗收 IN_PROGRESS。
+- Goal of this session: 讓使用者在當次搜尋、歷史及 PDF 查到相同的索引涵蓋範圍，處理官方 CI 下載暫時失敗。
+- Files changed (with purpose): `patents.py` 同快照計數，`reports.py` 與 `research.tsx` 顯示範圍，`tipo-research.spec.ts` 跨 API、畫面及 PDF 核對；`download.py` 和 `test_download.py` 覆蓋 425 重試、耗盡及非暫時故障。
+- Database migrations added/applied: 無新增遷移。重用 `0014` 的隔離資料庫。舊公開資料備份未含 `claim_dependencies`，用既有遷移的解析方式從真實原文補建 334 筆後重跑瀏覽器驗收。未改動日常資料庫。
+- API/Schema changes: 混合 API 增 `corpus_coverage`，保存於既有 `settings` JSONB。舊紀錄缺欄位時明示未記錄。觀察時間、詞彙及向量版本數及最新文件日期於排名相同讀取交易取得。
+- Commands actually run and results: 含 PostgreSQL 的 pytest 78 通過、1 則既有 Starlette 警告。Ruff、前端 lint、TypeScript、Vite build 通過。隔離官方語料三支 API 冒煙通過。桌面 Chromium 官方全文、歷史與 PDF 案例 1 通過（48.6 秒）。首次廣域測試遇到模型分析等待，切回文件指定 1.5B 模型後，先後遇到並行註冊逾時與隔離備份缺依附資料。單獨執行並補回依附資料後通過。
+- Tests NOT run and reason: 本機未執行完整多瀏覽器官方套件。前一提交的一般 CI [45669424746](https://github.com/Johnnnny0823/RAG/actions/runs/45669424746) 通過。相同提交的官方工作 [45669425487](https://github.com/Johnnnny0823/RAG/actions/runs/45669425487) 因伺服器回覆 `425 Unable to listen, too many pending PASV/EPSV requests` 中止，三支 API 冒煙及 Playwright 均未開始。
+- Data sources checked (exact URL/date) and license/access notes: 本機 E2E 使用固定官方第 024019、053028 期還原語料。2026-11-26 另以新版下載器實際下載 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index.xml`，15,253,438 bytes，SHA-256 `7befed78be2cc6067266f13afd4a34f6feca4730b9a717f3f99890d551da9b69`。實際下載成功，425 復原與耗盡以測試替身分別驗證。授權與來源條件見 DATA_SOURCES。
+- Known bugs / risks / blockers: 117 個驗收版本的日期欄全部空白。大語料的計數負載、完整索引重建及人工評估仍待完成。425 重試耗盡時應保留失敗狀態。
+- Decisions made (ADR links): 索引計數按本次篩選及實際模型／分詞版本保存。FTPS 僅對已觀察的 425 等待 15、45 秒後重開資料傳輸。
+- Uncommitted changes / file ownership warnings: 隔離容器的資料卷保留，供後續驗收。
+- Next 1–3 concrete actions: 確認新版官方 CI 通過三個 API 冒煙與瀏覽器；查證可追溯的官方文件日期；完成人工相關性複核及較大語料效能驗收。
+- Exact reproduction steps: 依 TESTING 啟動隔離官方語料與 worker，設定 `PATENTSCOPE_E2E_TIPO=1` 後執行桌面 Chromium 官方案例。使用 `python -m pytest tests/test_download.py` 重現 425 測試。
+
+## 官方公報日期工作範圍
+
+- Codex 負責公報書目原檔的日期、識別碼與卷期核對，以及隔離語料的寫入和 API 驗收。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `658447d`。
+- Current milestone and status: M1／M4 日期補齊已通過官方樣本驗收，整體 Goal IN_PROGRESS。
+- Goal of this session: 從同卷期官方書目補正申請日和文件日期，讓既有日期篩選可用。
+- Files changed (with purpose): `gazette_dates.py` 負責比對與寫入，`download.py`、`artifacts.py` 提供有上限的公報下載及物件保存，`verify_document.py` 仍選原請求項來源。研究詳情同時提供原始檔與資料集連結，新增日期 Playwright 案例。
+- Database migrations added/applied: 無新增。公開、公告兩次各寫入後再重跑，保留 117 個文件版本、2 個新增原始檔及 117 筆新增來源連結。資料僅寫入 `patentscope_plan_proof`。
+- API/Schema changes: 路徑及欄位維持原契約，既有詳情、候選及索引涵蓋範圍能讀到已補齊的日期。既有私有搜尋紀錄保留原本結果。
+- Commands actually run and results: PostgreSQL 整合啟用後 pytest 84 passed、1 則既有 Starlette 警告。Ruff lint 與格式、前端 lint 及 TypeScript 通過。官方公開案 19 項、公告案 13 項請求項仍引用各自原檔。官方 API 精確查詢、來源雜湊與日期包含／排除驗收通過。桌面、平板、手機 Chromium 日期案例 3 passed。首輪案例指出 UI 僅顯示 FTPS 原檔，補上可從瀏覽器開啟的官方目錄連結後同套件通過。
+- Tests NOT run and reason: 此次未重跑本機全官方套件。上一提交一般 CI [45671574773](https://github.com/Johnnnny0823/RAG/actions/runs/45671574773) 通過，上一提交官方流程 [45671575813](https://github.com/Johnnnny0823/RAG/actions/runs/45671575813) 截至本輪驗收仍在準備種子語料。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 實際下載公開第 024019 期及公告第 053028 期公報，核對位元組、SHA-256、卷期及日期，見 DATA_SOURCES。公開期另透過正式 CLI 重新下載與重跑。
+- Known bugs / risks / blockers: 日期補齊目前由操作員按卷期獨立執行，未接入自動排程。覆蓋限已匯入且可核對的同卷期發明案件。大型公報超過 32 MiB 時會拒絕。代表性負載、完整語料快照及人工評估仍待完成。
+- Decisions made (ADR links): 日期只填既有版本的缺值或確認相同值，原文、引用與舊搜尋紀錄仍可追溯。書目日期與請求項原文分別保留來源。
+- Uncommitted changes / file ownership warnings: 隔離測試的資料卷與原始檔保留，日常專案資料未動。
+- Next 1–3 concrete actions: 追蹤遠端官方驗收，擴充評估用的代表性官方語料與人工標註，量測檢索品質及負載。
+- Exact reproduction steps: 依 SETUP 的 `services.ingestion.gazette_dates` 兩條命令補齊隔離資料，再以 `PATENTSCOPE_E2E_TIPO=dates` 執行 Playwright。
+
+## 官方檢索評估工作範圍
+
+- Codex 負責評估器、固定版本的待複核候選、測試及評估文件。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `70dd57a`。
+- Current milestone and status: M2／M6 官方種子重驗通過，人工相關性驗收 IN_PROGRESS。
+- Goal of this session: 用可重建的官方語料重跑評估並保留可獨立複核的文件版本。
+- Files changed (with purpose): `evaluate_search.py` 按文件號取最完整版本，人工標註集用雜湊及解析版本預檢；`test_evaluate_search.py` 核對版本漂移及未複核拒評；`tipo_official_117_review.json` 為 34 組待複核候選。
+- Database migrations added/applied: 無新增。沿用唯讀隔離官方語料驗證。
+- API/Schema changes: 無。人工複核資料格式要求 `content_scope`、`document_sha256`、`parser_version`。
+- Commands actually run and results: PostgreSQL 整合啟用後 pytest 86 passed、1 則既有 Starlette 警告，Ruff 格式與 lint 通過。四案三模式各兩次共 24 個檢索請求，均找回五項已知文件。34 組候選用 API 重驗指紋，不依資料庫 UUID。引用腳本 7 次比對、14 個判定、6 個引文均逐字驗證成功。細項 JSON 在本機 `%TEMP%/patentscope-official-117-evaluation-20261126.json` 及 `%TEMP%/patentscope-official-117-citations-20261126.json`。
+- Tests NOT run and reason: 純評估工具變更，本機未重跑瀏覽器。前一提交一般 CI [45674020726](https://github.com/Johnnnny0823/RAG/actions/runs/45674020726) 通過。前版遠端官方流程 [45671575813](https://github.com/Johnnnny0823/RAG/actions/runs/45671575813) 查核時仍在準備種子語料。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 DATA_SOURCES 的 TIPO 第 024019、053028 期，未重新下載。
+- Known bugs / risks / blockers: 尚無人工標註，現有分數是種子已知命中基線。書目摘要 19 組，技術相關性可能需另外取得全文。大語料與正式負載仍待驗證。
+- Decisions made (ADR links): 依文件階段與編號計排行；人工複核綁定可重建的文件內容。待複核資料不產生分數。
+- Uncommitted changes / file ownership warnings: 隔離語料資料卷留供複驗。
+- Next 1–3 concrete actions: 人工評估 34 組候選並重跑指標，擴充資料規模與主題，查核官方遠端工作。
+- Exact reproduction steps: 依 EVALUATION 執行 `evaluate_search.py --repeats 2 --review-pool <新檔名>` 及 `evaluate_citations.py`，API 指向隔離官方語料。
+
+## 官方驗收的固定語料重建
+
+- Codex 負責固定語料準備、官方工作流程、相關測試及驗收文件。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `cba5cde`。
+- Current milestone and status: M6 分段重建通過本機官方語料驗收，遠端快取 IN_PROGRESS。
+- Goal of this session: 拆開 FTPS 準備、PostgreSQL 匯入和索引階段，讓故障能由步驟與檔案進度定位。
+- Files changed (with purpose): `tipo-e2e.yml` 加公開 XML 快取與分段工作，`seed_tipo_e2e.py` 加兩個執行選項及逐檔進度，`test_tipo_e2e_seed.py` 檢查純準備與離線匯入的執行範圍。
+- Database migrations added/applied: 無新增。空白隔離庫 `patentscope_ci_replay` 套用至 `0014_ingestion_jobs`。
+- API/Schema changes: 無。
+- Commands actually run and results: PostgreSQL 整合啟用後 pytest 88 passed、1 則既有 Starlette 警告，Ruff 格式、lint、Git diff 檢查通過。第一次直接跑單檔測試遇 Windows 既有共用暫存目錄權限錯誤，以新 `--basetemp` 跑全套通過。正式 CLI 的準備及離線匯入各核對 24 筆 SHA-256，空白庫完成三批匯入、三項原文校對及獨立建索引。查得 117 版本、1,677 筆詞彙索引（含 117 個標記）、1,624 向量及 334 筆請求項援引。三支官方 API 冒煙通過。
+- Commands actually run and results（續）: 同一空白重建語料的官方桌面 Chromium 案例 1 passed（58.3 秒），包含研究保存、引文、歷史重讀及 PDF。
+- Tests NOT run and reason: 本機未執行完整多瀏覽器套件，向量索引用 24 筆批量，GitHub CPU 流程維持 2 筆。前一提交一般 CI [45675094328](https://github.com/Johnnnny0823/RAG/actions/runs/45675094328) 通過。既有官方工作 [45671575813](https://github.com/Johnnnny0823/RAG/actions/runs/45671575813) 截至本輪仍在原種子步驟，該步驟涵蓋下載、匯入及索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 從 DATA_SOURCES 所列固定 FTPS 路徑取得 22 個原檔，另重用已驗證的同批索引與一份個案檔。原始檔從臨時目錄保存，未提交 Git。
+- Known bugs / risks / blockers: 冷快取仍依賴官方 FTPS。遠端快取寫入及後續命中需 GitHub 實跑。全量專利覆蓋及人工標註仍待完成。
+- Decisions made (ADR links): 快取只保存公開 XML 與公開下載檔，儲存前與匯入前均校驗固定雜湊。GitHub Actions 快取動作鎖定至已核對的 v5 提交。
+- Uncommitted changes / file ownership warnings: 資料卷及臨時公開原檔保留供重現。
+- Next 1–3 concrete actions: 驗收新版遠端分段和快取，擴充代表性資料與人工評估，補上測試報告證據。
+- Exact reproduction steps: 依 TESTING 先跑 `--prepare-only`，對空白已遷移隔離庫跑 `--offline --skip-semantic`，另執行 `services.retrieval.index_semantic`、官方 API 冒煙及 Playwright。
+
+## 官方語料規模與併發量測
+
+- Codex 負責隔離語料擴充、檢索量測、測試及評估紀錄。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `fb427f2`。
+- Current milestone and status: M2／M6 518 版本負載已量測，完整目標 IN_PROGRESS。
+- Goal of this session: 以較多官方書目比較實際 SQL，量測小型本機服務在併發下的有效產出及忙碌回覆。
+- Files changed (with purpose): `benchmark_search_load.py` 提供迴圈式併發及有來源的已知案核對；`test_benchmark_search_load.py` 檢查延遲與拒絕各自計數；`smoke_patents.py` 加擴充語料的版本斷言，原固定語料仍採原先預期。
+- Database migrations added/applied: 無新增。以既有隔離庫 `patentscope_ci_replay` 增量重建至 518 版本、3,006 詞彙片段、3,164 向量。從官方原 XML 第 401 筆核對 API 公開案 `202640836` 的申請號、文件雜湊、來源及 XPath。
+- API/Schema changes: 無。
+- Commands actually run and results: pytest 含 PostgreSQL 整合 90 passed、1 則既有 Starlette 警告。Ruff 格式、lint、Git diff 檢查通過。擴充庫三支官方 API 冒煙通過。初次直接套用 117 版本冒煙時，`202639611` 因多一個合法書目版本觸發解包失敗。以明確的擴充語料模式驗證兩個版本後通過。
+- Commands actually run and results（續）: SQL 兩組精確 IPC 的候選、順序和分數逐筆與原 SQL 一致。180 個 HTTP 查詢中，150 個成功且均命中已知案，30 個回覆 `429 MODEL_BUSY`。各組成功延遲與吞吐在 EVALUATION。
+- Tests NOT run and reason: 本輪僅評估及驗收工具修改，未重跑 Playwright。一般 CI [45677084566](https://github.com/Johnnnny0823/RAG/actions/runs/45677084566) 通過。新版官方流程 [45677086302](https://github.com/Johnnnny0823/RAG/actions/runs/45677086302) 已通過固定 XML 驗證與快取寫入，尚在執行其他步驟。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 沿用已驗證的 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/index.xml`，未重新下載。來源授權見 DATA_SOURCES。
+- Known bugs / risks / blockers: 語料增加的是書目摘要版本，無法外推完整語料、重排序或多程序生產負載。人工標註與快取命中仍待查核。
+- Decisions made (ADR links): 以已知案命中驗證每筆正常回覆，忙碌回覆單列，成功延遲不計入快速拒絕。
+- Uncommitted changes / file ownership warnings: 隔離資料卷及原始 JSON 保留。量測檔為 `%TEMP%/patentscope-load-117-*.json`、`patentscope-load-518-*.json`、`patentscope-concurrency-final-518-*.json`。
+- Next 1–3 concrete actions: 核對官方遠端流程與後續快取命中，對更多資料來源及全文做規模分析，完成候選人工複核。
+- Exact reproduction steps: 依 EVALUATION 擴充官方樣本，執行 `explain_search`、`benchmark_search_load` 及 `--expanded-corpus` API 冒煙。
+
+## 官方異動公報工作範圍
+
+- Codex 負責已核對的公報事件解析、來源關聯、詳情呈現及隔離驗收。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `e0041d9`。
+- Current milestone and status: M1／M4 已核對的公報事件通過隔離驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 將可追溯的異動公報事件呈現在其同一申請案的專利詳情。
+- Files changed (with purpose): 新增 `0015_legal_events.py`、`legal_events.py`、解析與 Playwright 測試。既有下載器只新增兩種固定路徑，API 與前端顯示公報來源。
+- Database migrations added/applied: 新增 `0015_legal_events`，在已有 518 個官方文件版本的隔離資料庫與空白隔離資料庫套用成功。受限 API 角色有讀權限而無更新權限。
+- API/Schema changes: `GET /api/v1/patents/{document_id}` 回傳 `legal_events`，含類別、證書號、官方可取得生效日與原檔定位。公告版本再比對證書號。
+- Commands actually run and results: Pytest 含 PostgreSQL 整合 93 passed、1 則既有 Starlette 警告。Ruff、前端 lint、TypeScript 和 Vite build 通過。實際下載兩種 XML 後透過 CLI 匯入，31 筆發明更正中 2 筆配對，新跑同一期新增 0 筆；838 筆消滅公告與目前隔離的案件無交集。API 核對兩筆更正與一筆空清單。桌面、平板、手機 Chromium 三項來源定位案例通過。第一次測試有選擇器語法錯誤，改用核對完整官方 URL，重跑後通過。
+- Tests NOT run and reason: 本機未執行完整多瀏覽器套件。目前無同時具消滅公告與匹配專利的驗收樣本，因此消滅日期以官方原檔與解析測試驗證，未宣稱完成對應的瀏覽器流程。一般 CI [45678252779](https://github.com/Johnnnny0823/RAG/actions/runs/45678252779) 在前提交通過，較早官方遠端流程仍在建立向量索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 核對 TIPO 第 53 卷第 33 期 `sud08.xml`、`sud24.xml` 及 P10 最新索引、30126 API 目錄。固定路徑、SHA-256、目錄授權及限制見 DATA_SOURCES。
+- Known bugs / risks / blockers: 歷史事件僅涵蓋已匯入期別、發明類別與兩種已核對的公告結構。任意案件的最新法律狀態與完整歷程未驗證。
+- Decisions made (ADR links): 公報更正不推估日期，只呈現官方提供的卷期及更正欄位。消滅公告保留來源的消滅日及原因。原檔 XML 不直接渲染。
+- Uncommitted changes / file ownership warnings: 測試只使用獨立資料庫與公開原檔，資料卷保留。
+- Next 1–3 concrete actions: 找到可與消滅公報交叉驗證的既有案例，繼續追查官方遠端驗收，完成人工相關性複核。
+- Exact reproduction steps: 依 SETUP 建立擴充官方語料，執行 `legal_events` 的兩種固定卷期匯入，再以 `PATENTSCOPE_E2E_TIPO=events` 跑 Playwright。
+
+## 消滅公告端到端驗收工作範圍
+
+- Codex 負責官方公告原檔交叉核對、公告索引匯入大小限制與瀏覽器驗收。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `5da633d`。
+- Current milestone and status: M1／M4 消滅公告端到端驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 用兩份官方原檔確認同一證書的公告、請求項及消滅事件，並通過瀏覽器驗收。
+- Files changed (with purpose): 公告下載、讀取與解析的大小上限調整；詳情顯示公報記載消滅日；新增資料上限回歸測試及官方消滅案 E2E。
+- Database migrations added/applied: 無新增。隔離現存 `0015_legal_events` 資料庫匯入公告案 1 版本，補建 10 個詞彙片段及 10 個向量。
+- API/Schema changes: 無。既有 `legal_events` 回覆可顯示此次驗收的有日期事件。
+- Commands actually run and results: 用匿名 FTPS 下載第 52 卷第 6 期公告索引，驗證 1,780 筆、大小與雜湊。CLI 匯入 `I874215` 後 `verify_document` 逐項核對 9 項請求項。重跑第 53 卷第 33 期消滅事件匯入，第一次新增 1 筆，第二次新增 0 筆。API 驗證此案消滅日 2026-02-21、原檔雜湊、XPath 和其他案件無交叉關聯。
+- Commands actually run and results（續）: PostgreSQL 整合啟用後 pytest 96 passed、1 則既有 Starlette 警告。Ruff、前端 lint、TypeScript 和 Vite build 通過。桌面、平板、手機 Chromium 的官方更正與消滅案例 6 passed（37.5 秒）。一次重驗時 Docker Desktop 尚未啟動，啟動後重跑完成。
+- Tests NOT run and reason: 本機未跑完整跨瀏覽器官方套件。遠端 [45677086302](https://github.com/Johnnnny0823/RAG/actions/runs/45677086302) 在 `fb427f2` 通過三項 API 冒煙、5 項全文與 12 項版本 Playwright。前一提交的一般 [CI](https://github.com/Johnnnny0823/RAG/actions/runs/45679858852) 通過。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 核對公告原檔 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/114/PatentIsuRegSpecXMLA_052006/index.xml`、消滅原檔 `ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053033/sud08.xml`，雜湊及授權見 DATA_SOURCES。
+- Known bugs / risks / blockers: 事件限使用所匯入的官方公報，任意案件的最新狀態查詢與全歷程尚未驗證。
+- Decisions made (ADR links): 對已核對格式的官方公告卷期索引沿用 32 MiB 有界限制，個案說明書、其他非公報 XML 維持 16 MiB。
+- Uncommitted changes / file ownership warnings: 原始檔與測試資料卷保留於隔離環境。
+- Next 1–3 concrete actions: 核對遠端快取命中並複驗最新提交，補人工相關性判定與正式部署驗收。
+- Exact reproduction steps: 依 SETUP 的官方異動公報段落匯入固定證書，再以 `PATENTSCOPE_E2E_TIPO=events` 啟動異動公報測試套件。
+
+## 研究頁專利號碼查詢
+
+- Codex 負責研究頁號碼查詢、官方資料瀏覽器驗收與文件。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `12d9daf`。
+- Current milestone and status: M4 研究頁號碼查詢驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 讓已知申請號、公開號或公告號的使用者直接開啟正確版本的詳情。
+- Files changed (with purpose): `research.tsx` 新增號碼查詢、結果及分頁。沿用共同專利詳情。新增 `patent-number.spec.ts` 並更新 README、驗收、進度與交接。
+- Database migrations added/applied: 無新增。查詢使用已匯入官方語料的隔離資料庫。
+- API/Schema changes: 無。沿用 `GET /api/v1/patents` 的號碼類型、標準化與分頁契約。
+- Commands actually run and results: `npm run lint --prefix apps/web`、`npm run build --prefix apps/web` 通過。官方號碼查詢桌面、平板、手機 Chromium 3 passed（16.7 秒），核對同案三版本、公告 13 項請求項、全形公開號、小寫公告號、空結果與錯誤。桌面搜尋錯誤與研究工作台回歸 4 passed（15.8 秒）。API 未設定嵌入與分析模型。
+- Tests NOT run and reason: 本輪前端功能未改 API 實作或資料庫，未重跑 pytest。尚未對超過單頁版本的官方案例執行號碼查詢分頁。前一提交的遠端官方工作 [45737654914](https://github.com/Johnnnny0823/RAG/actions/runs/45737654914) 已精確命中公開快取並重新驗證 24 檔，其他步驟仍在執行。
+- Data sources checked (exact URL/date) and license/access notes: 沿用 DATA_SOURCES 已核對的第 024019 與 053028 期，未下載新資料。
+- Known bugs / risks / blockers: 自然語言檢索仍需模型，實際檢索品質待人工複核。正式部署驗收及最新法律狀態查詢待補。
+- Decisions made (ADR links): 號碼查詢的分頁由既有 API 處理，點選同一文件版本時使用共用詳情。
+- Uncommitted changes / file ownership warnings: 使用隔離本機服務與測試帳號，資料卷保留。
+- Next 1–3 concrete actions: 查核最新官方案例與遠端驗收，完成人工相關性評估及部署驗收。
+- Exact reproduction steps: 依 TESTING 啟動官方隔離語料，令 `PATENTSCOPE_E2E_TIPO=versions` 並以 `--grep=official.identifier.lookup` 執行。
+
+## 靜態部署驗收
+
+- Codex 負責 Nginx 部署安全標頭、冒煙驗收及重建官方語料的研究流程測試。
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `ef3c6fa`。
+- Current milestone and status: 正式建置的本機部署與核心研究流程驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 在全新隔離資料庫、Nginx 同源代理與背景工作程序上驗證官方語料的研究流程，讓遠端官方套件使用相同部署配置。
+- Files changed (with purpose): `apps/web/nginx.conf` 強制執行同源內容安全政策，`scripts/smoke.py` 加入正式頁面及標頭檢查，`.github/workflows/tipo-e2e.yml` 改用正式部署覆蓋檔及同源連接埠，並更新 SETUP、TESTING、PROGRESS 及交接文件。
+- Database migrations added/applied: 無新增，空白隔離資料庫遷移至 `0015_legal_events`。匯入 117 筆官方文件版本，建立 1,624 筆已驗證模型版本的向量。
+- API/Schema changes: 無。API、資料庫及工作程序維持在容器網路內，對外測試只透過 Nginx 的本機連接埠。
+- Commands actually run and results: 獨立 Compose 專案 `patentscope-release-check` 正式映像建置及啟動通過，部署冒煙與專利號碼、詞彙及語意 API 三項冒煙通過。Chromium 實際封鎖同源 iframe，通過官方全文與證據、儲存紀錄及私有 PDF 輸出一項流程。Firefox、WebKit 各通過一項官方號碼查詢。重啟 API 與工作程序後，部署及專利 API 冒煙再次通過，資料庫仍有 117 筆版本、1,624 筆向量，測試帳號已清理。Ruff 與 `git diff --check` 通過。
+- Tests NOT run and reason: 本地未完整跑全部瀏覽器套件，本次變更範圍是代理、部署冒煙及工作流程，未重跑後端 pytest。舊版 [45669425487](https://github.com/Johnnnny0823/RAG/actions/runs/45669425487) 因 TIPO FTPS 425 未進入測試，後續 [45677086302](https://github.com/Johnnnny0823/RAG/actions/runs/45677086302) 使用已核對的官方樣本通過 API 與 Playwright。採用正式覆蓋檔的遠端結果需獨立核對。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 重驗 DATA_SOURCES 所載第 024019、053028 期共 24 個固定官方原檔的 SHA-256，使用先前匿名 FTPS 取得的快取。
+- Known bugs / risks / blockers: 外部主機與 TLS、人工相關性標註、官方法律事件的完整覆蓋尚待驗收。快取失效後仍可能受到官方 FTPS 暫時限制。
+- Decisions made (ADR links): 保留既有 Compose 架構，由正式 Nginx 入口提供同源 API，並沿用已固定雜湊的官方樣本。
+- Uncommitted changes / file ownership warnings: 隔離資料卷保留供重驗，測試未接觸既有開發資料庫。
+- Next 1–3 concrete actions: 複驗正式覆蓋檔的 GitHub Actions、完成人工相關性複核、取得外部部署環境後驗證 TLS。
+- Exact reproduction steps: 依 SETUP 的靜態部署段落啟動 Compose，依 TESTING 準備官方樣本和模型，將預設測試入口改為該 Compose 的 Nginx 連接埠，執行部署與官方 API 冒煙及 Playwright 官方套件。
+
+## 背景工作程序的關閉行為
+
+- Codex 負責 `services/api/search_worker.py`、Compose、工作程序測試及操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `dfdc82c`。
+- Current milestone and status: 部署工作程序關閉行為已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 部署關閉時完成手上的背景工作，避免一般停止指令留下不必要的執行中紀錄。
+- Files changed (with purpose): `services/api/search_worker.py` 接收 SIGTERM／SIGINT 並在工作之間停止取件，`docker-compose.yml` 允許三分鐘關閉時間，`tests/test_search_worker.py` 驗證搜尋完成後停止取件，更新 SETUP、PROGRESS 與交接。
+- Database migrations added/applied: 無新增。沿用先前隔離部署和既有語料。
+- API/Schema changes: 無。
+- Commands actually run and results: 初次 pytest 碰到 Windows 共用暫存目錄權限，82 passed、7 skipped、8 errors。改用唯一 `--basetemp` 後 90 passed、7 skipped，既有 Starlette 棄用警告 1 則。Ruff 和 `git diff --check` 通過。本機 Docker 的預設建置器遇到工作區路徑編碼問題，改用 `COMPOSE_BAKE=false`；新隔離專案因 Docker IP 位址池已滿，沿用先前的隔離專案完成重建與部署冒煙。新版 Compose 的背景程序停止後為退出碼 0、非記憶體不足終止，生效的停止期限為 180 秒。另以同一工作映像執行替代搜尋，使用 `docker stop` 送出 SIGTERM，觀察搜尋完成、未開始報告、正常退出。
+- Tests NOT run and reason: 本輪未啟用 PostgreSQL pytest 整合（7 skipped），未透過 Playwright 重跑完整研究流程。Docker 訊號測試以受控工作驗證時序，未測真實模型推論中途關機及逾越三分鐘。
+- Data sources checked (exact URL/date) and license/access notes: 本輪未下載資料，沿用既有隔離環境。
+- Known bugs / risks / blockers: 主機斷電、強制終止及超過 Compose 關閉期限仍依賴既有工作逾時機制。外部部署及人工相關性複核仍待完成。
+- Decisions made (ADR links): 保留單一工作程序與既有資料庫狀態機，在搜尋與報告取件之間檢查關閉訊號。
+- Uncommitted changes / file ownership warnings: 隔離資料庫及資料卷保留。
+- Next 1–3 concrete actions: 核對 [正式建置官方遠端驗收](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469)，完成人工相關性複核及外部部署。
+- Exact reproduction steps: 執行 `pytest -q tests/test_search_worker.py`。以 SETUP 的 Compose 部署步驟啟動獨立環境，等 API 就緒後執行 `docker compose stop search-worker`，用 `docker inspect` 確認退出碼 0。
+
+## 官方語料人工複核材料
+
+- Codex 負責評估候選的離線閱讀檔、版本核對及評估操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `c269906`。
+- Current milestone and status: 人工複核材料驗證完成，人工評分及完整 Goal IN_PROGRESS。
+- Goal of this session: 讓人工複核者離線閱讀相同版本的官方證據。
+- Files changed (with purpose): `scripts/export_review_packet.py` 匯出官方原文和來源，`scripts/evaluate_search.py` 讓既有版本比對回傳實際詳情供匯出使用。更新 EVALUATION、PROGRESS 及本交接。HTML 放在本機已忽略的 `.patent-data/review/`。
+- Database migrations added/applied: 無。只讀隔離部署的 117 版本官方語料。
+- API/Schema changes: 無。沿用專利號查詢、詳情與請求項。
+- Commands actually run and results: CLI 產生四案、34 組材料，其中全文 14 組、請求項版 1 組、書目與摘要版 19 組。以 API 複核重建後 UUID 不同但版本相同，逐字比對 I941082 首項原文與 XPath，修改指紋後正確拒絕匯出。所有分數及理由仍空白。以 Chromium 經本機 HTTP 檢視匯出檔，展開 I941082 請求項並看到原文定位。Pytest 90 passed、7 skipped，Ruff 格式及 lint 通過。
+- Tests NOT run and reason: 本輪只改離線工具，未啟用 PostgreSQL pytest 整合及完整網站 E2E。CLI 瀏覽器限制直接載入本機檔案，使用本機 HTTP 檢視。官方遠端正式建置 [45738965469](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469) 已通過部署冒煙且仍在建立向量索引。前一提交一般 CI [45739388410](https://github.com/Johnnnny0823/RAG/actions/runs/45739388410) 通過。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 沿用 DATA_SOURCES 所載第 024019、053028 期。每件閱讀檔列出 API 已保存的官方來源、授權及卷期。
+- Known bugs / risks / blockers: 人工評分、完整部署及外部 TLS 尚待驗收。書目摘要版本的判讀受可取得篇幅限制。
+- Decisions made (ADR links): 閱讀檔與待填候選分開，保留匿名排序，保留全文字元與來源定位，避免原始標註被覆寫。
+- Uncommitted changes / file ownership warnings: 閱讀檔與測試資料卷留在本機，未提交原始專利資料。
+- Next 1–3 concrete actions: 人工複核 34 組候選並重算評估，追蹤官方 CI，驗收外部部署。
+- Exact reproduction steps: 依 EVALUATION 的人工複核段落執行 `python -m scripts.export_review_packet`，使用已匯入 117 版本的隔離 API 和固定候選池。
+
+## 向量索引並行控制
+
+- Codex 負責 `services/retrieval/index_semantic.py`、索引測試與操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `aed8e68`。
+- Current milestone and status: 向量索引並行控制本機驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 防止操作員匯入流程及獨立指令同時重建相同模型索引，避免重複推論。
+- Files changed (with purpose): `services/retrieval/index_semantic.py` 依模型資料列取得 PostgreSQL session advisory lock，`tests/test_semantic_index.py` 更新分批及回滾測試的連線行為。另更新 SETUP、PROGRESS 與交接。
+- Database migrations added/applied: 無。隔離庫既有 117 個文件版本與 1,624 筆向量。
+- API/Schema changes: 無。CLI 競爭同一模型時以退出碼 1 回報。
+- Commands actually run and results: Pytest 90 passed、7 skipped，索引測試重跑 6 passed。Ruff lint 及格式通過。以隔離 Docker PostgreSQL 驗證一條連線持鎖時，同模型的第二次索引立即拒絕，不同模型鍵可取得，放鎖後重跑新增 0 筆、原有 1,624 筆向量保留。測試替身在任何重新嵌入時會使驗收失敗。
+- Tests NOT run and reason: 本輪未跑全套 PostgreSQL pytest 或 Playwright，也未重新計算 1,624 筆向量。遠端正式部署 [45738965469](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469) 仍在建立索引。
+- Data sources checked (exact URL/date) and license/access notes: 無新增下載，沿用先前固定第 024019、053028 期。
+- Known bugs / risks / blockers: 本輪未量測建置時間改善。人工相關性與外部部署仍待驗收。
+- Decisions made (ADR links): 同模型使用負的 bigint 鎖鍵，與現有匯入流程的正值鎖鍵分開。沿用 NullPool，實體連線結束後 PostgreSQL 釋放鎖。
+- Uncommitted changes / file ownership warnings: 測試使用先前的隔離資料卷，未變更既有原文或向量。
+- Next 1–3 concrete actions: 追蹤正式建置遠端結果，完成人工相關性複核和外部部署驗收。
+- Exact reproduction steps: 在官方隔離資料庫以獨立連線對模型資料列 ID 的負值取得 `pg_try_advisory_lock`。使用該模型執行索引 CLI 應回報忙碌。關閉持鎖連線後重跑，原本完成的版本應保留並略過。
+
+## 正式入口速率限制
+
+- Codex 負責 Nginx 入口限制、部署冒煙與操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `802cfed`。
+- Current milestone and status: 本機正式入口驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 限制公開入口高成本請求，保留既有 API 各自的節流訊息與狀態查詢。
+- Files changed (with purpose): `apps/web/nginx.conf` 新增帳號與研究的來源 IP 配額，`scripts/smoke.py` 驗證兩組入口限制與狀態端點，官方 E2E 工作加入部署冒煙檢查，更新 API、SETUP、TESTING、PROGRESS 及交接。
+- Database migrations added/applied: 無新增。隔離正式部署沿用先前遷移與官方語料。
+- API/Schema changes: FastAPI 無修改。正式代理的 429 加入 `RATE_LIMITED`、`Retry-After: 2` 與 `Cache-Control: no-store`。
+- Commands actually run and results: Nginx 語法檢查、部署及兩組限流冒煙通過。429 保留安全標頭，健康與工作進度請求抵達 API。首次誤將三種裝置連續用同一來源跑，3 passed、3 failed，觸發共用入口配額。每組使用新的入口配額重跑後，桌面、平板和手機的登入節流及專案操作共 6 passed，三種裝置官方專利號碼共 3 passed。pytest 90 passed、7 skipped，Ruff 及 Git diff 檢查通過。
+- Tests NOT run and reason: 本輪未啟用後端 PostgreSQL pytest 整合、未重跑完整官方模型研究流程。既有的 [正式建置官方遠端工作](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469) 在較早提交，尚未涵蓋本輪新增的速率檢查。
+- Data sources checked (exact URL/date) and license/access notes: 無新下載，號碼查詢沿用固定官方語料。
+- Known bugs / risks / blockers: 同一來源 IP 共用配額。外部代理和 TLS、跨實例配額與人工評分待驗收。
+- Decisions made (ADR links): 僅於正式入口使用直連來源 IP。代理前方增加其他入口時須按已知代理網路重新設定來源識別。
+- Uncommitted changes / file ownership warnings: 隔離資料卷保留，未修改既有開發服務。
+- Next 1–3 concrete actions: 驗收正式入口的遠端冒煙、人工評分及外部部署。
+- Exact reproduction steps: 依 SETUP 啟動隔離靜態部署，以 `scripts/smoke.py --deployment --deployment-rate-limit` 驗證。在同一來源反覆測試裝置的登入節流前，需重設隔離入口或等待配額恢復。
+
+## HTTPS 正式入口驗收
+
+- Codex 負責 HTTPS 覆蓋檔、Nginx、部署冒煙及操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `e84ea06`。
+- Current milestone and status: 本機 HTTPS 驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 從部署文件可在同一個 Nginx 正式入口啟用 HTTPS，並驗證官方資料與帳號 API。
+- Files changed (with purpose): `docker-compose.tls.yml` 加入憑證掛載和僅發布 HTTPS 的連接埠，`apps/web/nginx-tls.conf` 加入 TLS listener，`apps/web/nginx.conf` 及 `docker-compose.deploy.yml` 正確轉送隔離代理的 scheme 和來源。`scripts/smoke.py` 支援信任測試 CA 並驗證重新導向，一般 CI 會執行 HTTPS 冒煙。
+- Database migrations added/applied: 無新增。沿用原隔離部署與官方語料。
+- API/Schema changes: 無。代理覆寫來源與協定標頭，讓 FastAPI 的尾斜線重新導向保留 HTTPS 與原始主機及連接埠。
+- Commands actually run and results: Compose 建置與啟動、Nginx 含及不含 HTTPS 設定的語法檢查均通過。只有 `127.0.0.1:18443` 發布到主機。使用一天期測試憑證核對 TLS 1.2／1.3、系統未信任的憑證會被拒，指定該憑證後 HTTPS 冒煙、速率限制及官方專利版本、分頁與原始檔雜湊檢查均通過。驗證測試帳號註冊、登入、讀取和刪除。pytest 90 passed、7 skipped，Ruff lint 和格式通過。
+- Tests NOT run and reason: 本輪未啟用 PostgreSQL pytest 整合，未以瀏覽器安裝測試憑證信任或重跑完整模型流程。一般 CI 新加入的 HTTPS 步驟未取得遠端完成結果。既有 [官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469) 屬較早提交。
+- Data sources checked (exact URL/date) and license/access notes: 沿用既有第 024019、053028 期，未下載新來源。
+- Known bugs / risks / blockers: 外部網域公開 CA 憑證與續期、實際反向代理、防火牆、外部主機連線尚待驗證。人工相關性評分尚待完成。
+- Decisions made (ADR links): 保留目前單一 Nginx 入口。只在使用 HTTPS 覆蓋檔時掛載部署方提供的憑證，預設綁定回環位址。
+- Uncommitted changes / file ownership warnings: 測試憑證及私鑰位於作業系統暫存目錄，均未進入 repository。隔離測試服務已停止。
+- Next 1–3 concrete actions: 驗證 HTTPS 遠端冒煙與官方 E2E，完成人工相關性複核，取得實際主機及憑證後驗收公開部署。
+- Exact reproduction steps: 依 [HTTPS 部署操作](SETUP.md#使用自備憑證啟用-https) 啟動隔離 Compose，以 `scripts/smoke.py --deployment --deployment-rate-limit --ca-file` 驗證同源 HTTPS。
+
+## 私人研究資料匯出
+
+- Codex 負責帳號匯出 API、研究工作台入口、隔離測試及操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `a01fcd0`。
+- Current milestone and status: 私人研究資料匯出已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 讓登入者可在研究工作台下載已保存的個人研究成果。
+- Files changed (with purpose): `services/api/research_export.py` 查詢明確欄位及帳號範圍，`services/api/accounts.py` 提供受權限保護的下載。研究頁沿用私人下載處理並新增入口。Nginx 將匯出納入研究配額。新增 PostgreSQL 隔離測試及工作台下載斷言。另修正遠端 HTTPS 憑證生成指令。
+- Database migrations added/applied: 無新增。匯出以 PostgreSQL 可重複讀取的快照取得資料。
+- API/Schema changes: 新增 `GET /api/v1/me/export`，匯出 JSON 格式版本 1，附件回應為 `private, no-store`，未登入回傳 401。
+- Commands actually run and results: 首次 pytest 收集發現測試段落插入位置錯誤，修正後包含隔離 PostgreSQL 共 98 passed、1 則既有警告。前端 lint、TypeScript、Vite build 及 Ruff 通過。正式建置在 Chromium 桌面、平板、手機各一項通過，核對檔名、帳號、已編輯專案及無密碼欄位。一般 CI [45741238355](https://github.com/Johnnnny0823/RAG/actions/runs/45741238355) 的舊 HTTPS 步驟因 OpenSSL 指令含額外加號失敗。修正成單行並從工作流程讀取同一命令，在 Linux 容器生成憑證且核對 IP SAN。
+- Tests NOT run and reason: 未重跑完整模型與官方瀏覽器工作流程，尚待確認新版遠端 HTTPS 完整結果。
+- Data sources checked (exact URL/date) and license/access notes: 本次使用隔離測試帳號，無新下載官方資料。
+- Known bugs / risks / blockers: 大量私人資料匯出的資源用量尚未壓測。外部部署與人工相關性複核仍待驗收。
+- Decisions made (ADR links): 匯出以獨立的 JSON 版本保存已持久化的研究資料。PDF 繼續由各研究結果下載。
+- Uncommitted changes / file ownership warnings: 未提交私人帳號資料、下載檔或憑證。
+- Next 1–3 concrete actions: 核對新版 HTTPS CI 及官方 E2E，完成人工相關性複核與外部部署。
+- Exact reproduction steps: 啟動隔離測試庫，依 TESTING 執行 PostgreSQL 整合；以研究頁 `匯出我的研究資料（JSON）` 按鈕或帶本人 Bearer token 呼叫 `GET /api/v1/me/export`。
+
+## 官方資料先行驗收
+
+- Codex 負責官方 E2E 工作流程及測試文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `1169ddd`。
+- Current milestone and status: 已在本機驗收資料先行階段，完整 Goal IN_PROGRESS。
+- Goal of this session: 讓官方原檔、資料庫、詞彙檢索及號碼查詢先提供結果，並保留完整模型流程。
+- Files changed (with purpose): `.github/workflows/tipo-e2e.yml` 新增手動執行的 `coverage`、拆分來源與模型測試、將會消耗測試配額的限流冒煙放在尾端。更新 TESTING、PROGRESS 及交接。
+- Database migrations added/applied: 無新增。本機沿用 117 個版本的隔離資料庫。
+- API/Schema changes: 無。
+- Commands actually run and results: `scripts.seed_tipo_e2e --prepare-only --offline` 核對 24 檔 SHA-256。正式部署冒煙、官方專利資料與詞彙 API 以及桌面、平板與手機 Chromium 號碼查詢 3 passed。第一次把限流冒煙放前面，後續詞彙 API 遇到 429；將限流放在流程尾端後，來源階段與限流冒煙依序通過。
+- Tests NOT run and reason: 本輪無產品程式變更，未重跑 pytest。未用本機重新建空白庫或全量向量，前一輪 [正式官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469) 仍在建索引。新版來源模式須以遠端實跑驗收。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 使用固定第 024019、053028 期的本機雜湊快取，未下載新文件。
+- Known bugs / risks / blockers: 來源模式的成功只證明來源與純詞彙功能。完整模型測試、人工相關性複核和公開部署需分別驗收。
+- Decisions made (ADR links): `full` 保留為預設，要求同一組來源檢查全部通過後再啟動模型。各瀏覽器的號碼案例只在前段執行一次。
+- Uncommitted changes / file ownership warnings: 本機驗收使用隔離 Compose，保留資料卷。
+- Next 1–3 concrete actions: 核對新版來源模式、舊版尚在執行的完整官方工作及 HTTPS CI。
+- Exact reproduction steps: 在 GitHub Actions 手動執行 `Official patent E2E`，選擇 `coverage=source`。完整模型驗收選擇 `coverage=full`。
+
+## 官方語料展示與現況文件
+
+- Codex 負責展示流程、架構文件及本機核心瀏覽器驗收。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `69f6521`。
+- Current milestone and status: 本機完整核心展示及遠端來源模式已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 提供從 README 可重現的官方語料展示，更新架構現況與遠端驗收紀錄。
+- Files changed (with purpose): README 提供展示入口，`docs/DEMO.md` 記錄按號碼與從構想到報告的流程，`docs/ARCHITECTURE.md` 更新工作佇列、來源核對、HTTPS 及資料邊界。同步進度及交接。
+- Database migrations added/applied: 無新增，沿用 117 個版本、1,624 個向量的隔離資料庫。
+- API/Schema changes: 無。
+- Commands actually run and results: 隔離正式 Compose 建置暨啟動，核對兩個本機 Qwen 模型 digest，語意 API 冒煙通過，兩個已知公開號均為首筆。桌面 Chromium `tipo-research.spec.ts` 1 passed（1.3 分鐘），涵蓋拆解、特徵修改、RAG 搜尋、引用核對、歷史重開和私人 PDF。下載再以 pypdf 核對繁中、官方文件及來源。報告保存於 `.patent-data/demo/patentscope-official-research-sample.pdf`，SHA-256 `d32325fb4e71acfb2c68f8b94de512c460b122e6d3987959dcac7ef5b68a1772`。
+- Tests NOT run and reason: 本輪未改產品程式碼，未重跑 pytest 或完整跨瀏覽器模型回歸。遠端 [來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45742177190) 已通過，模型階段按配置跳過。修正後的 [HTTPS CI](https://github.com/Johnnnny0823/RAG/actions/runs/45741807070) 已通過。先前完整官方遠端工作仍在建立索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 使用已匯入第 024019 與 053028 期，無新下載。PDF 內的官方來源 URL 已由測試核對。
+- Known bugs / risks / blockers: 外部部署與人工相關性評分待驗。隔離資料庫另留一個先前測試帳號，本輪新增帳號經瀏覽器測試清理。
+- Decisions made (ADR links): 選任一固定官方樣本可展示；此次使用公開樹脂案例便於重現。
+- Uncommitted changes / file ownership warnings: 本機 PDF 為測試輸出，未放入 Git。隔離資料卷保留。
+- Next 1–3 concrete actions: 完整遠端模型驗收、人工相關性複核及目標主機部署。
+- Exact reproduction steps: 依 [展示指南](DEMO.md) 準備語料與模型，令 `PATENTSCOPE_E2E_TIPO=1` 並執行 `tipo-research.spec.ts`。
+
+## API 主要操作紀錄
+
+- Codex 負責 API 操作日誌、容器日誌設定、測試與操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `5d0a8ac`。
+- Current milestone and status: 主要操作結果本機驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 提供部署操作員可檢查的請求結果及工作完成紀錄，避開研究文字和識別資料。
+- Files changed (with purpose): `services/api/activity.py` 與 `patents.py` 記錄路由樣板、操作方法、狀態及耗時，`search_worker.py` 與 `report_jobs.py` 記錄已提交的工作結果。API Docker 命令移除原始存取日誌，Compose 設置日誌輪替。增加單元及整合斷言，更新 ARCHITECTURE、SETUP、PROGRESS 和交接。
+- Database migrations added/applied: 無新增，不建立帳號活動資料表。
+- API/Schema changes: 無。
+- Commands actually run and results: Ruff、Git diff 檢查及正式容器部署冒煙通過。完整 pytest 含 PostgreSQL 為 99 passed、1 則既有 Starlette 警告。兩項背景工作整合測試加入事件斷言後再跑，2 passed。實際送出帶合成標記的無效請求及測試帳號匯出，容器日誌含樣板與 422／200，未出現測試查詢、構想、文件 UUID、密碼或 Bearer token。測試帳號已清理。
+- Tests NOT run and reason: 未修改介面契約，本輪未重跑 Playwright。較早的完整官方遠端工作仍在向量索引階段。
+- Data sources checked (exact URL/date) and license/access notes: 本輪未下載官方資料。容器測試只使用隔離環境與合成隱私標記。
+- Known bugs / risks / blockers: 不提供依帳號查詢的活動歷程或外部稽核保存。代理及其他服務日誌需在目標環境另驗。人工相關性及公開部署尚待完成。
+- Decisions made (ADR links): 以固定欄位結構化日誌提供維運觀測，避免在日誌引入帳號及私人研究識別碼。
+- Uncommitted changes / file ownership warnings: 日誌與測試資料留在隔離容器，未放入 Git。
+- Next 1–3 concrete actions: 核對遠端完整官方驗收，完成人工評估與公開部署。
+- Exact reproduction steps: 於隔離環境使用 `docker compose logs api search-worker`。先跑 `tests/test_activity.py`，再依 TESTING 啟用 PostgreSQL 整合驗證背景工作。
+
+## 最新發明公開卷期匯入
+
+- Codex 負責 S10 來源驗證、卷期解析、更新指令及資料文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `53f8f73`。
+- Current milestone and status: 最新發明公開書目更新已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 從已核對的官方 S10 取得當期卷期及書目，安全試跑並保存匯入結果。
+- Files changed (with purpose): `latest_publication.py` 提供預覽與可選匯入，`download.py` 共用固定 S10 下載，`issue_index.py` 驗證完整性與一致卷期，`test_tipo_issue.py` 驗證混期與宣告筆數錯誤。更新 DATA_SOURCES、SETUP、PROGRESS及交接。
+- Database migrations added/applied: 無新增。全新隔離資料庫套用既有遷移與受限 API 角色。
+- API/Schema changes: 無。以現有公開專利精確查詢、詳情與詞彙 API 驗收。
+- Commands actually run and results: 從 S10 發現第 024020 期 1,639 筆。兩次 `--apply --limit 5` 保持 5 筆書目、20 個詞彙片段及 1 批次；第二次匯入標示重用、索引新增 0。兩次的來源內容皆為書目摘要，監控狀態顯示部分完成。唯讀 API 可精確及詞彙查到官方 `202642194`，詳情含 S10 和同一份來源雜湊。pytest 92 passed、8 skipped，Ruff 及 Git diff 通過。
+- Tests NOT run and reason: 本輪未跑全部 PostgreSQL pytest 或瀏覽器套件。隔離 PostgreSQL 與 API 直接驗收最新書目匯入，未重建語意向量。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 核對 `https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10`。輸入與輸出雜湊記在 DATA_SOURCES。
+- Known bugs / risks / blockers: 最新個案全文、公告與異動公報各有來源方法，尚未併入此更新指令。未設定自動排程。完整遠端官方模型工作仍待確認。
+- Decisions made (ADR links): 從 S10 XML 自身取得卷期，使用固定來源並驗證整份索引。預覽預設不寫入資料庫。
+- Uncommitted changes / file ownership warnings: 最新期樣本留在隔離資料庫和物件卷，未提交原始資料。
+- Next 1–3 concrete actions: 驗證最新期官方個案封存清單、自動更新及模型索引；持續核對遠端結果。
+- Exact reproduction steps: 依 SETUP 的最新發明公開書目段落執行預覽及 `--apply --limit 5`。來源更新後當期號碼及雜湊會不同。
+
+## 最新發明公開全文更新
+
+- Codex 負責最新卷期的官方全文清單核對、更新指令與驗收文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `edbf653`。
+- Current milestone and status: 最新期選取全文已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 從官方封存清單取得同一卷期的個案全文，保留原書目版和可回溯引文。
+- Files changed (with purpose): `latest_publication.py` 新增三位數民國年參數，驗證封存清單與 S10 選取書目的一致性。`run_pipeline.py` 提供要求全數完成的離開狀態。補新增路徑的測試及資料、操作、進度與交接文件。
+- Database migrations added/applied: 無新增。沿用隔離驗收資料庫。
+- API/Schema changes: 無。使用既有公開號、詳情及請求項 API 驗收。
+- Commands actually run and results: 在主機核對官方封存清單與兩份個案 XML，在隔離容器執行兩次 `latest_publication --archive-year 115 --apply --limit 2`，均回傳成功。首次新增 2 個全文版本及 143 個詞彙片段，保留原本 5 個書目版。重跑重用相同批次、索引新增 0。`verify_document 202642194` 從封存原文核對 9 項請求項與 62 段，API 檢查兩案同時保有書目與全文，請求項分別為 9、10 項。pytest 93 passed、8 skipped，Ruff 檢查通過。
+- Tests NOT run and reason: 未重跑完整 PostgreSQL pytest 或瀏覽器套件。使用實際 PostgreSQL 與 API 驗收匯入；本輪只建立詞彙索引，未重建向量。一般 CI [45743650472](https://github.com/Johnnnny0823/RAG/actions/runs/45743650472) 在前一提交已通過。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 核對 S10 與 `ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024020/index_all.xml`，兩份公開說明書、原檔雜湊及來源授權見 DATA_SOURCES。
+- Known bugs / risks / blockers: 只驗收本期所選兩案。資料更新排程、跨期容錯、最新公告及最新異動仍待驗收。
+- Decisions made (ADR links): 封存年由已核對的目錄提供，個案下載沿用既有來源校驗、快取及隔離流程。
+- Uncommitted changes / file ownership warnings: 新原檔與驗收資料保留在隔離資料卷，未提交原始資料。
+- Next 1–3 concrete actions: 驗證自動排程及跨期切換，追蹤官方模型驗收。
+- Exact reproduction steps: 依 SETUP 的最新發明公開書目段落預覽並執行全文命令，再查閱 API 與 `verify_document`。
+
+## 第 024020 期語意檢索與引文驗收
+
+- Codex 負責新卷期的向量、混合檢索及版本引文驗收腳本。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `a518038`。
+- Current milestone and status: 新卷期語意與引文增量驗收通過，完整 Goal IN_PROGRESS。
+- Goal of this session: 確認由新匯入流程取得的官方原文能經向量搜尋發現並回溯。
+- Files changed (with purpose): `scripts/smoke_semantic.py` 新增第 024020 期已知案件及混合檢索核對。 `scripts/evaluate_citations.py` 增加同卷期精確引文與語意證據案例，更新 TESTING、EVALUATION、PROGRESS 與交接文件。
+- Database migrations added/applied: 無新增。隔離資料庫以 Qwen3 Embedding 建立 7 個版本、166 筆向量。重跑新增 0 筆。
+- API/Schema changes: 無。
+- Commands actually run and results: `smoke_semantic.py --issue-024020` 通過，`202642194`、`202642585` 語意查詢各排第一，混合結果沒有重複同公開號。 `evaluate_citations.py --issue-024020` 對三版本執行字詞比對共 6 判定，兩段引文均核對成功。另測英文改寫，關閉語意查找時未找到證據，啟用後得到同版本說明書引文且逐字吻合。Ruff 與 Git diff 檢查通過。
+- Tests NOT run and reason: 本輪只改驗收工具及文件，未重跑全套 pytest 與 Playwright。使用真實 PostgreSQL、Ollama 與 API 驗證新卷期。前一提交一般 CI [45744322517](https://github.com/Johnnnny0823/RAG/actions/runs/45744322517) 通過。較早的完整官方 E2E 仍在建索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 沿用第 024020 期既有核對原檔，未下載新資料。
+- Known bugs / risks / blockers: 已知案件驗收不足以推論其他技術領域的相關性。人工評分、跨期更新排程與公開部署仍待完成。
+- Decisions made (ADR links): 保留舊種子組的預設行為，以明確的卷期參數啟用增量驗收。
+- Uncommitted changes / file ownership warnings: 隔離語料與向量未提交。
+- Next 1–3 concrete actions: 核對完整官方遠端測試，複核人工評分，驗證更新排程與跨期切換。
+- Exact reproduction steps: 先依 SETUP 匯入第 024020 期兩份全文並建向量，依 TESTING 在該 API 執行兩支 `--issue-024020` 驗收指令。
+
+## 發明公開資料定期更新
+
+- Codex 負責定期更新程序、Compose 選用服務、測試及操作文件。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `25114c2`。
+- Current milestone and status: 發明公開定期更新已在隔離 Compose 驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 部署方可選擇在容器內定期輪詢官方 S10，並沿用原有匯入及索引記錄。
+- Files changed (with purpose): `refresh_publications.py` 提供更新、等待與失敗重試，Compose 增加預設停用的選用服務，環境範本與架構說明列出輪詢設定；新增測試驗證失敗及成功間隔。
+- Database migrations added/applied: 無新增。沿用隔離資料庫及物件卷。
+- API/Schema changes: 無。匯入繼續寫入既有操作員監控資料。
+- Commands actually run and results: 確認未啟用 profile 時 Compose 無更新服務，啟用後正式建置並啟動服務。以 60 秒間隔輪詢 S10 兩次，兩次均核對第 024020 期並重用既有批次，新增詞彙片段均為 0，資料庫仍有 7 個文件版本、166 筆向量和 2 個批次。停止時退出碼 0。驗證失敗到下一次重試的測試時鐘，pytest 94 passed、8 skipped，Ruff 與 Git diff 檢查通過。
+- Tests NOT run and reason: 本輪未重跑全部 PostgreSQL pytest 與瀏覽器套件。Compose 實測為書目輪詢，未在更新服務開啟全文年度參數或令官方服務刻意失敗。未等待下一個實際卷期發布。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 兩次請求 `https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10` 均取得第 024020 期同一來源雜湊。
+- Known bugs / risks / blockers: 只追蹤當次 S10 所提供卷期，停機或錯過的期別需從封存補入。全文模式跨年度需更新已核對的年目錄。公告、異動公報尚無定期更新。
+- Decisions made (ADR links): 定期更新只在顯式啟用 Compose 服務後執行。預設每日查一次，錯誤後等 15 分鐘，原有資料完整性與來源規則照常適用。
+- Uncommitted changes / file ownership warnings: 隔離排程測試已停止；本機既有專案未啟用排程。
+- Next 1–3 concrete actions: 驗收跨期過渡、後補期間與公告更新，持續追蹤完整官方 E2E。
+- Exact reproduction steps: 依 SETUP 的「定期更新」小節，在隔離專案用 `--profile patent-refresh` 啟動服務。使用日誌核對來源和週期間隔，從管理員監控或資料庫查詢工作狀態。
+
+## 發明公告多案匯入
+
+- Codex 負責公告解析、批次匯入及官方 S01 驗收。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `aa219a3`。
+- Current milestone and status: 同一期所選公告的批次匯入已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 從同一份官方公告索引保存多件公告，維持各自的證書號及請求項來源。
+- Files changed (with purpose): `download.py` 支援取得官方 S01 最新 XML，`grant_index.py` 一次解析選取公告，`import_issue.py` 支援重複指定 `--grant-number` 並將各件引文連到自己的 XML 位置。新增解析回歸與來源、操作文件。
+- Database migrations added/applied: 無新增。隔離庫原有 7 個公開版本，驗收後另有 2 個公告版本。
+- API/Schema changes: 無。從現有精確查詢、詳情及請求項 API 驗收兩案。
+- Commands actually run and results: S01 官方原檔 SHA-256 核對通過。第 053030 期 `I942697`、`I942698` 批次匯入成功，建立 66 個詞彙片段。調換證書號順序重跑仍重用批次，新增索引 0。`verify_document` 核對 38、24 項請求項，唯讀 API 驗證不同申請號、公告類型、書目與請求項範圍、來源雜湊與不同的原文定位。pytest 95 passed、8 skipped，調整合成測試識別碼後重跑公告解析測試 3 passed。Ruff 與 Git diff 通過。
+- Tests NOT run and reason: 未重跑完整 PostgreSQL pytest／Playwright，本輪以隔離 PostgreSQL 及 API 直接驗收公告匯入，未建立公告語意索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 核對 `https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01`，實際來源細節見 DATA_SOURCES。
+- Known bugs / risks / blockers: 目前只驗收選取兩件的公告請求項，未匯入公告說明書或啟用公告排程。
+- Decisions made (ADR links): 保持舊單案命令及批次識別相容，多案批次以排序後的選取清單識別。
+- Uncommitted changes / file ownership warnings: 官方案例存於隔離資料庫及未追蹤物件卷。
+- Next 1–3 concrete actions: 驗收公告全文、公告排程及跨期補匯，持續查核完整模型遠端結果。
+- Exact reproduction steps: 依 SETUP 的追蹤匯入小節取得該期官方索引並重複傳入兩個 `--grant-number`。
+
+## 發明公告全文匯入
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `364165b`。
+- Current milestone and status: 官方公告全文兩案例已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 從官方封存清單取得公告個案全文，保持與 S01 請求項版的來源隔離。
+- Files changed (with purpose): `download.py` 驗證官方公告清單與個案路徑，`issue_manifest.py` 綁定證書號、申請號和期別，`specification.py` 解析公告個案根元素，`import_issue.py` 保存獨立全文版本，`verify_document.py` 支援核對公告全文。新增解析及來源回歸測試，更新 SETUP、DATA_SOURCES、PROGRESS、HANDOFF。
+- Database migrations added/applied: 無新增，沿用隔離受限角色與原始物件卷。
+- API/Schema changes: 無。兩個版本延用既有 `claims_only` 和 `fulltext` 欄位。
+- Commands actually run and results: 官方封存清單 17,429,839 bytes，放寬限額僅套用已驗證的公告卷期清單。隔離庫先匯入兩件 S01 書目加請求項，再以清單匯入兩份公告全文，新增 252 個詞彙片段。重跑重用批次且新增 0。從官方原檔核對 `I942741` 的 13 項請求項與 165 段、`I942850` 的 5 項與 66 段。API 確認兩案各兩版；全文版請求項與段落的來源 SHA-256 相同，且與 S01 版本來源不同。忽略空白後兩案分別有 4 與 5 項請求項措辭不同。pytest 97 passed、8 skipped，Ruff 與 Git diff 通過。
+- Tests NOT run and reason: 未跑完整 PostgreSQL pytest 和 Playwright，使用隔離真實 PostgreSQL、API 及官方原文驗收。公告全文向量未建立。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 核對政府目錄 15987、15983，S01、官方清單及 `PatentPubXML` 個案路徑。細節見 DATA_SOURCES。
+- Known bugs / risks / blockers: 不是每份官方全文都具完整請求項標記；缺號或內容無法核對時將保留已驗證的 S01 版本並回報部分完成。公告自動排程、跨期補齊、人工相關性與外部部署待驗。
+- Decisions made (ADR links): 公告個案內文與請求項取自同一份全文 XML，S01 文字獨立保留，避免版本內混用。
+- Uncommitted changes / file ownership warnings: 原檔留在隔離物件卷與暫存目錄、未提交至 Git。
+- Next 1–3 concrete actions: 驗證公告全文向量與更新排程，核對最新完整官方 CI。
+- Exact reproduction steps: 按 SETUP 的公告個案全文段落下載並匯入同一期來源，以 `verify_document --grant-issue 053030 --grant-fulltext` 逐件驗證。
+
+## 專利文件內容篩選
+
+- Codex 負責搜尋篩選、報告、研究頁與官方公告向量驗收。
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `ed4ef6d`。
+- Current milestone and status: 文件內容篩選、公告向量與同版本引文已驗收，完整 Goal IN_PROGRESS。
+- Goal of this session: 讓研究者可明確選擇全文、書目與請求項或書目與摘要，避免範圍不同的版本影響驗收。
+- Files changed (with purpose): `services/api/patents.py` 讓三種檢索與涵蓋筆數共用篩選，`services/api/reports.py` 納入報告策略，研究頁增加輸入與結果條件。新增官方公告驗收腳本及更新既有 PDF E2E。
+- Database migrations added/applied: 無新增。隔離語料的 6 個公告版本建立 340 筆向量，重跑新增 0。
+- API/Schema changes: 搜尋請求新增可選 `content_scope`，舊搜尋與呼叫端省略時沿用原有行為。
+- Commands actually run and results: 兩件第 053030 期公告逐一通過全文與請求項版的詞彙、語意、混合篩選及全文引文核對。正式建置桌面 Chromium 的模型拆解、全文篩選、搜尋保存、歷史與 PDF 測試 1 passed（45.8 秒），PDF 確認標示「文件內容 全文」。初次前端 lint 指出測試變數名稱重複，修正後 lint、型別及 Vite 建置通過。pytest 97 passed、8 skipped，Ruff 及 Git diff 通過。
+- Tests NOT run and reason: 本輪未執行其餘瀏覽器及 PostgreSQL pytest 整合測試。新公告以針對實際 PostgreSQL、Ollama 及 API 的驗收腳本核對。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 使用既有第 053030 期公告及第 024019 期瀏覽器樣本，無新檔案下載。
+- Known bugs / risks / blockers: 新篩選不改變未指定範圍時的版本排序策略。完整外部部署、人工相關性複核及跨期自動補匯尚待驗。
+- Decisions made (ADR links): 使用現成的版本內容範圍枚舉，不增加資料庫欄位。舊的找回或報告流程保持相容。
+- Uncommitted changes / file ownership warnings: 實際驗收使用兩個隔離資料庫。資料及 PDF 保留在未追蹤路徑。
+- Next 1–3 concrete actions: 驗收公告與異動的更新流程，核對最新完整官方 CI，完成相關性人工複核。
+- Exact reproduction steps: 依 TESTING 加入第 053030 期兩件公告的兩種版本並建向量，執行 `scripts/smoke_grant_versions.py`。以既有固定官方語料執行 `tipo-research.spec.ts` 驗證 UI 與 PDF。
+
+## 發明公告定期更新
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `fc05c7b`。
+- Current milestone and status: 官方資料定期更新 IN_PROGRESS。
+- Goal of this session: 將 S01 公告加入選用的更新服務，核對重跑去重，查核使用者收到的官方 E2E 失敗通知。
+- Files changed (with purpose): `services/ingestion/{download,grant_index,latest_publication,refresh_publications}.py` 新增最新公告下載、卷期驗證、CLI 與排程。`docker-compose.yml` 及 `.env.example` 提供選項。`tests/test_grant_index.py` 與 `tests/test_refresh_publications.py` 覆蓋公告發現及來源獨立性。本次同步更新操作、架構、進度與交接文件。
+- Database migrations added/applied: 無新增。隔離 Compose 的 migration 服務成功執行。
+- API/Schema changes: 無。
+- Commands actually run and results: 本機 pytest 98 passed、8 skipped、1 則既有 Starlette 警告。Ruff 與 Git diff 檢查通過。`latest_publication --grants --limit 2` 實際讀得 1,162 件發明公告。隔離 Compose 兩輪均選 S10、S01 各 3 筆。首輪新增 `I942699`，API 驗證 5 項請求項及來源雜湊。第二輪兩源均重用批次，新增詞彙索引版本均為 0，資料庫維持公開、公告各 7 版本。S10 書目批次依資料範圍標為 `partial`。排程容器退出碼 0。另重查舊 [45669425487](https://github.com/Johnnnny0823/RAG/actions/runs/45669425487) 日誌，TIPO FTPS 資料連線 425 先於 API／瀏覽器測試。後續 [45737654914](https://github.com/Johnnnny0823/RAG/actions/runs/45737654914) 完整通過。
+- Tests NOT run and reason: 此次本機 pytest 未啟用 8 項 PostgreSQL 整合案例。以隔離資料庫和 API 驗證排程，未重跑瀏覽器。S01 排程的封存全文與向量更新組合未在本輪驗證。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 查核官方 `https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01` 第 053030 期與 `https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10` 第 024020 期，沿用 DATA_SOURCES 記錄的來源條款與限制。
+- Known bugs / risks / blockers: 固定樣本快取失效時，TIPO FTPS 仍可能回傳 425。尚未自動補匯跳過的卷期或更新法律事件。
+- Decisions made (ADR links): S01 排程預設關閉，啟用後兩個來源各自執行。未指定封存年度時，S01 匯入請求項版。見 [定期更新](SETUP.md#定期更新)。
+- Uncommitted changes / file ownership warnings: 隔離驗收容器已停止，保留隔離資料卷。其他專案的執行環境未動。
+- Next 1–3 concrete actions: 核對正式建置官方 E2E、驗證跨期補匯規則，以及持續人工相關性複核。
+- Exact reproduction steps: 依 SETUP 啟用 `TIPO_REFRESH_INCLUDE_GRANTS=yes`，等待兩輪後查驗 `ingestion_jobs` 的 `counts.import.reused`、`counts.lexical.versions` 及公告詳情 API。
+
+## 最新卷期的官方日期
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `7f0b757`。
+- Current milestone and status: 官方資料定期更新 IN_PROGRESS。
+- Goal of this session: 補齊最新公開及公告版本日期，驗證不重複記錄來源，查核正式部署 E2E。
+- Files changed (with purpose): `services/ingestion/latest_publication.py` 加入公報預覽與日期匯入，`services/ingestion/refresh_publications.py`、`docker-compose.yml`、`.env.example` 串接設定，`tests/test_gazette_dates.py` 覆蓋預覽、失敗與寫入順序，`docs/{DATA_SOURCES,SETUP,PROGRESS,HANDOFF}.md` 記錄。
+- Database migrations added/applied: 無新增，沿用已遷移的隔離資料庫。
+- API/Schema changes: 無。使用既有日期與來源欄位。
+- Commands actually run and results: 啟用 PostgreSQL 的完整 pytest 107 passed、1 則既有 Starlette 警告。Ruff lint、format 及 Git diff 檢查通過。隔離排程容器成功跑一輪 S10 及 S01，補上各 7 個版本的日期。API 核對 `202642194` 的書目摘要及全文版、`I942697` 的請求項版，日期、來源雜湊及位置一致。以已保存原檔呼叫 `apply_dates` 重跑，兩來源各維持 1 筆批次、1 件原檔、7 筆連結。[正式部署官方 E2E 45738965469](https://github.com/Johnnnny0823/RAG/actions/runs/45738965469) 在 `dfdc82c` 完成向量索引、API 冒煙與 20 項瀏覽器測試。
+- Tests NOT run and reason: 日期功能未在該次遠端 E2E 範圍內，也未本機重跑 Playwright。此次重跑驗證直接使用已保存公報，未等待第二次線上排程下載。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 取得民國 115 年第 024020、053030 期公報，網址、大小、SHA-256 及授權見 [來源](DATA_SOURCES.md#最新卷期的日期公報)。同日重抓 `https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/P10`，索引無卷期欄位。
+- Known bugs / risks / blockers: Docker 新網路位址池不足，初始 Compose 啟動失敗。改在既有隔離網路以同一建置映像、排程模組及資料卷完成驗收。跨期補匯及法律事件自動定位待完成。
+- Decisions made (ADR links): 日期年度為獨立選用設定，預設關閉。公報先驗證卷期及年份，再匯入文件與日期。見 [定期更新](SETUP.md#定期更新)。
+- Uncommitted changes / file ownership warnings: 保留隔離資料卷供複驗，未變更其他 Docker 專案。
+- Next 1–3 concrete actions: 驗證封存目錄能否支援可靠的跨期補匯及法律事件定位，持續人工相關性複核。
+- Exact reproduction steps: 依 SETUP 設定 `TIPO_REFRESH_GAZETTE_YEAR=115` 和 `TIPO_REFRESH_INCLUDE_GRANTS=yes`，比對排程日誌、兩期官方原檔 SHA-256 及兩筆號碼查詢的詳情日期。
+
+## 官方封存卷期補匯
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `981867f`。
+- Current milestone and status: 官方資料更新 IN_PROGRESS。
+- Goal of this session: 從已驗證的官方目錄補匯指定公開、公告卷期，保留個案來源並確認重試不重複。
+- Files changed (with purpose): `services/ingestion/download.py` 讀取 FTPS 封存目錄，`latest_publication.py` 驗證固定卷期，`archive_backfill.py` 預覽並依期匯入，`tests/test_archive_backfill.py` 驗證缺期拒絕、出錯中止及原檔卷期不符。
+- Database migrations added/applied: 無新增，沿用隔離資料庫。
+- API/Schema changes: 無。
+- Commands actually run and results: 含 PostgreSQL 的 pytest 110 passed、1 則既有 Starlette 警告。補匯專屬測試最後重跑 3 passed，Ruff 及 Git diff 檢查通過。正式容器實際補入 `202637274`、`I943859`、`I945115`，三筆 API 原檔雜湊一致，兩件公告各 20 項請求項與官方 XML 逐字比對通過。公開 024021 未列於目錄，預覽回傳非零代碼。首次離線重跑碰到同庫進行中的公開匯入，被既有鎖拒絕。等待完成後以保存原檔依序重跑三批，均重用批次、各新增 0 個索引版本。前筆提交的一般 [CI 45748570074](https://github.com/Johnnnny0823/RAG/actions/runs/45748570074) 通過。
+- Tests NOT run and reason: 此切片未改前端，未重跑 Playwright。實際補匯使用公開書目、公告請求項與詞彙索引，全文、日期與向量組合未在此輪驗收。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 官方 FTPS 目錄與三個固定卷期索引，網址、雜湊及可用範圍見 [封存卷期目錄](DATA_SOURCES.md#封存卷期目錄)。
+- Known bugs / risks / blockers: 公告封存最大期別與 S01 最新期可能不同。自動排程仍只處理最新索引，法律事件自動對期尚待驗證。
+- Decisions made (ADR links): 操作者可指定同卷連續期別與每期案件上限，來源缺期即停止。見 [封存卷期補匯](SETUP.md#封存卷期補匯)。
+- Uncommitted changes / file ownership warnings: 隔離驗收資料卷保留，其他專案服務未變更。
+- Next 1–3 concrete actions: 依官方封存與入庫證據定位缺期，納入選用排程；持續檢查法律事件卷期及人工相關性標註。
+- Exact reproduction steps: 依 SETUP 的命令預覽及補匯 `053031`～`053032`，以 API 和 `verify_document --grant-issue` 核對兩件公告。
+
+## 封存卷期自動補匯
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `a5169a1`。
+- Current milestone and status: 官方資料更新 IN_PROGRESS。
+- Goal of this session: 在選用排程依官方目錄補期，用 PostgreSQL 進度驗證重啟後接續。
+- Files changed (with purpose): `services/ingestion/archive_refresh.py` 辨識官方期別及完成紀錄，`refresh_publications.py`、Compose 及環境範例加入排程設定。`tests/test_refresh_publications.py` 覆蓋失敗重試、缺期及設定變更。
+- Database migrations added/applied: `0016_archive_refresh` 在既有隔離庫、整合測試庫及全新 `patentscope_archive_clean` 套用成功。新庫進度表為空，向量運算回傳 1，API 角色無進度表讀權限。
+- API/Schema changes: 公開 API 契約無變更。新增內部進度表 `archive_refresh_checkpoints`。
+- Commands actually run and results: 含 PostgreSQL 的 pytest 111 passed、1 則既有 Starlette 警告，排程測試最後重跑 3 passed。Ruff lint、格式及 Git diff 檢查通過。第一輪重用 `053032` 匯入並寫進度，尚有待補時採 900 秒重試間隔。重啟後跳過已完成期別，實際匯入 `053033` 新增 1 筆版本及其詞彙索引。再次重啟，完成進度仍為兩期，當輪公告匯入 0 期。`verify_document` 及詳情、請求項 API 核對 `I946357` 的 14 項請求項與原始 XML 雜湊。隔離排程退出碼 0。上一筆提交的一般 [CI 45749375252](https://github.com/Johnnnny0823/RAG/actions/runs/45749375252) 通過。
+- Tests NOT run and reason: 本輪未重跑 Playwright，未跑公開封存與日期、全文、向量同時啟用的排程組合。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 實下載 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053033/index.xml`，17,701,169 bytes、1,182 筆發明，SHA-256 `603792125d33dc6c01523af0bc83fa0591fb0d63a070df60908ad4dabb897446`。P10 與第 053033 期異動封存索引逐位元一致，見 [資料來源](DATA_SOURCES.md#專利權異動公報)。
+- Known bugs / risks / blockers: 啟用自動補期時需設定同卷起始期及封存年份。跨年或換卷自動發現、法律事件更新、完成期別的自動修訂偵測均未實作。
+- Decisions made (ADR links): 排程只在匯入成功後寫入完成紀錄，依資料階段、民國年、設定雜湊與期別查詢；工作本身沿用既有匯入鎖與去重。[資料庫設計](DATABASE.md)
+- Uncommitted changes / file ownership warnings: 測試容器已停，保留隔離資料庫及官方原始物件。
+- Next 1–3 concrete actions: 以 P10 與封存索引相等核對異動卷期，串接異動排程並對已索引案件驗收。
+- Exact reproduction steps: 依 SETUP 啟用公告自動補期，起始 `053032`，每輪 1 期。第一輪寫入進度後重啟，再比對 `archive_refresh_checkpoints` 與 `I946357` API。
+
+## 官方異動公報定期更新
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `822d143`。
+- Current milestone and status: 官方資料更新 IN_PROGRESS。
+- Goal of this session: 自動定位最新 P10 卷期，驗證原文後更新已收錄案件的消滅及更正事件。
+- Files changed (with purpose): `services/ingestion/legal_refresh.py` 核對來源與事件身分，`download.py` 新增 P10 與固定封存索引讀取，`refresh_publications.py`、Compose、環境範例接上排程。擴充 pytest 及 `apps/web/e2e/legal-events.spec.ts` 的真實號碼查詢驗收。
+- Database migrations added/applied: 無新增，沿用 `0016_archive_refresh`。
+- API/Schema changes: 無，沿用既有 `legal_events` 詳情欄位。
+- Commands actually run and results: pytest 含 PostgreSQL 115 passed、1 則既有 Starlette 警告，異動與排程專屬 10 passed。Ruff、前端 lint 及 TypeScript 通過。實際排程首輪 FTPS `425`，依 60 秒設定重試後新增 `I874215` 消滅紀錄。下一輪重跑該筆新增數為 0。`202639186` 入庫後，再由同一份官方公報新增 `I927657` 更正紀錄。正式建置專利號碼查詢的 Chromium 桌面、平板、手機共 3 passed。前一筆提交的一般 [CI 45749996252](https://github.com/Johnnnny0823/RAG/actions/runs/45749996252) 通過。
+- Tests NOT run and reason: 最初執行兩個既有自然語言案例時，隔離 API 沒有設定嵌入模型，首案逾時並停止該套件。之後使用專利號碼查詢補驗事件 UI，未重跑模型搜尋案例。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26，`https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/P10` 與 `ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053033/index.xml` 逐位元一致。`sud08` 的 838 筆與 `sud24` 的 31 筆發明事件均符合索引身分。授權及各原檔 SHA-256 見 [資料來源](DATA_SOURCES.md#專利權異動公報)。
+- Known bugs / risks / blockers: 指定年份的最近 8 期內必須有與 P10 相同的索引。歷史期別須手動補匯，其他事件類別與任意案件的即時法律狀態尚未整合。
+- Decisions made (ADR links): 預設關閉，按檔案相等及原始卷期核對，保留既有兩類事件與去重方式。[設定](SETUP.md#最新異動公報定期更新)
+- Uncommitted changes / file ownership warnings: 保留隔離資料庫及原始檔供複驗。
+- Next 1–3 concrete actions: 核對完整的自動法律異動歷史匯入需求及授權條件，並追蹤人工相關性複核及正式目標主機驗收。
+- Exact reproduction steps: 匯入 SETUP 的 `I874215` 和 `202639186` 範例，將 `TIPO_REFRESH_LEGAL_YEAR` 設為 `115`，再使用 TESTING 的號碼查詢測試。
+
+## 歷史異動公報補匯
+
+- Date/time (timezone): 2026-11-26（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `fix/cpu-embedding-index`，起點 `4d6bdb0`。
+- Current milestone and status: 官方資料更新 IN_PROGRESS。
+- Goal of this session: 歷史異動公報可先單期預覽，再由排程依序補匯且保留最新 P10 更新。
+- Files changed (with purpose): `services/ingestion/legal_refresh.py` 加入封存卷期選項，`archive_refresh.py` 與 `refresh_publications.py` 串接歷史進度，Compose 及環境範例增加起始設定，擴充異動及排程測試。
+- Database migrations added/applied: `0017_legal_archive_refresh` 擴充既有進度表的階段約束。既有隔離庫保留兩筆發明公告進度，試驗庫從空白遷移成功並通過 pgvector 運算。有法律異動進度時，舊約束不允許降版，遷移不會刪除進度。
+- API/Schema changes: 公開 API 契約維持原有 `legal_events` 欄位。
+- Commands actually run and results: pytest 含 PostgreSQL 117 passed、1 則既有 Starlette 警告，排程及異動 12 passed。`053032` 預覽核對 982 筆消滅及 33 筆更正發明事件。隔離排程成功記錄 `053032`、`053033`，新增 `I874722` 的更正事件。API 核對申請號、卷期、原始檔雜湊與 `sud24` 第 1 筆來源位置。重啟後歷史匯入 0 期，最新 P10 仍成功核對並新增 0 筆。上一筆的一般 [CI 45836596899](https://github.com/Johnnnny0823/RAG/actions/runs/45836596899) 通過。
+- Tests NOT run and reason: 重新啟動隔離 Web 並執行 Playwright 的命令被本機執行政策攔下。本輪以已啟動的隔離 API 核對歷史事件。前一筆的號碼查詢 Chromium 三裝置驗收有獨立紀錄。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-26 實際下載 [第 053032 期異動封存](DATA_SOURCES.md#第-053032-期異動封存)，沿用資料集 15974 政府資料開放授權條款第 1 版。公告 `I874722` 自官方 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/114/PatentIsuRegSpecXMLA_052007/index.xml` 取得。
+- Known bugs / risks / blockers: 歷史卷期完成後才收錄的新申請案，須手動重跑單期才會附上舊事件。跨年換卷、其餘事件種類與任意案件即時權利狀態仍待處理。
+- Decisions made (ADR links): 歷史完成紀錄與既有公告／公開共用同一架構，最新 P10 每輪仍會對照新案重新配對。[設定](SETUP.md#歷史異動公報補匯)
+- Uncommitted changes / file ownership warnings: 原始物件與隔離資料庫保留供複驗。
+- Next 1–3 concrete actions: 考量歷史事件與新收錄案件重新配對的負載和完整性，持續人工相關性複核與正式目標主機驗收。
+- Exact reproduction steps: 匯入官方 `I874722`，以 `TIPO_REFRESH_LEGAL_YEAR=115`、`TIPO_REFRESH_LEGAL_FROM=053032` 啟動隔離排程。在 `archive_refresh_checkpoints` 核對 `legal` 兩期，重啟後核對跳過紀錄與專利詳情 API。
+
+## Gemini M6 選擇性整合
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `90ddd1f`。
+- Current milestone and status: 整合與部署驗收 IN_PROGRESS。
+- Goal of this session: 審查 ZIP 獨立檔與附帶補丁，整合符合目前分支的功能。
+- Files changed (with purpose): 公開語料狀態與面板、帳號操作歷程、API 安全標頭、正式部署新增限流路徑、混合候選日期排序、PWA 靜態離線備援、原文標記與同案版本介面、測試及工作流程版本。
+- Database migrations added/applied: `0018_audit_logs` 續接 `0017_legal_archive_refresh`。在既有測試庫及空白 `patentscope_gemini_m6` 套用成功。現有另一工作區尚未提交的 `0018_legal_event_catalog` 保留，將來合併需重新接續編號。
+- API/Schema changes: 加入 `/api/v1/corpus/status`、本人 `/api/v1/audit-logs` 與混合查詢 `sort_by`。請求項依附與法律異動沿用開發分支實作。
+- Commands actually run and results: Ruff、Oxlint、TypeScript、Vite 正式建置、pytest 含 PostgreSQL 123 passed、Nginx 冒煙與限流通過。實測受限 API 角色能寫入並讀取本人的歷程、無刪除權限。正式 Chromium 工作台冒煙與 PWA 離線頁、API 快取排除、靜態安全標頭驗證通過。初次前端建置缺少 Vite 型別宣告，補齊後成功。初次正式 Chromium 混跑限流冒煙與登入案例發生入口限流干擾，也發現代理重複標頭。後續隔離執行，Nginx 統一對外標頭後正式桌面工作台回歸通過。
+- Tests NOT run and reason: 正式外部主機及實體裝置安裝尚未驗證。人工標註需由人員完成。
+- Subsequent verification: `workspace.spec.ts` 與 `search-errors.spec.ts` 使用開發前端及同一隔離 API，在 Chromium 桌面、平板、手機及 Firefox／WebKit 桌面共 20 項通過。首次案例均完成，但 Windows 拒絕建立 HTML 報告目錄。改用暫存輸出與 list reporter 後重跑，以退出碼 0 完成。提交 `daa86ac` 的 [一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45874611331) 與 [官方完整 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45874632186) 已啟動。
+- Data sources checked (exact URL/date) and license/access notes: 本地驗收以隔離空白資料庫與既有測試資料為主。官方語料由原有 E2E 流程載入。本輪未擴大資料源或授權範圍。
+- Known bugs / risks / blockers: 依帳號提供的操作歷程目前只涵蓋三種操作，寫入失敗會記錄告警。PWA 離線提供說明頁。背景模型操作及專利詳情須連線。
+- Decisions made (ADR links): 保留已有 Nginx 限流與 TLS。未導入未設容量上限的行程內 IP 限流。公開批次監控只回傳固定名稱的非負整數。高亮先核對文件版本、來源雜湊、XPath 與字元位置。
+- Uncommitted changes / file ownership warnings: ZIP 未整批套用，原工作區的歷史異動配對變更維持現況。
+- Next 1–3 concrete actions: 核對此提交一般及官方 CI，接續保留的歷史異動配對並整合遷移鏈，完成人工檢索複核與正式環境驗收。
+- Exact reproduction steps: 依 TESTING 跑 PostgreSQL 整合、工作台 Playwright 及 `PATENTSCOPE_E2E_TIPO=1`。使用正式映像完成服務工作程序註冊後，將瀏覽器切為離線並重整，以確認離線頁及 API 快取隔離。
+
+## 晚入庫案件的歷史異動配對
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `057654a`。
+- Current milestone and status: 官方資料匯入與整合驗收 IN_PROGRESS。
+- Goal of this session: 將晚入庫案件的自動歷史異動配對接到 Gemini 整合分支。
+- Files changed (with purpose): 增加 `legal_linking.py`，串接 `import_issue.py`、`legal_events.py`、`run_pipeline.py` 及定期更新；異動重播測試覆蓋損壞物件及續跑。
+- Database migrations added/applied: `0019_legal_event_catalog` 接在 `0018_audit_logs`，Alembic 單一 head。空庫及既有隔離庫套用成功，空測試庫亦通過回復至 `0018_audit_logs` 再升級。API 角色無暫存表讀權限。
+- API/Schema changes: 保留專利詳情 `legal_events` 契約。
+- Commands actually run and results: 含 PostgreSQL 的 pytest 124 passed、1 則既有 Starlette 警告。Ruff lint 與格式通過。用 `legal_events --replay-stored` 讀取 4 個保存的官方異動原檔，加總 1,884 筆。先核對 `I874744` 尚未入庫，再匯入其官方 `052007` 公告，得到 1 筆 `053032` 更正。API 核對 `sud24` 第 2 筆原文位置、證書號及 SHA-256。同批重跑與再次重播後資料庫仍只有 1 筆。Gemini 程式提交 `daa86ac` 的 [一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45874611331) 已通過。
+- Tests NOT run and reason: 這次沒有改前端。Gemini 提交的完整官方 E2E 繼續運行，尚未得出結果。
+- Data sources checked (exact URL/date) and license/access notes: 使用先前保存的 `ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053032/sud24.xml` 及 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/114/PatentIsuRegSpecXMLA_052007/index.xml`，未從來源重新下載。
+- Known bugs / risks / blockers: 歷史配對涵蓋已保存且通過解析的事件。其他官方類別、任意案件即時權利狀態及人工檢索評估仍待處理。
+- Decisions made (ADR links): 保留原檔、以申請號查找、兩端匯入後以交易鎖同步連結。重播會驗證原檔完整性，錯誤不阻擋其他檔案。
+- Uncommitted changes / file ownership warnings: 原工作區的未提交版本仍保留。此分支已重新接續遷移，整合時直接沿用此版本以避免重複移植。
+- Next 1–3 concrete actions: 查核官方 E2E，接續正式目標主機驗收及人工相關性複核。
+- Exact reproduction steps: 先從有保留物件的測試庫執行 `legal_events --replay-stored`，再匯入公告 `I874744` 並查其 API 詳情。
+
+## 人工相關性複核表
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `d29b891`。
+- Current milestone and status: 檢索評估 IN_PROGRESS。
+- Goal of this session: 讓複核者在離線頁面直接判讀、保存進度，並輸出評估器可讀的 JSON。
+- Files changed (with purpose): `scripts/export_review_packet.py`、`scripts/review_packet.js` 加入離線輸入及版本檢查，`scripts/evaluate_search.py` 接受全不相關案件，補上回歸測試。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。評估報告在沒有相關判定時以 `null` 表示未定義的召回率及 nDCG，彙總附可計算的執行次數。
+- Commands actually run and results: 在 117 版本隔離 API 重新核對 34 組文件並輸出 `.patent-data/review/patentscope-review.html`，SHA-256 `07cdfe26cc06c4b3a850b33b0ad91876e4b744cb8783582ac9caa87be7e158e7`。Chromium 驗證草稿、重新匯入、拒絕錯誤版本及阻止未完成檔案。DEMO 單件測試核對完成檔的 0 分可保留。pytest 116 passed、9 skipped，Ruff lint、格式通過。[整合 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45875599952) 首次因 Runner 套件來源 403 失敗，重跑已通過瀏覽器安裝。[官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45874632186) 仍在建向量。
+- Tests NOT run and reason: 人工標註尚未提交，未執行人工資料集的檢索評估。9 個資料庫測試本輪未啟用，上輪完整整合已執行。
+- Data sources checked (exact URL/date) and license/access notes: 使用 2026-11-27 隔離 API 對既有 117 版本官方語料重查，原始網址及雜湊隨文件顯示。
+- Known bugs / risks / blockers: 19 組只有書目與摘要，可保留空白並另行取得證據。正式目標主機及完整官方 E2E 尚待。
+- Decisions made (ADR links): 歷史 35 組候選與新版 34 組固定版本池分開。人工標註表維持既有池的文件身分與順序，沒有預填相關性。
+- Uncommitted changes / file ownership warnings: 互動 HTML 為本機驗收產物，未加入 Git。
+- Next 1–3 concrete actions: 確認官方 E2E，待複核檔匯出後用原本固定語料重跑評估。
+- Exact reproduction steps: 依 EVALUATION 的 `export_review_packet` 命令產生 HTML，打開並填寫複核。以下載的完成檔傳入 `evaluate_search.py --dataset`。
+
+## PWA 部署回歸
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `08a627f`。
+- Current milestone and status: 部署整合與檢索評估 IN_PROGRESS。
+- Goal of this session: 將 PWA 斷線及 API 快取隔離納入正式前端映像的驗收。
+- Files changed (with purpose): `apps/web/public/sw.js` 的首頁請求明確繞過 HTTP 快取。`apps/web/e2e/pwa.spec.ts`、`apps/web/playwright.config.ts` 與 `.github/workflows/tipo-e2e.yml` 加入包裝版測試及官方 CI 關卡。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。
+- Commands actually run and results: 前端 lint、build、Docker deploy target build、`scripts/smoke.py --deployment` 通過。隔離 Nginx 的 PWA 回歸 5 passed，涵蓋三種 Chromium 裝置、桌面 Firefox 與 WebKit。Firefox 模擬離線時顯示應用程式的離線橫幅，其他四個專案在嚴格檢查中顯示專用離線頁。
+- Tests NOT run and reason: 本輪未重跑正式公開主機與實體手機驗收。一般瀏覽器套件曾誤指向含部署限流的服務，兩件因 429 失敗，另有一件因兩組測試共用 trace 目錄失敗。一般 CI 應使用開發配置，[起點 CI 45876335450](https://github.com/Johnnnny0823/RAG/actions/runs/45876335450) 已通過。完整官方 E2E [45874632186](https://github.com/Johnnnny0823/RAG/actions/runs/45874632186) 仍在建立 CPU 向量索引，對應先前整合提交。
+- Data sources checked (exact URL/date) and license/access notes: 本輪測試隔離語料狀態端點及網路行為，未重新下載官方資料。
+- Known bugs / risks / blockers: 公開主機、對外 TLS 信任及人工相關性標註仍待驗收。
+- Decisions made (ADR links): 共用 Playwright 斷言接受專用離線頁或應用程式的離線橫幅，兩種情形皆必須證明 API 無法離線讀取且可恢復連線。
+- Uncommitted changes / file ownership warnings: 實作限於整合工作樹，原工作樹及 `main` 未變動。
+- Next 1–3 concrete actions: 等待完整官方 E2E，驗證此提交的遠端來源模式，以及取得人工標註。
+- Exact reproduction steps: 啟動正式 Nginx 映像與隔離 API，依 TESTING「部署版 PWA 離線驗收」設定環境變數後執行 Playwright。
+
+## 官方固定樣本匯入檢查
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `82d3188`。
+- Current milestone and status: 官方來源回歸 IN_PROGRESS。
+- Goal of this session: 使固定樣本檢查相容法律事件整合新增的匯入計數。
+- Files changed (with purpose): `scripts/seed_tipo_e2e.py` 接受舊批缺欄位或新批 `legal_events_linked=0`，非零照常拒絕。`tests/test_tipo_e2e_seed.py` 覆蓋兩種新回傳及既有重用批次。
+- Database migrations added/applied: 無新增。
+- API/Schema changes: 無。
+- Commands actually run and results: [一般 CI 45877176064](https://github.com/Johnnnny0823/RAG/actions/runs/45877176064) 通過。改用 Vite 測試配置重跑一般 Playwright，12 passed。官方來源模式 [45877188284](https://github.com/Johnnnny0823/RAG/actions/runs/45877188284) 的 PWA 驗收及 24 份固定原檔檢查均通過，第一批匯入結果新增欄位導致斷言失敗。本機重現一項失敗，修正後 pytest 116 passed、9 skipped，Ruff 格式與 lint 通過。
+- Tests NOT run and reason: 本機未重建整套官方模型；此輪的 PostgreSQL pytest 依環境設定略過 9 項。
+- Data sources checked (exact URL/date) and license/access notes: 遠端按固定樣本清單以 SHA-256 核對 24 份官方 XML，來源及限制以 DATA_SOURCES 為準。
+- Known bugs / risks / blockers: 修正版 `e73e09e` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45877742498)、[官方來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45877757310) 及[完整官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45878789673) 已通過。公開主機及人工相關性複核仍待。
+- Decisions made (ADR links): 明確保留其他計數與錯誤欄位的比對，沒有相關事件的測試語料才允許計數為零。
+- Uncommitted changes / file ownership warnings: 僅修改整合工作樹。
+- Next 1–3 concrete actions: 觀察 `e73e09e` 完整官方 E2E，記錄模型及跨瀏覽器結果並核對引文。
+- Exact reproduction steps: 執行 `pytest -q tests/test_tipo_e2e_seed.py`，再以 `coverage=source` 觸發官方工作流程。
+
+## 檢索評估來源紀錄
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `4463d52`。
+- Current milestone and status: 檢索評估 IN_PROGRESS。
+- Goal of this session: 檢索評估輸出可以回查使用的標註與官方語料涵蓋。
+- Files changed (with purpose): `scripts/evaluate_search.py` 紀錄資料集 SHA-256 與官方語料狀態，發現狀態改變時拒絕輸出。`tests/test_evaluate_search.py` 驗證雜湊穩定性及索引涵蓋變動。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。離線評估 JSON 新增 `dataset_sha256` 與 `corpus_status`。
+- Commands actually run and results: Ruff format、lint 通過。pytest 117 passed、9 skipped。隔離 117 版本 corpus 以 `--repeats 2` 實跑 24 次，詞彙、向量、混合加重排各 8 次。模式 P50 為 43.31、256.00 與 12958.03 毫秒，報告保存在 `.patent-data/review/tipo-seed-provenance-eval.json`。
+- Tests NOT run and reason: 本輪不啟用 pytest PostgreSQL 的 9 個整合測試，另使用真實 PostgreSQL 與 Ollama 執行評估。人工標註仍待提交。
+- Data sources checked (exact URL/date) and license/access notes: 沿用第 024019／053028 期固定官方資料快照，網址與授權查 DATA_SOURCES。查詢前後以真實 API 核對 117 個詞彙與向量覆蓋版本。
+- Known bugs / risks / blockers: 若內容更新但狀態計數相同，報告的狀態比對無法辨識。完整還原仍需固定語料原檔、資料庫快照與模型版本。
+- Decisions made (ADR links): 共用既有公開語料端點，雜湊以排序鍵值的 UTF-8 JSON 內容為準。
+- Uncommitted changes / file ownership warnings: 評估 JSON 為本機忽略目錄產物。
+- Next 1–3 concrete actions: 核對完整官方工作流程、接收人工標註後對同語料重跑評估、確認實際部署主機。
+- Exact reproduction steps: 啟動已匯入官方種子的隔離 API 與既有 Ollama，執行 `python -m scripts.evaluate_search --api http://127.0.0.1:18168 --repeats 2`。
+
+## 混合檢索候選清單的來源與摘要
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `fa352a9`。
+- Current milestone and status: 研究工作台增量通過隔離驗收，整體部署與人工評估 IN_PROGRESS。
+- Goal of this session: 候選清單直接提供可核對的官方書目、摘要與來源連結。
+- Files changed (with purpose): `services/api/patents.py` 批次讀取同版本的摘要、申請人、IPC 與官方資料集，`apps/web/src/research.tsx` 顯示新增資料。`tests/test_fusion.py` 及官方日期、研究 E2E 補回歸檢查。
+- Database migrations added/applied: 無新增。將 117 版本測試庫的獨立副本升級至既有 `0019_legal_event_catalog`。
+- API/Schema changes: 混合檢索及保存候選加 `abstract_excerpt`、`applicants`、`ipc_codes`、`official_source_url`。舊保存紀錄可讀。
+- Commands actually run and results: pytest 126 passed，含 9 項 PostgreSQL 整合測試。Ruff、Oxlint、前端 build 及 API／Nginx 容器建置通過。日期 Playwright 5 passed，涵蓋 Chromium 桌面、平板、手機及桌面 Firefox、WebKit。混合與部署冒煙通過。用合成帳號保存並重開真實候選，欄位與排序參數核對通過，測後刪除該帳號。
+- Tests NOT run and reason: 本版尚未執行完整遠端官方工作流程。最近通過的 [完整官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45878789673) 對應 `e73e09e`。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 核對公開案 `202639611`，以固定 [TIPO 官方資料集](https://data.gov.tw/dataset/9683) 與現存公報副本核對日期及原檔連結。
+- Known bugs / risks / blockers: 首輪手動升級隔離副本未執行角色配置，詳情 API 回傳 503。依 Compose 原有步驟重配 API 角色後，詳情與公報測試通過。pytest 整合測試首次使用公報副本，因資料庫名稱保護觸發 9 項設定錯誤，改至專用 `patentscope_test` 後通過。人工標註及外部主機驗收仍待。
+- Decisions made (ADR links): 在檢索的唯讀資料快照內依相同 UUID 讀取摘要及網址，沿用專利詳情的官方來源過濾。
+- Uncommitted changes / file ownership warnings: 變更限整合工作樹，手動驗收資料庫為測試副本。
+- Next 1–3 concrete actions: 核對新提交的 CI、取得人工標註、確認可供驗收的部署主機。
+- Exact reproduction steps: 匯入固定官方語料並補齊第 024019 卷期日期，套用既有遷移與 API 權限配置。依 TESTING 設定 `PATENTSCOPE_E2E_TIPO=dates` 執行 Playwright。
+
+## 候選檢索理由
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `491658a`。
+- Current milestone and status: 可解釋檢索增量已在隔離環境驗收，整體部署與人工評估 IN_PROGRESS。
+- Goal of this session: 以檢索器實際欄位與順位提供候選相關原因。
+- Files changed (with purpose): `services/api/patents.py` 回傳詞彙命中的索引欄位，`apps/web/src/research.tsx` 顯示詞彙區段、語意候選及重排理由。更新 API 文件與融合、日期及重排測試。
+- Database migrations added/applied: 無。
+- API/Schema changes: 混合與保存候選加 `lexical_match_fields`。舊保存資料缺少此項時仍可顯示檢索分支。
+- Commands actually run and results: Ruff、Oxlint 及 API／Nginx 映像建置通過。pytest 126 passed（含 9 項 PostgreSQL）。固定官方公報 Playwright 5 passed，官方重排桌面 1 passed。受限角色對三組查詢各測 20 次詞彙 SQL，前後候選、順位與分數一致，P50 由 0.479／0.632／1.477 ms 至 0.507／1.163／1.687 ms。這是 117 版本小語料與當地環境執行時間。
+- Tests NOT run and reason: 本提交的全套遠端官方 E2E 尚未執行。起點一般 CI [45938111033](https://github.com/Johnnnny0823/RAG/actions/runs/45938111033) 通過，[起點官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45938131415) 執行中。
+- Data sources checked (exact URL/date) and license/access notes: 隔離回放第 024019／053028 期的 117 個官方版本。2026-11-27 核對公開案 `202639611` 的英文標題、摘要詞彙命中及語意順位，沿用[官方資料集](https://data.gov.tw/dataset/9683)。
+- Known bugs / risks / blockers: 大語料的欄位彙總成本與本機資料庫差異仍待量測。人工標註與公開主機仍待。
+- Decisions made (ADR links): 使用資料庫實際命中的同版索引欄位，不推論技術特徵相符程度。語意分支說明為候選資格。
+- Uncommitted changes / file ownership warnings: 變更限整合工作樹。
+- Next 1–3 concrete actions: 核對遠端官方工作流程，取得人工標註與正式主機配置。
+- Exact reproduction steps: 啟動 117 版本固定官方語料與 Ollama。在正式 Nginx 測試站用 `dates` 執行公報套件，再用 `versions` 執行 `search-rerank.spec.ts`。
+
+## 部署版 PWA 與官方索引就緒驗收
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `dd779a6`。
+- Current milestone and status: 隔離環境驗收通過，公開部署 IN_PROGRESS。
+- Goal of this session: 分別驗證部署的靜態入口、PWA 配置與真實專利索引的可用狀態。
+- Files changed (with purpose): `apps/web/nginx.conf` 提供正確的 manifest 媒體類型。`scripts/smoke.py` 檢查正式 PWA 及官方索引。官方工作流程在語意檢索通過後追加官方索引就緒檢查，`tests/test_smoke.py` 增加正反向驗證。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。冒煙沿用 `/api/v1/corpus/status`。
+- Commands actually run and results: Ruff 通過，pytest 122 passed、9 skipped。Nginx 正式映像以空庫及 117 版本庫分別驗證，空庫的官方索引檢查如預期失敗。回環 HTTPS 合併執行部署、官方覆蓋與限流檢查通過。實際語意 API 的 `202640162`、`202639611` 測試各排第一。包裝版 PWA Chromium 3 passed。
+- Tests NOT run and reason: 本輪未重跑 PostgreSQL pytest 整合套件，已由實際部署使用隔離 PostgreSQL 驗收。公開 DNS、外部 CA、目標主機與實體裝置待驗證。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 使用第 024019／053028 期已核對的固定官方資料。來源及授權見 DATA_SOURCES。
+- Known bugs / risks / blockers: 舊映像回傳 `application/octet-stream`，已修正。回環 TLS 首次因 D 槽無法掛載，改以 Windows 暫存路徑成功。手動 API 測試容器補上與 Compose 相同的代理設定後才保持 HTTPS 重新導向。合併限流測試首次得到 429，已將語料檢查移到觸發限流前。
+- Decisions made (ADR links): 日常 readiness 可通過空庫，對外語料驗收以額外參數要求詞彙與向量涵蓋大於零。模型與查詢品質仍由真實檢索和人工資料集驗證。
+- Uncommitted changes / file ownership warnings: 只修改整合工作樹。驗收憑證與容器未納入版本庫。
+- Next 1–3 concrete actions: 確認遠端官方工作流程、公開主機前置條件及人工標註。
+- Exact reproduction steps: 依 SETUP 對已匯入官方語料的測試網站執行 `scripts/smoke.py --deployment --require-official-index`。HTTPS 測試載入測試 CA，限流檢查只在隔離網站執行。
+
+## 官方原文查閱入口
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `1179bf9`。
+- Current milestone and status: 官方原文回查通過隔離驗收，PDF 匯入及整體交付仍待。
+- Goal of this session: 讓使用者可經瀏覽器回查已索引案件，保留精確原始檔追溯資料。
+- Files changed (with purpose): `apps/web/src/research.tsx` 提供官方查詢頁、應輸入的文件號與每份已儲存原檔的雜湊及定位。官方日期與號碼測試核對畫面。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。前端開始顯示 detail API 既有的 `artifact_sha256` 與 `record_locator`。
+- Commands actually run and results: 前端 lint、正式 Nginx 容器 build、部署及官方索引冒煙通過。固定公報在五個 Playwright 瀏覽器專案通過，公告號碼查詢再通過三個 Chromium 尺寸。補上 XPath 精確核對後另重跑桌面用例通過。起點一般 [CI 45939258288](https://github.com/Johnnnny0823/RAG/actions/runs/45939258288) 通過。
+- Tests NOT run and reason: 本輪僅改 UI 及其驗收，未重跑 Python 及 PostgreSQL pytest。瀏覽器回歸不送出第三方查詢，官方入口另以讀取官方導覽與首頁確認。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 核對[官方查詢入口](https://tiponet.tipo.gov.tw/S092_OUT/2022/out)、[網站導覽](https://tiponet.tipo.gov.tw/S092_OUT/2022/sitemap)及[TIPO 下載方式](https://cloud.tipo.gov.tw/S220/opdata/information/ftp)。既有公開案與公告案來源見 DATA_SOURCES。
+- Known bugs / risks / blockers: 官方查詢結果沒有固定網址列表，使用者須在入口輸入文件號。公報 PDF 匯入及站內解析未實作。人工標註與公開主機驗收仍待。
+- Decisions made (ADR links): 使用官方導覽提供的 HTTPS 首頁。保留現有官方原檔連結，另提供可選取的 FTPS 位址以供支援的用戶端。
+- Uncommitted changes / file ownership warnings: 變更限整合工作樹。
+- Next 1–3 concrete actions: 核對完整官方 E2E，確認 PDF 的可用檔案取得與使用條件，取得人工標註。
+- Exact reproduction steps: 使用同一套 117 版本固定官方語料，依 TESTING 執行 `dates` 及 `versions` 的 `patent-number.spec.ts`。
+
+## 發明公開公報個案 PDF
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `98905fb`。
+- Current milestone and status: 發明公開公報的單案 PDF 來源已驗收。公報 PDF 的全文檢索、其他文件階段及全面匯入仍待。
+- Goal of this session: 由官方個案資料查驗 PDF 及首頁編號，附加到指定的已匯入公開版本。
+- Files changed (with purpose): `services/ingestion/gazette_pdf.py` 下載、限定同源、核對首頁識別、保存原始位元及批次來源。`tests/test_gazette_pdf.py` 驗證識別與來源拒絕。既有 pypdf 固定版本納入執行依賴。前端詳情提供公報 PDF 連結，混合候選仍優先選政府資料目錄。
+- Database migrations added/applied: 無。使用既有批次、原檔和文件來源關係。
+- API/Schema changes: 無新欄位。專利詳情的 `sources` 可包含公報 PDF 與 `PDF page 1` 來源定位。
+- Commands actually run and results: 單案預覽、套用及重跑成功。API 核對一筆 PDF 來源、SHA-256、122 段說明書仍可取得。Chromium 核對 PDF 連結、雜湊和 19 項請求項。前後端 Docker build、Ruff 與 pytest 124 passed、9 skipped。起點的一般與官方來源模式均通過。
+- Tests NOT run and reason: 本輪未啟用 PostgreSQL pytest 整合套件，另以真實 PostgreSQL、正式映像與真實 TIPO 檔案執行整合。尚未驗收公告、掃描 PDF、OCR 或站內預覽。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 實際從官方前端的個案查詢取得 `202639611` 的原件連結，下載並核對 PDF。網址、雜湊、下載限制及智財局資料開放宣告見 DATA_SOURCES。
+- Known bugs / risks / blockers: 公報網站主要提供近期卷期。程式拒絕身份不符、改網域或無法讀出首頁識別的 PDF。人工評估、對外主機及完整遠端新版驗收仍待。
+- Decisions made (ADR links): PDF 當作補充來源，保持 XML 引文來源與向量內容。前端連到智財局原件，暫無 PDF 轉送服務。
+- Uncommitted changes / file ownership warnings: 驗收 PDF 與物件位於本機忽略目錄，正式資料庫未修改。
+- Next 1–3 concrete actions: 核對新版完整官方 E2E，評估已確認的公告 PDF 案例及人工標註。
+- Exact reproduction steps: 依 SETUP 執行 `gazette_pdf` 預覽，指定已驗證的公開版本 UUID 後重跑兩次，從專利詳情核對唯一 PDF 來源。
+
+## 公開及公告公報 PDF 分版
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `ecbee6b`。
+- Current milestone and status: 發明公告個案來源通過隔離 PDF 與瀏覽器驗收。掃描檔與全文搜尋仍待。
+- Goal of this session: 支援發明公告 PDF，防止公告首頁出現公開號時將其連到公開版本。
+- Files changed (with purpose): `services/ingestion/gazette_pdf.py` 加入公告官方資料來源與標頭校驗。`tests/test_gazette_pdf.py` 驗證階段與號碼拒絕。前端重開同案版本會重設來源摘要的展開狀態。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無，沿用專利詳情既有來源契約。
+- Commands actually run and results: pytest 134 passed，含 9 項 PostgreSQL 整合測試。Ruff、前端 lint、API 與前端正式映像建置通過。真實 `114106690` 附加公開與公告 PDF，公告重跑後保持一筆。資料庫拒絕將公告 PDF 附加至同案公開版本。Chromium、Firefox 與 WebKit 各驗證兩種 PDF 的網址、雜湊與既有 13 項請求項。Playwright 號碼查詢與同案切換 5 passed。
+- Tests NOT run and reason: 此增量的遠端完整官方 E2E 尚待。起點的一般 CI 已通過，完整官方流程仍在執行。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 核對官方第 24 卷第 19 期公開 PDF 與第 53 卷第 28 期公告 PDF，政府網站資料開放宣告與檔案出處見 DATA_SOURCES。
+- Known bugs / risks / blockers: 手動瀏覽器驗收首次發現切換版本沿用來源展開狀態，已更正。正式 E2E 首輪漏點「查詢同案其他版本」而逾時，修正後重跑。掃描辨識、其他專利種類、人工標註及對外部署尚待。
+- Decisions made (ADR links): 公開與公告使用獨立來源資料集及同版本 XML 證據。只依首頁公報類型與標記過的版本號碼確認 PDF。
+- Uncommitted changes / file ownership warnings: 官方 PDF 與測試資料僅存於隔離環境。
+- Next 1–3 concrete actions: 核對最新整合 CI，接續防止來源漂移的驗收，取得人工標註與部署主機。
+- Exact reproduction steps: 依 SETUP 對已匯入同案的公開、公告文件 UUID 執行 `--publication 202640162` 和 `--grant I941082`，再以號碼查詢切換兩版本。
+
+## 官方公報 PDF 自動化驗收
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `dbfdc07`。
+- Current milestone and status: 本機官方 PDF 品質關卡通過，完整交付仍進行中。
+- Goal of this session: 建立可重跑的官方公報 PDF 與跨版本驗收。
+- Files changed (with purpose): `scripts/smoke_gazette_pdfs.py`、官方工作流程與號碼查詢 E2E。操作指令加入 `--expected-sha256`，於寫入前確認固定原件。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無。
+- Commands actually run and results: 隔離 Compose 跑兩份真實 PDF，跨貼被拒、正確版本各重跑兩次仍保留一個 PDF 來源、兩版 XML 請求項未變。五組 Playwright 通過。pytest 126 passed、9 skipped，Ruff、前端 lint、TypeScript 與 Vite build 通過。提交 `698f747` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45942011730)及[官方 PDF 來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45942027178)均通過。
+- Tests NOT run and reason: 本輪本機 pytest 未啟用 PostgreSQL 套件，實際 Compose 及遠端一般 CI 已完成資料庫驗收。來源模式依設定跳過 Ollama。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 重抓第 024019／053028 期已核對的兩份個案 PDF，固定網址及雜湊見 DATA_SOURCES。
+- Known bugs / risks / blockers: 智財局近期公報下載會受服務與卷期保存影響。若出處不符，須以官方證據更新測試。掃描辨識、PDF 全文索引、人工評估與公開主機尚待。
+- Decisions made (ADR links): 遠端 PDF 驗收採 `gazette_pdf` 選用輸入，核心 XML 工作可獨立完成。
+- Uncommitted changes / file ownership warnings: 測試寫入僅在現有隔離副本。
+- Next 1–3 concrete actions: 核對完整官方 E2E，取得人工標註與部署主機。
+- Exact reproduction steps: 依 TESTING 先啟動隔離 Compose 固定語料，再執行 `scripts.smoke_gazette_pdfs` 或觸發官方工作流程 `coverage=source` 與 `gazette_pdf=true`。
+
+## 官方 PDF 文字層與原始頁碼
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `7fcb6e1`。
+- Current milestone and status: 官方 PDF 頁面文字讀取及站內查找已通過隔離驗收，整體交付 IN_PROGRESS。
+- Goal of this session: 紀錄官方公報的可讀文字與頁碼，提供可回查的同版閱讀流程。
+- Files changed (with purpose): 遷移及匯入保存擷取文字，專利 API 提供同版 PDF 頁面，詳情可在瀏覽器查找。擴充官方 PDF 匯入與 Playwright 驗收。
+- Database migrations added/applied: `0020_gazette_pdf_pages` 從既有隔離資料庫升級成功，空庫另驗證 upgrade、downgrade 至 `0019`、再 upgrade。API 角色只讀。
+- API/Schema changes: 新增 `GET /api/v1/patents/{document_id}/gazette-pdfs/{artifact_sha256}/pages`。舊附件在重跑原件解析前回傳空頁面。
+- Commands actually run and results: pytest 135 passed，含 9 項 PostgreSQL 整合測試。隔離 Compose 實測 2 頁公開與 9 頁公告的擷取、實際號碼及原始頁碼，錯版 SHA-256 回傳 404。五組 Playwright 都能查找公告證書號並展開首頁。Ruff 與前端 lint 通過，API／Nginx 映像建置成功。
+- Tests NOT run and reason: 新提交的遠端官方 PDF 關卡尚待。掃描圖像 OCR 與 PDF 全語料索引未實作。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 重跑第 024019／053028 期兩份官方 PDF，網址、雜湊及來源限制見 DATA_SOURCES。
+- Known bugs / risks / blockers: Windows 預設 pytest 暫存目錄拒絕存取，改以隔離 `--basetemp` 後可重跑。擷取文字可能因 PDF 排版而含換行或標記，閱讀時以原始 PDF 為準。人工評估與公開主機仍待。
+- Decisions made (ADR links): 依 PDF 原檔及頁碼保存文字，查找在瀏覽器內完成。XML 引文、RAG 分段及排序維持原契約。
+- Uncommitted changes / file ownership warnings: 使用隔離測試庫及本機官方 PDF 物件。
+- Next 1–3 concrete actions: 核對新版 CI、確認需納入 PDF 全文索引的頁型及檢索基線、取得人工標註。
+- Exact reproduction steps: 依 TESTING 建立隔離固定語料，執行 `scripts.smoke_gazette_pdfs`，再以 `PATENTSCOPE_E2E_GAZETTE_PDFS=1` 執行號碼查詢用例。
+
+## 跨公報 PDF 頁面檢索
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `61a87bb`。
+- Current milestone and status: 官方 PDF 詞彙檢索已在隔離環境驗證。整體交付 IN_PROGRESS。
+- Goal of this session: 可跨公報搜尋現有文字層並追到確切版本及頁碼。
+- Files changed (with purpose): `0021_gazette_pdf_search` 回填頁面索引，`gazette_pdf.py` 在匯入時索引，`patents.py` 提供搜尋 API，`research.tsx` 加上公報搜尋。官方驗收核對版本、頁碼和連結。
+- Database migrations added/applied: 由已有 11 頁官方文字的隔離資料庫副本升級 `0020` 至 `0021`。
+- API/Schema changes: `POST /api/v1/patents/gazette-pdfs/search`，可選公開或公告階段。回傳前 20 筆官方結果。
+- Commands actually run and results: pytest 126 passed、9 skipped，Ruff、Oxlint、Vite 與 Docker 建置通過。真實查詢「動態導通電阻」命中公告第 1、2 頁及公開第 1 頁，五項 Playwright 通過。重新匯入 `202639611` 後可搜尋該公報首頁。上一版[官方 PDF 來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45942984872)及更早的[完整官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45940600508)均通過。
+- Tests NOT run and reason: 本輪未啟用 PostgreSQL pytest 套件，另以隔離 PostgreSQL 及真實 API 驗證遷移、回填與新匯入。大規模 PDF 索引效能和 OCR 待測。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 沿用固定 `202640162`、`I941082`，重新下載並核對 `202639611`，來源見 DATA_SOURCES。
+- Known bugs / risks / blockers: 詞彙結果受原始 PDF 可擷取文字及排版影響。人工標註、OCR 及對外主機驗收仍待。
+- Decisions made (ADR links): PDF 檢索獨立回傳原件頁碼；同版本 XML 繼續供混合檢索及引文比對。
+- Uncommitted changes / file ownership warnings: 官方 PDF 和測試資料留在隔離環境。
+- Next 1–3 concrete actions: 驗證新提交的官方遠端流程，接續人工標註及主機驗收。
+- Exact reproduction steps: 依 TESTING 建立隔離官方語料，執行 `scripts.smoke_gazette_pdfs` 及 `PATENTSCOPE_E2E_GAZETTE_PDFS=1` 的號碼查詢測試。
+
+## 公報查詢分頁及下載重試
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `a7c63f7`。
+- Current milestone and status: 公報查詢分頁已驗收，整體交付進行中。
+- Goal of this session: 支援分頁、階段篩選，並提高官方 PDF 下載的可診斷性。
+- Files changed (with purpose): `patents.py` 加入分頁，`research.tsx` 保留送出的詞與階段。公報下載器為 500、502、503、504 增加有限重試，回傳錯誤附 HTTP 狀態與媒體類型。
+- Database migrations added/applied: 無新增。
+- API/Schema changes: 公報搜尋加入 `limit`、`offset`，維持預設顯示 20 筆。
+- Commands actually run and results: pytest 127 passed、9 skipped。Playwright 5 passed，三種 Chromium 尺寸核對翻頁，五個瀏覽器專案核對階段篩選。WebKit 的測試請求覆寫未生效，改測通用篩選並將覆寫的分頁測試留在 Chromium。Windows 本機重取公告 PDF，SHA-256 一致。上一版一般 CI 通過。
+- Tests NOT run and reason: 本機 pytest 未啟用 PostgreSQL 整合測試。新版遠端官方來源模式待查。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 重新核對公告 `I941082` 固定 PDF，來源見 DATA_SOURCES。
+- Known bugs / risks / blockers: [上一版遠端 PDF](https://github.com/Johnnnny0823/RAG/actions/runs/45971523665) 因官方個案端點回應類型或狀態不符而失敗，舊紀錄缺 HTTP 狀態碼。本機 Playwright 首輪在新請求未完成時即判讀既有結果，補上數量等待後重跑。人工標註、OCR 與對外主機仍待。
+- Decisions made (ADR links): 短暫伺服器錯誤最多重試兩次，其他狀態保留原始診斷。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹修改，正式資料未動。
+- Next 1–3 concrete actions: 核對新版來源模式回應，接續人工標註及主機驗收。
+- Exact reproduction steps: 啟動固定官方 XML 與 PDF 的隔離站，執行 `PATENTSCOPE_E2E_GAZETTE_PDFS=1` 的號碼查詢測試。
+
+## 已保存公報 PDF 的離線回填
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `775d65e`。
+- Current milestone and status: 離線回填已在隔離 PostgreSQL 驗證，整體 IN_PROGRESS。
+- Goal of this session: 既有已驗證附件可補齊頁面，並讓錯版本的請求在下載前失敗。
+- Files changed (with purpose): `services/ingestion/gazette_pdf.py` 驗證版本及已保存的官方附件，`scripts/smoke_gazette_pdfs.py` 改為各下載一次再離線重跑，`tests/test_gazette_pdf.py` 補錯版前置檢查，SETUP、TESTING、PROGRESS 更新操作與結果。
+- Database migrations added/applied: 無新增。使用隔離 PostgreSQL 現有 `0021_gazette_pdf_search`。
+- API/Schema changes: API 與資料庫結構無變更，匯入 CLI 增加 `--replay-stored`。
+- Commands actually run and results: `ruff check .`、`ruff format --check .` 通過，本機 pytest 128 通過、9 跳過。隔離庫命令拒絕將 `I941082` 附到公開版本。將官方 `202640162` 及 `I941082` 離線重新解析並寫入空白暫存頁面表，連跑兩次仍分別是 2 頁及 9 頁，且拒絕未保存的雜湊。Windows 本機重取兩份官方 PDF，雜湊一致。`1b10861` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45973006766)通過，PostgreSQL 整合 9 項、Playwright 12 項通過，API 冒煙與隔離 HTTPS 驗收亦通過。
+- Tests NOT run and reason: 本機 pytest 未啟用九項 PostgreSQL 全套整合測試。此次無前端變更，沿用上輪瀏覽器結果。PDF 掃描辨識未納入此切片。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 使用 DATA_SOURCES 記錄的兩份已驗證官方原檔。此次回填不更新來源檢查日期。
+- Known bugs / risks / blockers: [遠端官方 PDF 來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45972249350)呼叫公告個案端點收到 HTTP 403 與 `text/html`，首次下載仍需官方端點允許取用。人工相關性評分與對外主機驗收待完成。
+- Decisions made (ADR links): 回填只接受同版、同卷期及同官方來源的既有附件，並重新核對 SHA-256 及首頁。回填只補頁面索引。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹作業，官方原件未納入 Git。
+- Next 1–3 concrete actions: 官方完整取件從可正常存取的環境重跑。匯入人工作業完成的複核表後重跑評估。取得正式部署環境後執行對外驗收。
+- Exact reproduction steps: 依 SETUP 對已存在的官方附件加入 `--replay-stored` 並帶 `--apply-to`、`--expected-sha256`，再依 TESTING 核對原件、頁碼及 API。
+
+## 空白部署的官方公報 PDF 驗收
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，受驗修訂 `33d647a`。
+- Current milestone and status: 官方公報 PDF 來源驗收在 Windows 隔離部署通過，整體 IN_PROGRESS。
+- Goal of this session: 驗證從空庫遷移、官方 XML 匯入、PDF 首次下載到瀏覽器檢索的完整路徑。
+- Files changed (with purpose): `docs/TESTING.md` 補執行證據與 Windows 掛載處理，`docs/PROGRESS.md`、`docs/HANDOFF.md` 記錄結果。
+- Database migrations added/applied: 空白隔離庫遷移到 `0021_gazette_pdf_search`。匯入 117 版本、1,560 個詞彙索引片段、11 個官方 PDF 頁面。
+- API/Schema changes: 本輪驗收沿用 `33d647a` 的 API 及 Schema。
+- Commands actually run and results: `docker compose ... -p patentscope-gazette-clean ... up -d --build --wait` 成功，`scripts.seed_tipo_e2e --offline --skip-semantic` 驗證 24 件官方 XML，`scripts.smoke_gazette_pdfs`、`scripts/smoke_lexical.py --official-e2e` 及包裝版部署冒煙通過。Playwright `patent-number.spec.ts` 的 Chromium 三種裝置、Firefox、WebKit 共五項通過。首次種子匯入受 Docker Desktop 的 `D:` 掛載錯誤影響，改用 `$env:TEMP` 內的複本後成功。
+- Tests NOT run and reason: 本輪使用來源模式，模型、PDF 報告及一般測試結果獨立於這次驗收。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 實取 `https://cloud.tipo.gov.tw/S220/downloads/invention/pub024019/pdfdata/114106690.pdf` 和 `https://cloud.tipo.gov.tw/S220/downloads/patent/isu053028/pdfdata/114106690.pdf`，雜湊與 DATA_SOURCES 的記錄一致。官方 XML 從已保存的逐檔雜湊固定原件重建。
+- Known bugs / risks / blockers: GitHub runner 的官方首次取件曾收到 403，這次成功發生於本機。仍需 34 組人工複核與正式對外主機驗收。
+- Decisions made (ADR links): 使用新命名 Compose 專案及資料卷，沿用固定 XML 和實際 HTTPS 取件測試。
+- Uncommitted changes / file ownership warnings: 只更新整合分支文件，下載原件與測試報告留在隔離環境。
+- Next 1–3 concrete actions: 匯入人工複核結果後重跑檢索評估，取得正式部署環境後驗收對外連線。
+- Exact reproduction steps: 依 TESTING 的固定官方樣本及 PDF 章節，啟動獨立包裝版 Compose，匯入固定 XML，執行 PDF API smoke，再以 `PATENTSCOPE_E2E_TIPO=versions`、`PATENTSCOPE_E2E_GAZETTE_PDFS=1` 和 `PATENTSCOPE_E2E_CROSS_BROWSER=1` 驗收。
+
+## 公報 PDF 詞彙查詢計畫
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `3458c9e`。
+- Current milestone and status: PDF 查詢的隔離資料庫基準已量測，整體交付 IN_PROGRESS。
+- Goal of this session: 量測實際 PDF 詞彙查詢 SQL，保留可重跑的查詢計畫，並啟動 GitHub 官方完整回歸。
+- Files changed (with purpose): `services/api/patents.py` 提供 API 與評估腳本共用的 PDF 查詢，`scripts/explain_search.py` 加入唯讀 `--gazette-pdf` 模式，`docs/EVALUATION.md`、`PROGRESS.md`、`HANDOFF.md` 更新證據與限制。
+- Database migrations added/applied: 無新增。量測使用 `0021_gazette_pdf_search` 隔離庫及受限 API 角色。
+- API/Schema changes: API 輸入、輸出及 SQL 條件沿用，新增評估命令選項。
+- Commands actually run and results: Ruff 格式及 lint 通過，pytest 128 通過、9 跳過。固定官方 PDF 的 SQL 呼叫命中 3／1／2 頁，核對公開與公告號及頁碼。HTTP 核對分頁及無詞彙輸入回傳 422。Chromium 三種裝置、Firefox、WebKit 的 `patent-number.spec.ts` 共五項通過。SQL P50／P95、規劃器所用索引及限制見 EVALUATION。
+- Tests NOT run and reason: 本輪本機未執行九項 PostgreSQL pytest 整合套件，另以隔離庫實跑真實資料及 API。新版[完整官方遠端工作](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)於 `3458c9e` 啟動，交接時仍在執行，未選用 PDF 首次下載關卡。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 量測沿用 DATA_SOURCES 所列並已驗證的 `202640162`、`I941082`，本輪無新取件。
+- Known bugs / risks / blockers: 11 頁基準未驗證大量 PDF 或併發效能。遠端 PDF 取件 403、人工複核及公開部署仍需分別驗收。
+- Decisions made (ADR links): API 與基準共用 SQL，以唯讀交易量測並逐組核對固定命中頁碼。
+- Uncommitted changes / file ownership warnings: 僅在整合工作樹操作。查詢計畫 JSON 留在本機隔離資料目錄。
+- Next 1–3 concrete actions: 確認遠端工作終態。取得人工複核及部署環境後完成評估與主機驗收。
+- Exact reproduction steps: 依 EVALUATION 指令執行 `python -m scripts.explain_search --gazette-pdf --repetitions 7 --output gazette-pdf-plans.json`。
+
+## 交付證據與現況文件核對
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `d397c41`。
+- Current milestone and status: 一般 CI 已通過，交付驗收 IN_PROGRESS。
+- Goal of this session: 將 Goal §14 的交付項目連到實際原始碼、工作流程及已知驗收範圍，校正文檔中的過時架構資訊。
+- Files changed (with purpose): `docs/PROGRESS.md` 加入交付證據索引，`docs/DATABASE.md` 同步資料表關係與 head，`docs/API.md` 補官方 PDF 來源的實際介面，`docs/SETUP.md` 同步部署狀態，`docs/HANDOFF.md` 記錄驗證。
+- Database migrations added/applied: 本輪無新增。以隔離庫唯讀查詢驗證 `0021_gazette_pdf_search` 及六條文件涉及的外鍵。
+- API/Schema changes: 本輪僅調整文件。
+- Commands actually run and results: `python -m alembic heads` 回報單一 head，`psql` 核對資料表與外鍵。核對本輪四份文件的 119 個本地文件及章節連結。[一般 CI 45974697044](https://github.com/Johnnnny0823/RAG/actions/runs/45974697044) 驗證 `d397c41`，128 項 pytest 通過、9 項在預設套件中跳過，獨立 PostgreSQL 套件 9 項與 Playwright 12 項均通過，隔離 HTTPS 通過。
+- Tests NOT run and reason: 本輪文件修改未重跑程式回歸。使用修訂 `3458c9e` 的[完整官方回歸](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)仍在建置語意索引。
+- Data sources checked (exact URL/date) and license/access notes: 本輪對照既有 DATA_SOURCES 與驗收紀錄，未重新下載官方文件。
+- Known bugs / risks / blockers: 34 組人工作業、正式目標主機驗收、最新完整官方 CI 終態仍待。固定來源驗收集中在發明專利，新型、設計及版本化語料快照尚待驗證或實作。
+- Decisions made (ADR links): 文件索引逐項保留修訂與驗收範圍，原歷史待辦保留於日期紀錄。
+- Uncommitted changes / file ownership warnings: 本輪只更新整合分支的文件，隔離資料庫只讀。
+- Next 1–3 concrete actions: 核對官方回歸終態。收到人工複核與實際主機資訊後分別重跑評估與部署驗收。
+- Exact reproduction steps: 讀取 PROGRESS 的交付證據索引。`python -m alembic heads` 並在隔離 PostgreSQL 查詢 `alembic_version`、`information_schema.tables` 及 `pg_constraint` 核對 Schema。
+
+## 新型與設計公告書目切片
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `09ac472`。
+- Current milestone and status: 已驗收同一期新型與設計公告各一筆，整體交付 IN_PROGRESS。
+- Goal of this session: 增加真實新型及設計資料的指定公告匯入，維持各文件類型實際可取得的欄位與原文。
+- Files changed (with purpose): `grant_index.py` 核對 I/M/D 號碼與官方 `appl-type`，`import_issue.py` 保留新型請求項及設計書目，`verify_document.py` 按版本核對原始來源，`patents.py` 支援 M/D 公告號。新增單元、Playwright、官方 CI 步驟與操作文件。
+- Database migrations added/applied: 無新增，沿用 `0021_gazette_pdf_search`。隔離庫增加兩個文件版本及 18 個詞彙片段。
+- API/Schema changes: `GET /api/v1/patents` 的 `number_type=grant` 接受 M/D 公告號。未提供的設計摘要、分類及原文保留空值或空集合。
+- Commands actually run and results: Ruff 格式及 lint 通過，pytest 130 通過、9 跳過，前端 lint 及 Compose 正式建置通過。`import_issue` 首次新增，第二次重用。`verify_document` 確認新型 16、設計 0、既有發明 13 項請求項及原始定位。真實 API 對兩案通過精確號碼、官方原檔雜湊及詞彙檢索。新 Playwright 首輪因定位到錯誤的按鈕名稱失敗，改按清單項目限定後 Chromium 三尺寸、Firefox、WebKit 皆通過。既有發明 PDF Chromium 回歸亦通過。
+- Tests NOT run and reason: 本輪本機未執行九項獨立 PostgreSQL pytest，以隔離真實匯入及 API 補驗。新增兩案未驗證語意檢索或模型比對。新遠端驗收等待推送。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 查核 https://data.gov.tw/dataset/15987，免費、每月更新、政府資料開放授權條款第 1 版。使用已核對 SHA-256 的第 053028 期 FTPS 索引，詳見 DATA_SOURCES。
+- Known bugs / risks / blockers: 新型及設計的個案全文、圖式、法律狀態及排程仍待驗證或實作。人工複核及對外主機驗收待完成。
+- Decisions made (ADR links): 只允許以已驗證 S01 來源選取新型及設計公告。官方 CI 在既有固定語料回歸後才匯入兩筆，保留既有檢索用例的固定語料。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹與隔離庫作業，原檔未納入 Git。
+- Next 1–3 concrete actions: 監測一般 CI 及官方來源模式；按已查核的官方來源接續個案全文與圖式驗證。
+- Exact reproduction steps: 依 TESTING 的「新型與設計公告回歸」從固定 XML 選取 `M687984` 及 `D246917`，重跑同批後驗證原檔，再跑詞彙索引及 `PATENTSCOPE_E2E_TIPO=grant-types`。
+
+## 新型與設計個案文字匯入
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `dfee0cf`。
+- Current milestone and status: 兩類個案的說明書文字與適用的請求項已驗收，整體 IN_PROGRESS。
+- Goal of this session: 以官方封存清單取得並保存新型與設計的個案文字版本，保持原始版本分離與證據定位。
+- Files changed (with purpose): `download.py` 支援已核對清單中的新型及設計路徑，`specification.py` 驗證個案類型與 DTD 並解析原文，`import_issue.py` 及 `verify_document.py` 串接清單、保存與核對。測試及文件補充新類型及限制。
+- Database migrations added/applied: 無新增。隔離庫新增兩份 S01 版本、兩份個案文字版本、241 個詞彙片段。
+- API/Schema changes: API Schema 沿用既有版本及範圍欄位。設計個案有說明書而無請求項，請求項 API 回傳空陣列。
+- Commands actually run and results: 實取第 053030 期索引及兩份個案。匯入首輪 `fulltext=2`，次輪 `reused=true`；`verify_document` 核對 `M688679` 的 208 段與 10 項請求項、`D247328` 的 7 段與 0 項請求項。實際 API 核對雙版本、段落與請求項來源雜湊及兩案的全文詞彙檢索。Ruff、前端 lint 與型別檢查通過，pytest 132 項通過、9 跳過，Playwright 五項通過。`dfee0cf` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45976160866)與[官方書目來源模式](https://github.com/Johnnnny0823/RAG/actions/runs/45976161650)均通過。
+- Tests NOT run and reason: 本輪未另跑 PostgreSQL pytest 套件，已用隔離庫實跑匯入與 API。兩類個案的向量、重排、圖式及法律事件未驗收。[先前啟動的官方完整驗收](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)仍在建立語意索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 用匿名 FTPS 取得 `PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index.xml` 與清單指定的 `PatentPubXML/115/PatentPubXML_053030` 個案，授權、完整網址及 SHA-256 見 DATA_SOURCES。
+- Known bugs / risks / blockers: 個案摘要尚未提取，圖式未下載或顯示。已驗證的 DTD 版本僅涵蓋固定樣本，其他版本仍待實取核對。人工相關性複核與正式主機驗收待完成。
+- Decisions made (ADR links): 依證書號種類及 DTD 嚴格辨識新型和設計。保留 S01 與個案全文版本各自的來源定位，設計省略來源未提供的請求項。
+- Uncommitted changes / file ownership warnings: 原件與測試資料僅存放於隔離目錄，無正式資料庫變更。
+- Next 1–3 concrete actions: 將個案摘要的原始定位納入索引與比對。依官方個案的圖式引用確認圖式可用性，再考慮顯示。核對遠端執行終態。
+- Exact reproduction steps: 依 TESTING「新型與設計公告回歸」選取 `M688679`、`D247328`，執行 `verify_document --grant-issue 053030 --grant-fulltext`，再啟用 `PATENTSCOPE_E2E_GRANT_FULLTEXT=1`。
+
+## 新型個案摘要及原文引用
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `016f256`。
+- Current milestone and status: 固定官方新型個案的中英文摘要已通過匯入、檢索、引用及瀏覽器驗收，整體 IN_PROGRESS。
+- Goal of this session: 保留並引用官方個案摘要，維持舊版來源及獨立索引。
+- Files changed (with purpose): `specification.py` 解析 `abstract-dtext`，`import_issue.py` 為新摘要使用 `tipo-issue-2`，`verify_document.py` 逐版核對預覽及原文，`index_lexical.py` 以可追溯摘要段落建索引。API、UI、測試及文件串接摘要來源及定位。
+- Database migrations added/applied: 無新增。隔離庫新增 `M688679` 的單一新版與 222 個詞彙片段，其中兩個摘要片段各索引一次。
+- API/Schema changes: 新型個案回傳中英文摘要預覽，以及 `sections` 中帶 `abstract-zh`／`abstract-en` 的可信原文定位。相同範圍的號碼查詢依 parser 版本排序後再依 UUID 排序。
+- Commands actually run and results: Ruff 格式與 lint、前端 lint、TypeScript 建置通過，pytest 132 項通過、9 跳過。官方個案匯入首輪新增，重跑重用，`verify_document` 核對新舊版。實際 API 核對兩種語言摘要及 XML 位置，只有新版命中所選摘要詞彙。Qwen `qwen2.5:1.5b` 回應 `supported`，程式核對證據類型 `abstract-en`、XPath、原檔雜湊與逐字偏移。Playwright 五項通過。起點[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45977243097)通過。
+- Tests NOT run and reason: 本輪未執行完整 PostgreSQL pytest 或重建向量，另以隔離庫完成詞彙及使用本機模型的引用驗收。遠端[完整官方工作](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)仍在建立語意索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 沿用已下載並校驗的 `M688679` 原件，完整官方網址及 SHA-256 見 DATA_SOURCES。
+- Known bugs / risks / blockers: 其他 DTD 格式及新型全文向量未驗證，圖式與公開部署尚待，人工關聯性複核未完成。
+- Decisions made (ADR links): 摘要以有可追溯 XPath 的文字段落保存，也提供詳情預覽。搜尋不重複索引預覽欄位。重跑舊案建立解析新版以保留舊引用。
+- Uncommitted changes / file ownership warnings: 只操作整合工作樹與隔離庫。原檔未納入 Git。
+- Next 1–3 concrete actions: 驗證新型摘要向量，確認官方圖式下載及媒體格式，追蹤完整遠端驗收。
+- Exact reproduction steps: 依 TESTING 重新匯入 `M688679` 個案，執行 `verify_document M688679 --grant-issue 053030 --grant-fulltext` 及舊版對照，建立詞彙索引，檢索英文摘要中的片語並用同一段原文比對。
+
+## 新型與設計的語意檢索及引文
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，受驗程式 `03b68df`。
+- Current milestone and status: 兩個官方個案的向量、混合檢索及語意候選引文已驗收，整體 IN_PROGRESS。
+- Goal of this session: 用本機模型及真實新型與設計個案驗證完整的語意索引、檢索與比對。
+- Files changed (with purpose): `scripts/smoke_grant_types_semantic.py` 加入兩個真實案的可重跑驗收，`docs/TESTING.md`、`EVALUATION.md`、`PROGRESS.md`、`HANDOFF.md` 記錄方式、結果與限制。
+- Database migrations added/applied: 新隔離庫從空白遷移至 `0021_gazette_pdf_search`，無新增遷移。四份來源版本建立 243 個詞彙片段、244 個 1,024 維向量。
+- API/Schema changes: 無變更，沿用語意、混合與技術比對 API。
+- Commands actually run and results: Ruff 格式及 lint 通過。`index_semantic --batch-size 24 --request-timeout 180` 首輪建立 244 向量，重跑新增 0。`scripts/smoke_grant_types_semantic.py --api http://127.0.0.1:18180` 通過，兩案在限定全文範圍的語意與混合結果均為第 1 名，語意比對引文通過同版原件雜湊、XPath 與逐字偏移核對。英文摘要的前 1,000 字元重嵌入後，最近向量對應該摘要視窗，距離為 0。`03b68df` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45978238586)通過。
+- Tests NOT run and reason: 本輪新增測試腳本與文件，以上以實際隔離庫及 API 驗收。未重跑瀏覽器。先前啟動的[完整官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)仍在執行全文、引文、歷史及 PDF 步驟。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 重用 DATA_SOURCES 中第 053030 期固定官方原件及已驗證雜湊。
+- Known bugs / risks / blockers: 排名只涵蓋兩個候選個案，正式人工關聯性複核、圖式、目標主機驗收尚待。
+- Decisions made (ADR links): 以全新固定四版本語料量測，保留 S01 與個案版的獨立向量及來源證據。
+- Uncommitted changes / file ownership warnings: 隔離服務使用專用 `patentscope-grant-types-semantic` 專案。原檔及索引未納入 Git。
+- Next 1–3 concrete actions: 查核遠端完整驗收的終態。繼續驗證官方個案圖式及可取得的設計分類來源。
+- Exact reproduction steps: 按 TESTING 的新型與設計語意驗收重建四版本，執行詞彙與語意索引後，以腳本驗證排名與原文。
+
+## 官方公告圖式匯入及顯示
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `f9ada92`。
+- Current milestone and status: 官方新型與設計圖式各一件完成隔離驗收，整體 IN_PROGRESS。
+- Goal of this session: 從同版官方個案 XML 找圖式，安全保存原件並在詳情顯示可追溯的 JPEG。
+- Files changed (with purpose): `services/ingestion/grant_drawing.py` 檢查官方 XML、圖式位置及雜湊，`download.py` 重用有上限的 FTPS 取件，`services/api/patents.py` 提供同版 JPEG，Compose 唯讀掛載原始物件，`research.tsx` 顯示圖式及來源。新增單元測試、API 冒煙、Playwright 與文件。
+- Database migrations added/applied: 無新增。空白隔離庫遷移至 `0021_gazette_pdf_search`。圖式沿用 `source_datasets`、`ingestion_batches`、`ingestion_artifacts` 及 `document_artifacts`，位元保存至原始物件卷。
+- API/Schema changes: 新增 `GET /api/v1/patents/{document_id}/drawings/{artifact_sha256}`。回傳核對過的 JPEG，跨版回傳 404。詳情的 `sources` 會含圖式 XPath、來源及雜湊。
+- Commands actually run and results: Ruff、前端 lint、TypeScript、Vite 建置通過，pytest 138 項通過、9 跳過。`scripts.smoke_grant_drawings` 在新隔離庫驗證兩案拒絕從書目錯附、官方取件、重跑唯一、回傳原件位元及跨版 404。Playwright 在 Chromium 三裝置、Firefox、WebKit 共五項通過。首次重跑遇到原始檔唯一約束及 FTPS 425，修正為驗證後重用同一圖檔，並沿用受限取件重試。已查證 `3458c9e` 的[完整官方 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/45974248108)和 `f9ada92` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/45978844573)通過。
+- Tests NOT run and reason: 本輪未執行獨立九項 PostgreSQL pytest，已在新隔離庫實跑來源及 API。圖式模型處理與完整官方遠端圖式套件尚待驗證。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 查核政府開放資料目錄 15987 及官方 FTP 說明，實取原始 JPEG。兩案官方完整路徑、位元長度與雜湊見 DATA_SOURCES。
+- Known bugs / risks / blockers: 支援已核對路徑的單張 JPEG，需提供已驗證的圖檔雜湊。批量附加、其他影像格式、設計分類與兩類法律異動尚待。人工相關性複核及正式主機驗收仍待。
+- Decisions made (ADR links): 使用版本關聯及原始物件保存 JPEG，API 僅唯讀載入並再次核對雜湊。UI 公布 XML 圖式位置。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹操作，兩份官方 JPEG 與測試產物留在隔離環境。
+- Next 1–3 concrete actions: 核對本次新版一般 CI。查核設計分類的官方資料映射與法律異動來源，接續可驗證部分。
+- Exact reproduction steps: 依 TESTING 的公告圖式回歸建立第 053030 期隔離庫，執行 `scripts.smoke_grant_drawings`，再以 `PATENTSCOPE_E2E_GRANT_DRAWINGS=1` 執行 Playwright。
+
+## 設計 LOC 及新型與設計公告日期
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `30e85c6`。
+- Current milestone and status: 固定新型和設計已有官方日期、設計有 LOC 及端到端篩選，整體 IN_PROGRESS。
+- Goal of this session: 以第 053028 期完整官方書目補入日期及 LOC，從三種檢索、私人紀錄與 PDF 驗證分類。
+- Files changed (with purpose): `gazette_dates.py` 串接書目、個案身份及 LOC，`patents.py` 提供精確 `loc`，`reports.py` 保存篩選條件於 PDF，`research.tsx` 顯示候選及詳情分類，Playwright、pytest、來源及產品文件增加驗收。
+- Database migrations added/applied: 無新增。沿用 `patent_classifications` 的 `LOC` 分類及版次，書目與原始物件皆可追溯。
+- API/Schema changes: 三種搜尋與保存搜尋接受選填 `loc`，混合候選新增 `loc_codes`，有來源的設計詳情可回傳 `scheme=LOC` 及版次。
+- Commands actually run and results: 真實 FTPS CLI 在第一個隔離庫補入 3 個版本，原件雜湊與固定樣本一致。第二個隔離庫以已驗證原件重跑兩次，兩筆重用同一來源。核對 `D246917` 的 LOC `13-99`、版次 15、兩案官方日期、三種檢索及私人保存與 PDF。首次 PDF 驗收誤將註冊結果當作登入憑證，改先登入後成功，合成帳號已清理。候選單元測試的資料庫替身補齊 `loc_codes` 並維持原排序斷言，重跑 pytest 139 項通過、9 跳過。Ruff、前端 lint、型別檢查與建置通過。五項 Playwright 通過。`30e85c6` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46019435437)通過。
+- Tests NOT run and reason: 本機未執行九項獨立 PostgreSQL pytest，另用兩個隔離庫實跑官源及 API。自動補期與衍生設計匯入未驗收。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 查核 https://data.gov.tw/dataset/15972，實取 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053028/patent.xml`，23,778,073 bytes。SHA-256、書目數量及授權條件見 DATA_SOURCES。
+- Known bugs / risks / blockers: 12 筆衍生設計的 `D01` 申請號保留於解析結果，現有匯入與九位精確申請號查詢尚未支援。人工評分、正式主機驗收、新型及設計法律異動待驗證。
+- Decisions made (ADR links): 工具以明確選項擴充新型、設計書目，既有發明排程依舊使用原範圍。LOC 保留官方分類版次。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹和隔離庫操作。
+- Next 1–3 concrete actions: 確認新版一般 CI，接續衍生設計身份與新型、設計的異動來源驗證。
+- Exact reproduction steps: 依 TESTING 設計 LOC 篩選回歸，先匯入第 053028 期指定案件，再跑 `gazette_dates --include-other-grants` 與 `PATENTSCOPE_E2E_TIPO=loc`。
+
+## 原設計與衍生設計的申請號隔離
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `e4705bc`。
+- Current milestone and status: 兩件真實原設計及衍生設計的匯入與跨版本檢查已完成，整體 IN_PROGRESS。
+- Goal of this session: 從官方清單下載、保存、驗證及查詢 `D01` 尾碼的衍生設計，維持兩案各自的來源、日期及圖式。
+- Files changed (with purpose): `patentpub.py`、`grant_index.py`、`gazette_dates.py` 保留衍生號碼，`download.py` 與 `grant_drawing.py` 驗證衍生個案檔名，`specification.py` 支援已核對的設計 DTD `1.0.0`，`patents.py` 支援號碼正規化與精確查詢。其餘為測試與文件。
+- Database migrations added/applied: 無新增。空白隔離庫遷移至 `0021_gazette_pdf_search`，建立兩個申請案、四個文件版本、10 個詞彙片段，補入各版本日期、LOC 及原始來源。
+- API/Schema changes: `number_type=application` 支援設計案號尾碼 `D01`–`D99`。公告號、公開號與原申請案的精確查詢使用原有語意。
+- Commands actually run and results: 實取兩份個案 XML 及一張衍生設計 JPEG。首輪解析因設計原件使用已知範圍外的 DTD `1.0.0` 失敗，核對兩份 XML 後補支援並通過。個案匯入重跑 `reused=true`，`verify_document` 逐字驗證各一段說明書。真實 API 驗證書目日期、LOC 及 SHA-256，原設計的衍生圖式路由回傳 404。Chromium 三尺寸、Firefox、WebKit 共五項 Playwright 通過，皆開啟衍生圖式並核對原號及衍生號。pytest 139 項通過、9 項跳過，Ruff、前端 lint、型別檢查及 Compose 建置通過。起點[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46020836862)通過。
+- Tests NOT run and reason: 本機未啟用九項 PostgreSQL pytest，已用全新隔離庫實跑。尚未量測此組新案向量或跨期衍生設計涵蓋。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 查核 https://www.tipo.gov.tw/tw/patents/546-7241.html，實取第 053028 期清單指定個案 XML 與圖式。各原檔完整 URL 及雜湊見 DATA_SOURCES。
+- Known bugs / risks / blockers: 目前保留申請案精確身分，同案版本不包含原設計與衍生設計的親屬導覽。其他衍生格式、兩類法律異動、人工相關性評分及正式主機驗收仍待。
+- Decisions made (ADR links): 尾碼視為官方完整識別的一部分，使用精確匹配，分開保留書目及個案來源。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹操作，官方原檔未納入 Git。
+- Next 1–3 concrete actions: 查核新型與設計法律異動書目是否可按公告號及申請號無歧義配對，再爭取完成目標主機與人工評估。
+- Exact reproduction steps: 依 TESTING 的衍生設計申請號回歸建立第 053028 期隔離庫，開啟 `PATENTSCOPE_E2E_TIPO=derived-design` 執行 Playwright。
+
+## 官方新型與設計異動公報
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `00d4cac`。本節隨本次變更提交。
+- Current milestone and status: 固定新型及設計的更正事件已通過驗收。M5 及交付驗收 IN_PROGRESS。
+- Goal of this session: 擴充官方消滅與更正事件的支援範圍，保留舊有發明來源，再從 API 與瀏覽器核對新型和設計原件。
+- Files changed (with purpose): `legal_events.py` 處理三種證書和保存原件回填，`legal_refresh.py` 對照官方索引，`legal_linking.py` 限制新型及設計的連結條件，遷移擴充資料庫約束。pytest 與 Playwright 提供回歸測試。
+- Database migrations added/applied: `0022_legal_event_grant_types` 接在 `0021_gazette_pdf_search` 後。空庫升版及舊庫回填已驗證。舊庫原有 869 筆發明事件，新版保留原筆數並補入 478 筆新型及 168 筆設計。重跑為零，降版保護有資料的舊庫。
+- API/Schema changes: 路由與 JSON 結構沿用原契約。新型、設計公告現在可取得相符事件。兩筆詳情皆核對 SHA-256、證書號、申請號、原始條目及未載生效日。
+- Commands actually run and results: Ruff 格式與 lint 通過。pytest 140 項通過，9 項預設跳過，1 項既有 Starlette 警告。另在專用空庫啟用 PostgreSQL 整合套件，9 項全數通過。前端 lint、TypeScript 及 Compose 建置通過。真實 API 和 Chromium 三尺寸、Firefox、WebKit 五項通過。起點 `00d4cac` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46022065811)通過。
+- Tests NOT run and reason: 新提交的完整官方遠端 E2E 未重跑。本次新增瀏覽器案例需要第 053010 期及第 053028 期樣本。消滅原件已核對並匯入異動目錄，本次瀏覽器驗收聚焦更正事件。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 核對 https://data.gov.tw/dataset/15974，政府資料開放授權條款第 1 版。使用第 053033 期 `ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053033/index.xml`、同目錄 `sud08.xml`、`sud24.xml`，以及兩份官方公告索引，詳見 [資料來源](DATA_SOURCES.md#第-053033-期新型與設計異動)。
+- Known bugs / risks / blockers: 兩筆舊式或無法驗證的證書格式保留於原件。即時權利狀態、其他事件類型、正式主機驗收和 34 組人工評分仍待。跨期新型及設計全文補期仍待驗證。
+- Decisions made (ADR links): 保留舊解析批次識別及原始物件，以批次覆蓋標記判斷是否需要重播。新型及設計採申請號與同案公告證書雙重匹配。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹及專用隔離資料庫操作。官方原件與測試輸出未納入 Git。
+- Next 1–3 concrete actions: 追蹤新版 CI，擴充真實消滅案例的詳情回歸，待人工標註和正式主機後進行最終評估與交付。
+- Exact reproduction steps: 依 [驗收步驟](TESTING.md#新型及設計異動回歸) 建立獨立資料庫與固定原件，重播遷移，再執行 `PATENTSCOPE_E2E_TIPO=grant-events` 的 Playwright 套件。
+
+## 官方異動瀏覽器驗收納入 CI
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `920c845`。本節隨本次變更提交。
+- Current milestone and status: M5 與交付驗收 IN_PROGRESS。已在空白部署環境驗證新版官方更正測試的樣本準備工具與跨瀏覽器流程。
+- Goal of this session: 將真實新型及設計更正的瀏覽器回歸納入官方 GitHub Actions。
+- Files changed (with purpose): `scripts/seed_tipo_grant_events.py` 核對 3 份官方 XML 的 SHA-256 並匯入已核對樣本。`.github/workflows/tipo-e2e.yml` 新增樣本快取與 Playwright 關卡。詳見 TESTING。
+- Database migrations added/applied: 無新增遷移。全新隔離部署環境已套用 `0022_legal_event_grant_types`，事件比公告先匯入，其後兩次公告匯入各連上一筆更正。
+- API/Schema changes: 無。
+- Commands actually run and results: Ruff 格式與 lint、預設 pytest（140 通過、9 預設跳過、1 項既有警告）通過。以全新 Compose 資料庫及 Nginx 部署，使用 `seed_tipo_grant_events --offline` 匯入三份原件，`legal-events.spec.ts` 五項通過。起點 `920c845` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46023391973)通過。
+- Tests NOT run and reason: 開始新版前，[起點的官方完整流程](https://github.com/Johnnnny0823/RAG/actions/runs/46023424511)仍在執行。新增關卡的遠端結果須按新版修訂查核。未重跑九項 PostgreSQL pytest，上一修訂已通過且本次沒有改資料庫或 API。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27，樣本沿用 [第 053033 期來源紀錄](DATA_SOURCES.md#第-053033-期新型與設計異動) 中的更正 XML 和同案第 053010、053028 期公告原件。
+- Known bugs / risks / blockers: 官方來源型態及檔案雜湊如變更，驗收會中止。此次瀏覽器流程涵蓋兩筆官方更正。仍待人工相關性複核和正式主機驗收。
+- Decisions made (ADR links): 使用獨立的校驗快取，保留一般核心樣本行為及既有 CI 快取。完整官方流程涵蓋五種瀏覽器設定，來源流程使用三種 Chromium 設定。
+- Uncommitted changes / file ownership warnings: 此輪只修改官方異動測試樣本工具、官方 E2E 工作流程及驗收文件。官方原件與測試輸出留在隔離環境。
+- Next 1–3 concrete actions: 確認遠端新版來源驗收和起點的完整模型驗收。依官方公告範圍補驗實際消滅事件。待人工標註和正式主機後進行最終評估與交付。
+- Exact reproduction steps: 使用 `docker-compose.deploy.yml` 啟動隔離環境，設定 `COMPOSE_PROJECT_NAME`，執行 `python -m scripts.seed_tipo_grant_events <fixture-directory> --offline`，再依 TESTING 執行 `PATENTSCOPE_E2E_TIPO=grant-events` 的 Playwright。
+
+## 官方消滅公告樣本
+
+- Date/time (timezone): 2026-11-27（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `419e37e`。本節隨本次變更提交。
+- Current milestone and status: M5 與交付驗收 IN_PROGRESS。兩筆真實消滅事件已驗證 API 與瀏覽器流程。
+- Goal of this session: 以新型和帶 D01 尾碼的衍生設計案例驗證官方消滅公告，並加入官方回歸。
+- Files changed (with purpose): 官方樣本工具新增 2 份公告索引和 `sud08.xml`，工作流程快取這些原件。`legal-events.spec.ts` 核對詳情號碼、原因、生效日、原件雜湊及定位。資料來源、進度與測試文件新增驗收證據。
+- Database migrations added/applied: 無新增。空白隔離環境套用既有 `0022_legal_event_grant_types`，新型先匯入公告、衍生設計先匯入異動。兩者均成功連結。
+- API/Schema changes: 無。
+- Commands actually run and results: 實取兩份官方公告索引。兩筆真實 API 詳情均通過核對。首輪 Playwright 誤在查詢清單驗證詳情專用的申請號，修正後 Chromium 三尺寸、Firefox 和 WebKit 共 10 項通過。Ruff、前端 lint、型別檢查及 Compose 部署通過。起點 `419e37e` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46024172460)和[官方來源 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46024203767)均通過。
+- Tests NOT run and reason: 本次主要改已知官源樣本和瀏覽器測試，未再執行本機 Python 整合套件。舊版官方完整流程仍在執行，新版需要另看新增關卡結果。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-27 核對 https://data.gov.tw/dataset/15974 與 https://data.gov.tw/dataset/15972，均為政府資料開放授權條款第 1 版。兩份實取公告 FTPS URL、SHA-256、原件索引與第 053033 期異動定位見 [資料來源](DATA_SOURCES.md#第-053033-期新型與設計異動)。
+- Known bugs / risks / blockers: 樣本涵蓋已匯入的歷史事件。即時權利狀態、34 組人工複核、正式主機驗收仍待。
+- Decisions made (ADR links): 以兩種匯入順序檢查關聯。衍生設計保留官方尾碼，與完整申請號精確核對。
+- Uncommitted changes / file ownership warnings: 只在整合分支工作樹與專用 Compose 環境操作，原件與測試輸出未入 Git。
+- Next 1–3 concrete actions: 查核新版官方來源流程及舊版完整模型流程，補驗跨期語料的增量與可回溯性，等人工與部署需求確認後完成總驗收。
+- Exact reproduction steps: 依 [官方異動回歸](TESTING.md#新型及設計異動回歸) 啟動隔離部署，執行 `python -m scripts.seed_tipo_grant_events <fixture-directory> --offline`，使用 `PATENTSCOPE_E2E_TIPO=grant-events` 與 `PATENTSCOPE_E2E_CROSS_BROWSER=1` 執行 `legal-events.spec.ts`。
+
+## 新型及設計公告定期匯入
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `894e229`。本節隨本次變更提交。
+- Current milestone and status: M5 與交付驗收 IN_PROGRESS。真實公告可按新型及設計分別執行選取、書目補強與單期續跑。
+- Goal of this session: 讓官方排程在發明之外也能選取與續跑新型及設計公告。
+- Files changed (with purpose): `grant_index.py` 與 `latest_publication.py` 選取公告類型，`refresh_publications.py` 與 Compose 各別設定選取與續跑。測試覆蓋選取、書目補強與各類選項。操作與官源紀錄同步更新。
+- Database migrations added/applied: 無新增。空白隔離環境使用既有遷移。新型與設計在 `archive_refresh_checkpoints` 使用獨立設定雜湊。以第 053028 期官方快照驗證兩類的同批重跑直接使用檢查點。
+- API/Schema changes: 無。
+- Commands actually run and results: Ruff、Compose 配置檢查與建置通過。pytest 142 項通過、9 項預設跳過、1 項既有警告。S01 最新端點兩次預覽取得第 053030 期。第 053028 期真實 FTPS 匯入 `M687984`、`D246917`，API 核對官方日期、請求項／書目範圍及 LOC，五項 Playwright 通過。首次單元測試因 CLI 缺參數失敗，實作後通過。前期 [官方完整 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46023424511)和[最新版官方消滅來源 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46025212381)均通過。
+- Tests NOT run and reason: 本次未重跑本機 PostgreSQL 整合套件，使用隔離庫直接驗證官源及檢查點。兩期實取續跑遇 FTPS 資料通道 425 後已完成首期新型，後續仍需核對。個案全文批次與跨年續跑未驗收。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28，實取 `https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01`、`ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index.xml` 與 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053028/patent.xml`。詳見 DATA_SOURCES 的授權條件、卷期與 SHA-256。
+- Known bugs / risks / blockers: FTPS 有連線重試。每類上限限制該期取樣範圍。正式主機及 34 組人工相關性複核仍待。
+- Decisions made (ADR links): 沿用現有資料表與每期檢查點。預設沿用發明及舊設定雜湊。新型及設計須由環境變數啟用。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹及隔離 Compose 專案操作。
+- Next 1–3 concrete actions: 核對跨期續跑第二期各類來源及檢查點，驗證多件全文補期和索引，再回到人工相關性及正式主機驗收。
+- Exact reproduction steps: 依 [測試說明](TESTING.md#按類型選取公告與跨期續跑) 以獨立資料庫執行 `latest_publication --grants --grant-type model|design`，設定排程參數及查詢檢查點。
+
+## 指定範圍補匯新型與設計
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `5ab267b`。本節隨本次變更提交。
+- Current milestone and status: M5 與交付驗收 IN_PROGRESS。第 053028 期兩類全文和第 053028–053029 期書目續跑有實測證據。
+- Goal of this session: 讓手動封存補匯可以依類型選件，修正實際新型全文格式，補驗各類型的跨期檢查點。
+- Files changed (with purpose): `archive_backfill.py` 新增 `--grant-type`，`specification.py` 接受已核對的新型 DTD 2.0.1，`import_issue.py` 對新型全文使用新的批次解析識別。新增 CLI 與解析回歸，更新官源與驗收文件。
+- Database migrations added/applied: 無新增，隔離部署使用既有 head。原先的 `tipo-issue-2` 部分完成批次仍在，兩件全文另有完成批次，全文重跑均重用批次。
+- API/Schema changes: 無。API 實際查到兩筆全文版本，詞彙已可檢索及溯源。
+- Commands actually run and results: Ruff 格式、lint、Compose 啟動成功。pytest 144 通過、9 預設跳過、1 項既有警告。官方清單真實預覽確認兩期期號。以四份事先校驗的官方快照在隔離庫跑兩類續跑，兩組檢查點均含 053028、053029，第三輪無取件。首輪新型全文因不支援 DTD 2.0.1 正確被隔離，修正後可在同庫重跑。全文逐字核對新型 16 項請求項、25 段說明書及設計 2 段說明書。詞彙 API 兩筆全文個案皆出現在第一位，詳情雜湊符合原件。起點 [一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46042742128) 通過。
+- Tests NOT run and reason: 本次沒有新的瀏覽器或 API 介面變更，未重跑 Playwright 及獨立 PostgreSQL pytest。本次以實體 PostgreSQL 與 API 驗證。跨期書目以核對雜湊的官方快照完成，跨期全文及自動定時服務的長時間運作仍待獨立驗收。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 核對 https://data.gov.tw/dataset/15987，政府資料開放授權條款第 1 版，下載兩份官方個案 XML。網址、大小及雜湊見 [資料來源](DATA_SOURCES.md#第-053028-期新型及設計全文補匯)。第 053029 期兩份來源於新型續跑實取，後續對兩類使用相同的原件驗收。
+- Known bugs / risks / blockers: 大型 FTPS 檔案仍可能回 425，需求以有界取樣驗收。正式目標主機與 34 組人工相關性複核仍待。
+- Decisions made (ADR links): 擴充已確定的 DTD 版本，沿用既有 XML 限制、文件識別與來源定位。新型全文批次使用新識別，讓既有隔離樣本可重跑。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹和專用隔離庫操作，原件未進 Git。
+- Next 1–3 concrete actions: 驗證跨期全文的自動續跑與索引，確認最新版一般 CI，待人工標註及正式主機後完成驗收。
+- Exact reproduction steps: 依 [測試說明](TESTING.md#指定範圍補匯與全文回查) 使用隔離環境，執行 `archive_backfill --stage grant --grant-type model|design --fulltext --apply`，以 `verify_document --grant-fulltext` 等腳本核對原件。
+
+## 兩期新型及設計全文續跑與索引
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `299f907`。本節隨驗收紀錄提交。
+- Current milestone and status: M5 及交付驗收 IN_PROGRESS。兩期書目、全文續跑與檢索達成有界驗收。
+- Goal of this session: 實取第 053029 期個案，驗證兩類全文能續跑多期、重跑能略過，以及全文可建立詞彙與向量索引。
+- Files changed (with purpose): 更新 DATA_SOURCES、TESTING、PROGRESS 和 HANDOFF，記錄原件雜湊及驗收結果。
+- Database migrations added/applied: 無新增遷移。全新部署資料庫套用 `0022_legal_event_grant_types`，四個全文版本和兩組各二期檢查點。
+- API/Schema changes: 無。驗收既有 REST API。
+- Commands actually run and results: 舊的實際 FTPS 書目續跑已完成兩類兩期，尾段查詢誤用 `content_scope` 資料表欄位，改從 `metadata_jsonb` 查詢後核對成功。空白隔離部署完成官方目錄查核後，以十個唯讀官方原件跑 `refresh_archive`；第三輪零取件。逐字核對四份全文。詞彙與本機 Ollama 分別產生 83 個片段及 83 條 1,024 維向量，向量重跑為零。第 053029 期兩件全文在詞彙、語意及混合 API 均排名第一。部署冒煙通過，`299f907` 的 [一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46043725309) 通過。
+- Tests NOT run and reason: 未重跑本機 pytest 或 Playwright，本次提交只有文件。未做無限期定時程序驗收。兩期全文續跑以校驗後的快照替換取件，原件出自真實 FTPS。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 依 https://data.gov.tw/dataset/15987 已核對的授權及官源實取第 053029 期清單與兩個 XML。精確 URL 與雜湊見 [資料來源](DATA_SOURCES.md#第-053029-期跨期全文驗收)。
+- Known bugs / risks / blockers: 仍待 34 組人工相關性複核及正式目標環境確認。排名證據限本次四件官源驗收語料。
+- Decisions made (ADR links): 人工關聯評估及部署狀態仍沿用原有里程碑條件。驗收保留每類每期上限與雜湊。
+- Uncommitted changes / file ownership warnings: 驗收於隔離工作樹、本機 Compose 與唯讀原件快照進行。
+- Next 1–3 concrete actions: 收取人工標註及指定部署環境後執行重評與部署驗收。
+- Exact reproduction steps: 依 [跨兩期驗收](TESTING.md#跨兩期全文與索引) 取件校驗、使用隔離庫與每輪一卷期設定，再核對 `archive_refresh_checkpoints`、原文及向量。
+
+## 人工評估版本計分
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `1a751de`。本節隨變更提交。
+- Current milestone and status: M5 IN_PROGRESS。評估只對人工固定的文件版本計分。候選池仍待人工複核。
+- Goal of this session: 防止只命中同號其他版本時繼承正式人工分數。驗收本機複核檔的草稿與完成檔流程。
+- Files changed (with purpose): `scripts/evaluate_search.py` 以當前語料解析出的固定文件 ID 計分，`tests/test_evaluate_search.py` 覆蓋書目排首、全文排次與重複全文。更新評估規則與進度。
+- Database migrations added/applied: 無。
+- API/Schema changes: 無 REST 變更。評估 JSON 新增 `judgment_identity`，記錄人工版本或種子號碼計分。
+- Commands actually run and results: 新回歸先重現 MRR 1.0，修正版得到 0.5，原名次維持。pytest 145 項通過、9 預設跳過、1 既有 Starlette 警告。Ruff 格式、lint、Git diff 通過。Playwright 用 DEMO 樣本驗證完成驗條件、草稿與完成檔下載、同版匯入及不同雜湊拒絕。CLI 確認正式待複核池在請求 API 前中止。實際複核 HTML 與正式候選池 JSON 一致，34 組皆空白。起點[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46044407824)通過。
+- Tests NOT run and reason: 無真實人工分數，未重跑正式評估。此修改限離線計分與報告格式，未重跑本機 PostgreSQL 或產品 Playwright 套件。
+- Data sources checked (exact URL/date) and license/access notes: 本次沿用已驗證的官方候選池，未新增官源。瀏覽器操作使用獨立 DEMO 檔。
+- Known bugs / risks / blockers: 尚待 34 組人工複核和目標部署環境確認。
+- Decisions made (ADR links): 未複核版本占原名次並歸入未標註。後續若出現正確版本，以其實際名次計分。種子集原基線照舊。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹修改評估器及文件，正式標註池內容未變更。
+- Next 1–3 concrete actions: 收到人工分數後在固定語料重評，依確認的目標部署環境做交付驗收。
+- Exact reproduction steps: `python -m pytest -q tests/test_evaluate_search.py`。正式標註格式與重跑指令見 [評估說明](EVALUATION.md)。
+
+
+## 最新修訂的隔離備份還原
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `bf5d368`。本節隨驗收紀錄提交。
+- Current milestone and status: Docker Compose 隔離復原驗收通過。M5 與交付驗收 IN_PROGRESS。
+- Goal of this session: 從已索引語料備份 PostgreSQL 與原件，還原至空白資料庫並驗證私人資料隔離。
+- Files changed (with purpose): SETUP 改用單一交易還原並記錄備份雜湊。TESTING、PROGRESS 及 HANDOFF 保存驗收方法與結果。
+- Database migrations added/applied: 無新增遷移。在空白目的端以 `pg_restore --single-transaction --no-acl` 還原，再套用既有 Alembic 與 API 專用角色配置，head 為 `0022_legal_event_grant_types`。
+- API/Schema changes: 無。
+- Commands actually run and results: `pg_dump -Fc` 的本機及目的端 SHA-256 均為 `bb192630596866037eef051101693a2b9e14405528084eba209103a1820b92f0`。兩端逐筆校驗 10 份資料庫引用物件，目的端再核對 4 份官方全文與 83 條向量。原有效登入、重新登入、專案、收藏備註、跨帳號 404 及語意排序一致性皆通過。API 角色有文件讀取、專案新增權限，無官方文件更新權限。目的端部署冒煙通過，DB 與 API 無主機連接埠。起點[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46045019402)通過。
+- Tests NOT run and reason: 本次只提交文件，未重跑單元套件。復原語料涵蓋新型及設計 XML、向量與合成私人筆記，未涵蓋官方 PDF 附件、報告工作復原或外部主機憑證續期。
+- Data sources checked (exact URL/date) and license/access notes: 沿用已驗證的第 053028、053029 期 [官方原件](DATA_SOURCES.md#第-053029-期跨期全文驗收)，未新增取件。
+- Known bugs / risks / blockers: 首輪驗收腳本誤用收藏路由，第二次將註冊回應與包含額外欄位的 `/me` 比較。修正腳本後，以另一空白目的端完成同一流程。外部主機與 34 組人工評分待使用者確認。
+- Decisions made (ADR links): 還原後重套 API 最小權限，原件校驗通過才啟動 Web 與 API。驗收使用本機模型和合成帳號。
+- Uncommitted changes / file ownership warnings: 備份、測試帳號及憑證均留在隔離環境。Git 只保存文件。
+- Next 1–3 concrete actions: 收到人工評分檔後以固定語料重評，在指定主機執行部署及復原驗收。
+- Exact reproduction steps: 依 [備份還原驗收](TESTING.md#隔離部署的備份還原驗收) 執行，再以 `scripts/smoke.py --deployment` 檢查目的端。
+
+## 分散原件的官方 PDF 備份還原
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `6d254c2`。本節隨變更提交。
+- Current milestone and status: M5 與交付驗收 IN_PROGRESS。官方 PDF 附件與頁面索引已通過本機隔離還原。
+- Goal of this session: 驗證官方 PDF、文字層及頁面索引可隨資料庫還原，支援舊原件分散儲存時的完整備份。
+- Files changed (with purpose): `services/ingestion/sync_objects.py` 新增可重複的唯讀來源參數 `--fallback-objects`。`tests/test_ingestion_artifacts.py` 驗證主目錄缺檔可補及主目錄損毀仍會失敗。更新 SETUP、TESTING、PROGRESS 與 HANDOFF。
+- Database migrations added/applied: 無新增遷移。來源 `0021_gazette_pdf_search` 還原至空白隔離庫後升到 `0022_legal_event_grant_types`，兩份 PDF 的 11 頁均保留。
+- API/Schema changes: 無。
+- Commands actually run and results: 首輪備份從主卷找不到舊 XML，補上兩個唯讀舊目錄後逐筆驗證 30 份原件。兩份原始 PDF 的 SHA-256 與既有來源一致。還原及離線重跑後，頁面、詞彙檢索、兩版本各 13 項 XML 請求項與引文資料均與來源一致，錯版請求仍回傳 404。部署冒煙、Ruff、Git diff 和 pytest 通過，pytest 146 通過、9 預設跳過、1 項既有警告。起點 [一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46045680433) 通過。
+- Tests NOT run and reason: 未重新向智財局索取 PDF，還原目標使用已核對的既有原件。未在本機重跑完整 Playwright，API 與部署冒煙已實跑。
+- Data sources checked (exact URL/date) and license/access notes: 本次離線使用既有官源 `https://cloud.tipo.gov.tw/S220/downloads/invention/pub024019/pdfdata/114106690.pdf` 及 `https://cloud.tipo.gov.tw/S220/downloads/patent/isu053028/pdfdata/114106690.pdf`，對照 [來源紀錄](DATA_SOURCES.md#發明公告公報個案-pdf)。
+- Known bugs / risks / blockers: 34 組人工相關性複核與正式目標環境待確認。此輪還原涵蓋兩份官源附件，未驗收私人報告背景工作復原。
+- Decisions made (ADR links): 只有主路徑缺檔才回查指定舊目錄。路徑、雜湊、大小與既有損毀偵測依舊生效。
+- Uncommitted changes / file ownership warnings: 原件及備份留在隔離專案與暫存目錄，未入 Git。
+- Next 1–3 concrete actions: 核對本提交的遠端結果。依人工評分與目標部署環境跑最終驗收。
+- Exact reproduction steps: 依 [分散原件的官方 PDF](TESTING.md#分散原件的官方-pdf) 從來源合併複製，還原到新資料庫，核對 PDF 頁面 API，再對兩案離線重跑。
+
+## 私人報告重新認領與部署查核
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `fb308a9`。本節隨變更提交。
+- Current milestone and status: 私人 PDF 報告重新認領驗收通過。M5 與交付驗收 IN_PROGRESS。
+- Goal of this session: 背景程序中斷後，在既有重試窗口以同一工作 ID 繼續產生私人報告，避免舊程序交回的結果覆蓋新結果。
+- Files changed (with purpose): `report_jobs.py` 更新重新認領與完成條件。PostgreSQL 整合測試涵蓋有效處理、逾時重認領、舊程序覆寫、正式逾期和權限。
+- Database migrations added/applied: 無新增。測試隔離庫使用現行遷移。
+- API/Schema changes: 路由、回應結構及私密快取規則沿用原有契約，新增伺服端同 ID 繼續處理的行為。
+- Commands actually run and results: 新回歸先確認舊實作未重新認領。修正後 PostgreSQL 整合 10 項通過，pytest 146 項通過、10 項預設跳過，皆有 1 項既有 Starlette 警告。Ruff、Git diff、部署冒煙通過。在已索引官方語料的隔離 Compose 先建立報告，以 DB 時間模擬已中斷七分鐘，再啟動重新建置的工作程序。現有 ID 成功產出 3 頁 PDF，`pypdf` 驗證內文有 `M688333` 與對應繁中標題。本人可下載，另一合成帳號得到 404。起點 [一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46046483382) 通過。
+- Tests NOT run and reason: 本次未在本機重跑全套 Playwright。實際重啟測試模擬了 DB 的逾時時間，未等待六分鐘。起點 [官方完整 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46046502777) 還在執行。
+- Data sources checked (exact URL/date) and license/access notes: 沿用已核對的 [兩期 TIPO 原件](DATA_SOURCES.md#第-053029-期跨期全文驗收)，未新增取件。未用使用者私人構想。
+- Known bugs / risks / blockers: 34 組人工相關性複核與正式主機待確認。報告可在建立後 10 分鐘內接手，逾期可重新提出。
+- Decisions made (ADR links): 用此次處理的 started_at 比對完成權，保留原報告 ID、既有排程與私密權限。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹與合成資料隔離庫操作，PDF 測試輸出未入 Git。
+- Next 1–3 concrete actions: 確認遠端工作，待人工評分及部署環境就緒後繼續最終驗收。
+- Exact reproduction steps: 依 [私人報告程序中斷回歸](TESTING.md#私人報告程序中斷回歸) 啟動 PostgreSQL 測試資料庫，執行 `python -m pytest -q tests/integration -k background_report`。
+
+## 背景搜尋逾時後續跑
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `bac26c4`。本節隨變更提交。
+- Current milestone and status: M5 與交付驗收 IN_PROGRESS。背景搜尋續跑已實際核對。
+- Goal of this session: 讓中斷的混合搜尋在原工作 ID 續跑，保留取消、權限與唯一搜尋歷史。
+- Files changed (with purpose): `search_worker.py` 在重試期限內認領中斷工作，寫入歷史前鎖定同一次執行。PostgreSQL 整合測試涵蓋舊程序、取消、工作續跑、逾期清理及權限。
+- Database migrations added/applied: 無新增，沿用隔離庫的 `0022_legal_event_grant_types`。
+- API/Schema changes: 路由與格式不變。重試使用原工作 ID，逾期錯誤碼沿用 `SEARCH_JOB_EXPIRED`。
+- Commands actually run and results: 新增回歸先重現舊程序可寫入歷史，再補上執行檢查點。首輪修正測試誤從歷史列表讀取詳情欄位，改用保存紀錄端點。本機真實 Compose 背景工作以同 ID 找回官源 `M688333`，只保存一筆歷史並清除工作暫存請求。跨帳號讀取為 404，部署冒煙通過。修正測試後，11 項 PostgreSQL 整合測試全數通過。Ruff、Git diff 與預設 pytest 通過，146 項通過、11 預設跳過、1 項既有警告。起點[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46047065984)通過。
+- Tests NOT run and reason: 本機未重跑 Playwright，改跑真實工作程序、REST API 與 PostgreSQL 整合。遠端[官方完整工作](https://github.com/Johnnnny0823/RAG/actions/runs/46046502777)仍在執行。
+- Data sources checked (exact URL/date) and license/access notes: 使用已驗證的 [第 053029 期原件](DATA_SOURCES.md#第-053029-期跨期全文驗收)。未新增取件。測試查詢是已公開的專利技術。
+- Known bugs / risks / blockers: 工作超過重試時間時會標為失敗。34 組人工相關性複核與正式主機仍待確認。
+- Decisions made (ADR links): 沿用工作開始時間辨認此次認領，確保保存搜尋紀錄與更新工作狀態使用同一交易。
+- Uncommitted changes / file ownership warnings: 只使用整合工作樹和隔離資料庫。
+- Next 1–3 concrete actions: 確認此修訂的 CI 及執行中的官源流程。取得人工標註與部署環境後完成重評和交付。
+- Exact reproduction steps: 依 [背景搜尋程序中斷回歸](TESTING.md#背景搜尋程序中斷回歸) 執行 PostgreSQL 套件，再用隔離 Compose 真實官源執行背景搜尋。
+
+## 工作台接續背景搜尋
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `b234a6e`。
+- Current milestone and status: 工作台可查看與取消原有背景搜尋，整體驗收 IN_PROGRESS。
+- Goal of this session: 允許使用者重新登入後接續既有工作，構想欄可維持空白。
+- Files changed (with purpose): `research.tsx` 增加查看入口和無背景工作的提示。Playwright 與一般 CI 新增工作程序啟動前的回歸。
+- Database migrations added/applied: 無新增。空白隔離庫使用現有遷移。
+- API/Schema changes: 沿用 `/search-jobs/active`、狀態及取消路由。
+- Commands actually run and results: 舊版單一瀏覽器重現缺少入口而逾時。新增入口後，Chromium 三尺寸、Firefox、WebKit 共 5 項通過。既有桌面工作台 2 項通過。Oxlint、TypeScript、Vite 建置與 Git diff 通過。
+- Tests NOT run and reason: 本次無後端變更，未重跑本機 PostgreSQL 套件。此瀏覽器案例涵蓋真實佇列、接續與取消，模型及搜尋完成另有既有官源驗收。
+- Data sources checked (exact URL/date) and license/access notes: 使用合成帳號及 DEMO 查詢，故無新增官源。
+- Known bugs / risks / blockers: 34 組人工複核與正式主機驗收待確認，新增 CI 關卡待遠端核對。
+- Decisions made (ADR links): 讓使用者主動查看，沿用現有輪詢及取消行為。CI 先驗證佇列狀態，再啟動工作程序。
+- Uncommitted changes / file ownership warnings: 只在整合工作樹與隔離 Compose 操作，瀏覽器輸出未入 Git。
+- Next 1–3 concrete actions: 確認新增 CI 關卡與既有官源完整 E2E，待人工評分及目標主機就緒後做最終驗收。
+- Exact reproduction steps: 依 [工作台查看及取消既有背景搜尋](TESTING.md#工作台查看及取消既有背景搜尋) 執行。
+
+## 背景搜尋完成路徑與官源遠端驗收
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `3aed739`。
+- Current milestone and status: 桌面與手機模擬的官源背景搜尋完成路徑通過。M5 與交付驗收 IN_PROGRESS。
+- Goal of this session: 以真實候選驗證重登後接續工作，並核對近期 CI 與官源驗收。
+- Files changed (with purpose): TESTING、PROGRESS、HANDOFF 更新實測與連結。
+- Database migrations added/applied: 無。沿用含四件官方全文的隔離資料庫。
+- API/Schema changes: 無。
+- Commands actually run and results: 使用 Docker 封裝前端與本機 Qwen 向量，以桌面 Chromium 和 Pixel 7 模擬分別續跑。兩者皆由原工作 ID 完成，顯示官源 `M688333`，保存一筆搜尋歷史，瀏覽器重送次數為零。試驗帳號均透過 API 清理。`b234a6e` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46047655683)通過 146 項預設 pytest、11 項 PostgreSQL、12 項 Playwright。`3aed739` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46077131538)已全數通過，包含新佇列關卡。`fb308a9` 的[官源完整工作](https://github.com/Johnnnny0823/RAG/actions/runs/46046502777)已通過。
+- Tests NOT run and reason: 文件更新沒有另跑本機 pytest。真實背景搜尋完成測試未使用實體手機。
+- Data sources checked (exact URL/date) and license/access notes: 沿用已核對的 [第 053029 期全文來源](DATA_SOURCES.md#第-053029-期跨期全文驗收)，沒有新增來源。
+- Known bugs / risks / blockers: 正式主機與 34 組人工複核仍待。
+- Decisions made (ADR links): 使用相同已驗證的小語料，保留官源與最新程式碼 CI 的修訂區分。
+- Uncommitted changes / file ownership warnings: 只修改整合工作樹內文件，測試腳本及輸出留於忽略目錄。
+- Next 1–3 concrete actions: 確認新版遠端流程，待人工評分與部署目標後完成評估及交付。
+- Exact reproduction steps: 依 [重新登入後完成官源搜尋](TESTING.md#重新登入後完成官源搜尋) 驗收。
+
+## 測試依賴安全更新
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `a303f44`。
+- Current milestone and status: 依賴公告修正和隔離測試通過。整體交付 IN_PROGRESS。
+- Goal of this session: 查核現有 Python 與前端依賴，更新已確認需要修正的開發套件。
+- Files changed (with purpose): `requirements-dev.txt` 將 pytest 9.0.2 固定至 9.0.3，並更新交接及測試紀錄。
+- Database migrations added/applied: 無。整合測試使用隔離庫 head `0022_legal_event_grant_types`。
+- API/Schema changes: 無。
+- Commands actually run and results: npm audit 前端鎖檔 0 項。pip-audit 原本重複列出 pytest 同一則 CVE-2025-71176，升版重掃回報無已知漏洞。全新 uv 測試環境確認 pytest 9.0.3，預設測試 146 通過、11 預設跳過，另啟用 PostgreSQL 測試 11 項全數通過。Ruff 與 Git diff 檢查通過。起點的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46077493967)已通過。
+- Tests NOT run and reason: 沒有產品程式或前端依賴變更，本地未重跑瀏覽器套件。容器 OS 與正式主機未納入依賴掃描。起點的[官方完整工作](https://github.com/Johnnnny0823/RAG/actions/runs/46077504467)仍在執行。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 查閱 [pytest 官方修正說明](https://github.com/pytest-dev/pytest/releases/tag/9.0.3)，沒有新增 TIPO 取件。
+- Known bugs / risks / blockers: 34 組人工相關性標註與正式主機仍待確認。此次掃描為該時點的套件公告結果。
+- Decisions made (ADR links): 選擇官方已修正的同系列補丁版，保留執行依賴與既有測試架構。
+- Uncommitted changes / file ownership warnings: 只修改整合工作樹。本機原開發虛擬環境未更新。
+- Next 1–3 concrete actions: 查核本提交的 CI 及既有官源工作，待人工標註與目標環境就緒後做最後驗收。
+- Exact reproduction steps: 依 [依賴公告查核](TESTING.md#依賴公告查核) 重掃。以 `uv run --no-project --python 3.12 --with-requirements requirements-dev.txt python -m pytest -q` 執行預設套件，依 TESTING 設定 PostgreSQL 旗標後執行整合測試。
+
+## 隔離 HTTPS 換證及回復
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，驗收基準 `92b76ce`。
+- Current milestone and status: 換證及回復隔離驗收通過。整體交付 IN_PROGRESS。
+- Goal of this session: 核對既有部署能切換及回復憑證，同時保留原登入和私人研究資料。
+- Files changed (with purpose): `docs/SETUP.md`、`docs/TESTING.md`、`docs/PROGRESS.md`、`docs/HANDOFF.md` 記錄操作及驗收證據。
+- Database migrations added/applied: 無新增。隔離新資料庫升至 `0022_legal_event_grant_types`。
+- API/Schema changes: 無。
+- Commands actually run and results: `openssl verify` 驗證兩張測試憑證。以標準 Compose 重建 Web，搭配 `scripts/smoke.py --deployment --ca-file` 三階段通過。核對憑證序號 `1001`、`1002`、`1001`，原登入憑證與私人專案維持可用，API 和 DB 容器 ID 相同。`92b76ce` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46077953334)全數通過。
+- Tests NOT run and reason: 本次只有文件異動，本機未另跑單元或瀏覽器套件。尚無可驗收的外部目標主機及公開 CA 設定。
+- Data sources checked (exact URL/date) and license/access notes: 本次沒有新增 TIPO 取件或官方語料驗收。
+- Known bugs / risks / blockers: Docker Desktop 的 D 槽繫結失敗，改用 C 槽乾淨快照成功。外部目標環境及 34 組人工評分仍待確認。
+- Decisions made (ADR links): 在現有 HTTPS 覆蓋檔下驗收，使用每次測試指定的私有 CA。
+- Uncommitted changes / file ownership warnings: 測試憑證與腳本保存在工作樹外或 Git 忽略的本機目錄。日常開發資料庫未動。
+- Next 1–3 concrete actions: 查核官源 CI 最終結果。在目標主機驗證外部 HTTPS 及還原。收齊人工評分後重跑相關性評估。
+- Exact reproduction steps: 依 [隔離 HTTPS 換證及回復](TESTING.md#隔離-https-換證及回復) 重跑。
+
+## 研究工作台鍵盤驗收
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `08cb324`。
+- Current milestone and status: 工作台鍵盤操作驗收通過。整體交付 IN_PROGRESS。
+- Goal of this session: 確認鍵盤使用者可在註冊或登入後接續操作工作台。
+- Files changed (with purpose): `apps/web/src/research.tsx` 登入成功後將焦點移至「私人搜尋歷史」；`apps/web/e2e/workspace.spec.ts` 以鍵盤建立專案與重新登入；更新 TESTING、PROGRESS、HANDOFF。
+- Database migrations added/applied: 無新增。隔離新資料卷套用既有遷移至 `0022_legal_event_grant_types`。
+- API/Schema changes: 無。
+- Commands actually run and results: `npm run lint --prefix apps/web` 和 `npm run build --prefix apps/web` 通過。修正前桌面 Chromium 重現登入後焦點未移動。修正後 Nginx 封裝版工作台 3 項、開發測試設定預設 Playwright 12 項、Firefox 與 WebKit 工作台各 1 項通過。第一次 PostgreSQL 整合測試因未停止背景程序，報告接手案例受同一佇列影響。停止背景程序並依 CI 順序重跑，11 項全數通過，1 則既有 Starlette 警告。
+- Tests NOT run and reason: 本次未測實體手機、平板及螢幕閱讀器。最新官源 E2E 仍在執行。
+- Data sources checked (exact URL/date) and license/access notes: 本次以合成測試帳號驗證操作，沒有新增 TIPO 資料。
+- Known bugs / risks / blockers: 完整套件需依 CI 使用開發測試設定。第一次將限流案例與多裝置登入一起跑在正式 Nginx 上，部分登入遇到代理的共用速率限制；正式封裝後續獨立跑工作台案例，三項均通過。正式主機及 34 組人工評分仍待確認。
+- Decisions made (ADR links): 沿用既有原生表單和折疊區，以工作台標題作為登入後焦點。
+- Uncommitted changes / file ownership warnings: 只修改整合工作樹。測試資料使用獨立 Compose 專案與資料卷。
+- Next 1–3 concrete actions: 確認最新官源 CI。人工複核完成後重跑評估，取得目標主機後完成對外驗收。
+- Exact reproduction steps: 依 [研究工作台鍵盤操作](TESTING.md#研究工作台鍵盤操作) 重跑。
+
+## PostgreSQL 執行帳號密碼輪替
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，驗收基準 `c97d351`。
+- Current milestone and status: 執行帳號輪替與回復通過。整體交付 IN_PROGRESS。
+- Goal of this session: 補齊 API 與背景程序共用資料庫帳號的輪替順序，驗證研究資料和背景工作可繼續使用。
+- Files changed (with purpose): `docs/SETUP.md` 更新輪替步驟，`docs/TESTING.md`、`docs/PROGRESS.md`、`docs/HANDOFF.md` 記錄結果。
+- Database migrations added/applied: 無新增。隔離新資料庫遷移至 `0022_legal_event_grant_types`，輪替時只執行現有角色設定程式。
+- API/Schema changes: 無。
+- Commands actually run and results: 在隔離 Compose 停止 API 和背景程序，執行 `docker compose run --rm --no-deps migrate python -m services.api.provision_db_role`，再重建 `api` 及 `search-worker`。輪替及回復各確認一次舊密碼被拒、新密碼由兩容器取得受限角色、DB 和 Web 不重建。三階段均以原登入讀取私人專案、經 Web 代理確認就緒及由背景程序產出私人 PDF。`git diff --check` 通過。驗收基準的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46078981192)通過。
+- Tests NOT run and reason: 本次只改操作文件，未重跑 pytest 與 Playwright。未在目標主機輪替，不涉及 PostgreSQL 管理帳號。
+- Data sources checked (exact URL/date) and license/access notes: 只使用 DEMO 工作及合成帳號，沒有 TIPO 取件或檢索評分。
+- Known bugs / risks / blockers: 單實例 API 在輪替期間暫停。外部部署以及 34 組人工相關性複核仍待。
+- Decisions made (ADR links): 以既有受限角色設定程式重新核發執行帳號密碼，避免輪替同時套用新遷移。
+- Uncommitted changes / file ownership warnings: 隔離測試腳本位於忽略目錄，隨機測試密碼未寫入工作樹。測試帳號已刪除，服務已停止，未改動日常資料庫。
+- Next 1–3 concrete actions: 確認一般及官源 CI 最終結果。待目標主機及人工複核就緒後完成交付驗收。
+- Exact reproduction steps: 依 [輪替步驟](SETUP.md#輪替-postgresql-執行帳號密碼)及[隔離驗收](TESTING.md#隔離的資料庫執行帳號輪替)重跑。
+
+## 公報 PDF 遠端驗收
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `f155985`。
+- Current milestone and status: 公報 PDF 本機來源複核通過，遠端選用下載仍待。整體交付 IN_PROGRESS。
+- Goal of this session: 追蹤正式官源工作，釐清 GitHub runner 的公報 PDF 下載問題，保留必要檢查的結果。
+- Files changed (with purpose): `.github/workflows/tipo-e2e.yml` 將選用 PDF 下載及對應瀏覽器檢查移至必要來源檢查之後，保持遠端下載失敗會讓整個工作失敗。必要檢查通過時仍驗證入口限流。更新進度、測試和交接文件。
+- Database migrations added/applied: 無新增。
+- API/Schema changes: 無。
+- Commands actually run and results: [遠端公報 PDF 驗收](https://github.com/Johnnnny0823/RAG/actions/runs/46079497499)在 `202640162` 的官方個案 JSON 收到 HTTP 403。已通過 XML 固定雜湊及詞彙 API。以本機應用程式 `fetch` 及 `checked_pdf_path` 直接核對兩案，兩份 PDF 大小與固定 SHA-256 相符。`uv run --no-project --python 3.12 --with pyyaml` 解析工作定義並檢查步驟順序通過，`git diff --check` 通過。`f155985` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46079395192)通過。`850523a` 的[遠端重跑](https://github.com/Johnnnny0823/RAG/actions/runs/46079899351)確認必要官源、法律異動及部署限流通過，選用 PDF 在同一 JSON 端點再次收到 HTTP 403，工作保留失敗。 隨後 `6d76efc` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46080403020)及[基礎官源工作](https://github.com/Johnnnny0823/RAG/actions/runs/46080515046)通過。重新比對離線複核表的四案及 34 組文件指紋，與同一候選池相符，狀態仍待人工複核。
+- Tests NOT run and reason: 兩次遠端 PDF 都因 403 未達瀏覽器。此輪只調整 CI 順序及文件，本機未另跑 pytest。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 實際核對 [公開 PDF 個案](https://cloud.tipo.gov.tw/S220/downloads/invention/pub024019/pdfdata/114106690.pdf)及[公告 PDF 個案](https://cloud.tipo.gov.tw/S220/downloads/patent/isu053028/pdfdata/114106690.pdf)，使用條件與限制見 [DATA_SOURCES](DATA_SOURCES.md#發明公告公報個案-pdf)。
+- Known bugs / risks / blockers: 遠端對個案端點回應 HTTP 403，原因尚未確認。正式部署及 34 組人工相關性複核仍待。
+- Decisions made (ADR links): 保留固定 PDF 雜湊及版本校驗，讓必要官源檢查先完成。
+- Uncommitted changes / file ownership warnings: 本次只修改整合工作樹，未動到日常開發資料庫。
+- Next 1–3 concrete actions: 查核仍在執行的完整官源工作。選用公報 PDF 可在可正常取件的環境驗收，遠端 403 維持明示。
+- Exact reproduction steps: 依 [官方公報 PDF 回歸](TESTING.md#官方公報-pdf-回歸)重跑。
+
+## 完整官源 E2E 遠端驗收
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，工作樹起點 `9dddcef`，遠端完整官源驗收基準 `a303f44`。
+- Current milestone and status: 完整官源 E2E 已通過。整體交付 IN_PROGRESS。
+- Goal of this session: 等候既有遠端工作完成，核對真實語料、索引、跨瀏覽器研究流程的實際結果。
+- Files changed (with purpose): `docs/TESTING.md`、`docs/PROGRESS.md`、`docs/HANDOFF.md` 更新實測結果。
+- Database migrations added/applied: 無新增。遠端工作以隔離 Compose 執行既有遷移。
+- API/Schema changes: 無。
+- Commands actually run and results: `gh run watch 46077504467 --exit-status` 和 `gh run view` 核對終態與紀錄。[完整官源 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46077504467)成功。CPU 索引耗時 36 分 24 秒，完成 117 個官方版本及 1,624 筆向量。兩個官方語意 API 固定案例皆排第 1。Playwright 各組相加共 34 項通過，涵蓋 PWA、號碼查詢、全文研究及私人報告、版本分頁與重排序及法律異動。部署限流通過。
+- Tests NOT run and reason: 本次沒有產品程式碼改動。此工作未啟用選用的官方公報 PDF 下載，遠端該選項另有 403 紀錄。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 核對 [固定官方樣本](TESTING.md#自動建立固定官方樣本)的遠端雜湊、匯入與檢索結果。此次來源為先前已固定雜湊的官方快取。
+- Known bugs / risks / blockers: 正式主機及 34 組人工相關性複核仍待。最新整合分支另有通過的一般 CI 與官源基礎流程，完整遠端結果限於上列驗收修訂。
+- Decisions made (ADR links): 沿用原執行至終態，保留實測耗時與檢查範圍。
+- Uncommitted changes / file ownership warnings: 只更新整合工作樹的驗收文件，未改動日常資料庫。
+- Next 1–3 concrete actions: 人工相關性複核完成後重跑正式評估，並在目標環境驗收外部部署。選用的公報 PDF 到可正常取件的環境重驗。
+- Exact reproduction steps: 在 GitHub `Official patent E2E` 選 `coverage=full`、`gazette_pdf=false`。檢查語意索引、官方搜尋 API、Playwright 各組與部署限流結果。
+
+## 官方公告優先權
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `b2041a0`。
+- Current milestone and status: 官源優先權儲存、回溯和瀏覽器操作通過隔離驗收。整體交付 IN_PROGRESS。
+- Goal of this session: 補齊 Goal 的優先權資料模型，核對真實來源並透過專利詳情呈現。
+- Files changed (with purpose): `0023_patent_priorities.py`、`patentpub.py`、`grant_index.py`、`import_issue.py` 從公告匯入；`patents.py`、`provision_db_role.py` 與 `research.tsx` 提供讀取及呈現；擴充公告解析、PostgreSQL 權限及官源 Playwright 測試；更新來源、資料模型、操作、API 及驗收文件。
+- Database migrations added/applied: `0023_patent_priorities` 接在 `0022_legal_event_grant_types` 後。驗證空白及既有隔離資料庫。回填同一批次保持文件 UUID，降版會保護已匯入的優先權。
+- API/Schema changes: 專利詳情新增 `priorities`，含國別、日期、號碼、官方來源、精確 XPath 及 SHA-256。
+- Commands actually run and results: Ruff 格式、靜態檢查、前端 lint、型別及正式建置通過。Pytest 147 通過、11 預設跳過，另啟用隔離 PostgreSQL 後 11 項通過，均有既有 Starlette 警告。第 053028 期發明、新型及設計合計 15 筆優先權與原始 XML 相符。封裝部署官源 Playwright 5 項通過，涵蓋三種 Chromium 尺寸及桌面 Firefox、WebKit。 `f85c79b` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46082787440)及[基礎官源 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46082788078)也通過。
+- Tests NOT run and reason: 本次未重跑完整模型及官源工作。新增驗收聚焦公告優先權及其遷移。正式主機仍待。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 以已驗證雜湊的[第 053028 期官源 XML](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index.xml)核對。授權、格式及原檔規模見[來源紀錄](DATA_SOURCES.md#公告優先權)。
+- Known bugs / risks / blockers: 補入既有優先權須重跑相同公告匯入參數。第 024019 期公開索引未供應相同欄位。尚待正式環境與 34 組人工複核。
+- Decisions made (ADR links): 優先權依公告版本及來源保存，維持官方國別原文。使用文件與原件複合外鍵驗證來源關聯，未改動檢索及既有文件指紋。
+- Uncommitted changes / file ownership warnings: 本次測試使用獨立 Compose 專案和資料卷，日常資料庫未改動。
+- Next 1–3 concrete actions: 取得人工標註與目標主機後完成相關性重評及部署。
+- Exact reproduction steps: 依 [官方公告優先權驗收](TESTING.md#官方公告優先權驗收)重跑。
+
+## 私人搜尋歷史與條件重用
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `681d649`。
+- Current milestone and status: 歷史預覽及帶入表單已通過隔離驗收。整體交付 IN_PROGRESS。
+- Goal of this session: 可從私人歷史辨別並重用檢索條件，維持原保存紀錄。
+- Files changed (with purpose): `search_runs.py` 增加受限預覽，`research.tsx` 顯示歷史摘要並提供表單帶入，PostgreSQL 測試涵蓋預覽與所有權，官源 E2E 增加帶入檢查。更新 API、進度、測試及交接。
+- Database migrations added/applied: 無新增。隔離測試使用既有 `0023_patent_priorities`。
+- API/Schema changes: `GET /api/v1/search-runs` 新增向下相容的 `query_preview`。
+- Commands actually run and results: Ruff、前端 lint、型別檢查及正式建置通過。Pytest 147 passed、12 skipped，啟用隔離 PostgreSQL 後 12 項整合測試全數通過，1 則既有 Starlette 警告。封裝 Nginx 的 Chromium、Firefox、WebKit 各以真實 API 和 DEMO 保存資料通過預覽、帶入、提交與原始保存結果檢查。
+- Tests NOT run and reason: 本機官源回歸未完成，Docker Desktop 預設網段耗盡後改用獨立網段，已複製包含 `202639611` 的舊測試資料卷，啟動觀察仍未確認終態。新版遠端完整流程待驗收。
+- Data sources checked (exact URL/date) and license/access notes: 本輪測試沿用既有公開樣本快照與合成工作台資料，無新增 TIPO 下載。
+- Known bugs / risks / blockers: 34 組人工相關性評估、正式主機驗收仍待。帶入表單會取代目前可編輯的草稿。
+- Decisions made (ADR links): 歷史僅顯示受限摘要，原保存策略仍由其詳情顯示。使用者主動帶入後才更新表單。
+- Uncommitted changes / file ownership warnings: 僅修改整合分支。測試庫與日常開發庫隔離。
+- Next 1–3 concrete actions: 追蹤新版一般 CI 和完整官源 E2E。待人工評分、主機及網域就緒後完成交付驗收。
+- Exact reproduction steps: 依 [私人搜尋歷史與條件重用](TESTING.md#私人搜尋歷史與條件重用)重跑，官源版本使用 `PATENTSCOPE_E2E_TIPO=1`。
+
+## 一般 CI 首頁載入回歸
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `89d991f`。
+- Current milestone and status: 已診斷並調整一般 CI，新版遠端通過。整體交付 IN_PROGRESS。
+- Goal of this session: 釐清偶發空白首頁並減少測試啟動期間的容器網路變動。
+- Files changed (with purpose): `.github/workflows/ci.yml` 將背景程序啟動移到一般 Playwright 之後。更新進度、測試及交接。
+- Database migrations added/applied: 無新增。
+- API/Schema changes: 無。
+- Commands actually run and results: `gh run download 46083175462` 取回 trace，確認 HTML 成功、兩個前端模組收到 `ERR_NETWORK_CHANGED`。`playwright.cmd test --list` 列出 12 項預設及 3 項待處理搜尋測試。`uv run --with pyyaml` 核對新版工作流程的執行順序，`git diff --check` 通過。 本機重跑桌面搜尋錯誤案例 6 項通過；`519fdd2` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46106443651)全數通過。
+- Tests NOT run and reason: 此次沒有產品程式碼異動，未另跑本機單元測試。`89d991f` 的完整官源 E2E [46106199884](https://github.com/Johnnnny0823/RAG/actions/runs/46106199884)仍在執行。
+- Data sources checked (exact URL/date) and license/access notes: 沒有新增取件。
+- Known bugs / risks / blockers: 單次 trace 無法確定 runner 網路變化來源。正式主機及 34 組人工相關性複核仍待。
+- Decisions made (ADR links): 保留原測試斷言與工作程序啟動檢查。瀏覽器測試與非必要的 worker 啟動錯開。
+- Uncommitted changes / file ownership warnings: 本次只修改整合分支。下載的 trace 存放於 Git 忽略目錄。
+- Next 1–3 concrete actions: 核對已在跑的完整官源 E2E。
+- Exact reproduction steps: 在一般 CI 觀察兩組瀏覽器步驟先完成，然後驗證工作程序啟動及 HTTPS 部署。若失敗，沿用 [首頁載入診斷](TESTING.md#一般-ci-首頁載入回歸)。
+
+## 資料庫就緒檢查
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `82ac099`。
+- Current milestone and status: 就緒誤判已修正並通過真實 PostgreSQL 回歸。整體交付 IN_PROGRESS。
+- Goal of this session: 就緒狀態要反映 pgvector 和 API 所需資料表的可用性。
+- Files changed (with purpose): `services/api/db.py` 擴充 readiness 的資料庫查詢，`tests/integration/test_postgresql.py` 驗證缺表和權限不足。更新 API、進度、測試及交接文件。
+- Database migrations added/applied: 無新增。沿用隔離 PostgreSQL `0023_patent_priorities`，執行帳號的既有權限沒有變更。
+- API/Schema changes: `GET /api/v1/ready` 增加表及 schema 讀取檢查，保留既有成功及錯誤結構。
+- Commands actually run and results: 新回歸先重現缺表及權限不足各錯回 200。修正後 `pytest -q tests/integration` 14 項通過，預設 pytest 147 項通過、14 項預設跳過，均有既有 Starlette 警告。Ruff 格式及 lint 通過。以同一隔離庫測 25 次就緒查詢，中位數 28.34 毫秒。`0199ddd` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46107072790)全數通過。
+- Tests NOT run and reason: 本次未重跑本機完整瀏覽器與模型工作。上一版工作台的完整官源 E2E 仍在進行。
+- Data sources checked (exact URL/date) and license/access notes: 此輪無新增 TIPO 取件。
+- Known bugs / risks / blockers: 就緒檢查覆蓋讀取與向量運算，完整移轉版本仍由 Alembic 和 CI 遷移測試查核。正式主機及 34 組人工評估仍待。
+- Decisions made (ADR links): 從既有角色資料表清單共用就緒檢查範圍。資料表狀況不包含於 HTTP 錯誤本文。
+- Uncommitted changes / file ownership warnings: 只修改整合分支，資料庫測試均在隔離 PostgreSQL。
+- Next 1–3 concrete actions: 追蹤上版完整官源 E2E。等待人工評估及目標部署環境。
+- Exact reproduction steps: 依 [資料庫就緒檢查](TESTING.md#資料庫就緒檢查) 執行。
+
+## 官源公報 PDF 離線匯入
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `a55520d`。
+- Current milestone and status: 官源 PDF 首次離線匯入通過隔離驗收。整體交付 IN_PROGRESS。
+- Goal of this session: 部署環境無法即時下載時，可用合法保存的原始官源資料建立附件。
+- Files changed (with purpose): `services/ingestion/gazette_pdf.py` 新增離線首次匯入，`tests/test_gazette_pdf.py` 驗證雜湊及不呼叫 TIPO，更新 SETUP、TESTING、PROGRESS、HANDOFF。
+- Database migrations added/applied: 無新增，使用隔離 `0023_patent_priorities`。既有資料庫及附件格式相容。
+- API/Schema changes: 無。CLI 新增 `--archive-case` 及 `--archive-pdf`，與 `--expected-sha256` 搭配。
+- Commands actually run and results: Ruff 格式及 lint 通過，pytest 148 通過、14 預設跳過，1 則既有 Starlette 警告。以兩份實際官源原件測預覽、附加兩次、重建索引、錯版與雜湊拒絕。API 核對兩份首頁可查、2 與 9 頁及各 13 項 XML 請求項未改。相關 Playwright 5 項通過。
+- Tests NOT run and reason: 遠端即時 PDF 取件未重跑，仍保留 403 紀錄。完整官源 E2E 仍在既有流程執行。流程此次不依賴新遷移。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 核對 [公開個案 PDF](https://cloud.tipo.gov.tw/S220/downloads/invention/pub024019/pdfdata/114106690.pdf)及[公告個案 PDF](https://cloud.tipo.gov.tw/S220/downloads/patent/isu053028/pdfdata/114106690.pdf)和對應個案 JSON。授權、識別及雜湊見 [來源紀錄](DATA_SOURCES.md#發明公告公報個案-pdf)。
+- Known bugs / risks / blockers: 來源端即時取件仍可能回傳 403。離線匯入以前仍須取得可核對的官源原件與既定雜湊。人工複核及外部部署仍待。
+- Decisions made (ADR links): 沿用既有官方 URL 合約、原件雜湊、版本及 PDF 首頁身份驗證。維持在線匯入與資料庫附件重建的既有流程。
+- Uncommitted changes / file ownership warnings: 驗收檔案放在 Git 忽略目錄，資料庫只使用隔離測試庫。
+- Next 1–3 concrete actions: 關注一般 CI 與既有完整官源 E2E，待標註與目標環境就緒再驗收交付。
+- Exact reproduction steps: 依 [官源公報 PDF 首次離線匯入](TESTING.md#官源公報-pdf-首次離線匯入)操作。
+
+## 本機模型用量量測
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `f200dd9`。
+- Current milestone and status: 四種檢索的本機模型用量已實測。整體交付 IN_PROGRESS。
+- Goal of this session: 補齊可重現的檢索成本觀測，核對每種模式使用的本機模型呼叫。
+- Files changed (with purpose): 新增 `scripts/benchmark_model_usage.py`，記錄模型實際請求與回傳用量，更新 EVALUATION、TESTING、PROGRESS、HANDOFF。
+- Database migrations added/applied: 無。隔離資料庫重建 11 版本的詞彙及語意索引，分別有 104 個片段與 106 筆向量。
+- API/Schema changes: 無。
+- Commands actually run and results: Ruff 及 pytest 通過（148 通過、14 預設跳過、1 則既有警告）。`python -m scripts.benchmark_model_usage --repeats 3` 四種模式共 12 次，逐次核對模型呼叫、耗時與 token。詞彙沒有模型呼叫，向量和混合各 1 次嵌入，重排另加 1 次生成。離線 PDF 上一版的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46107767098)通過。
+- Tests NOT run and reason: 用量工具不更動產品流程，本次未重跑本機瀏覽器。上版完整官源工作仍在建置語意索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 使用[既有官方保存原件](TESTING.md#官源公報-pdf-首次離線匯入)重建索引，沒有新取件。
+- Known bugs / risks / blockers: 未量測電費、折舊或目標環境金額。34 組人工評分及目標主機仍待。
+- Decisions made (ADR links): 只記錄實際模型呼叫、可得 token 值及耗時。量測繞過 HTTP，以相同的後端檢索程式執行。
+- Uncommitted changes / file ownership warnings: 本機 JSON 保存在 `.patent-data/official-model-usage-20261128.json`，未把測試語料或模型物件加入版本庫。
+- Next 1–3 concrete actions: 追蹤完整官源工作。取得人工評分、主機權限與網域設定後完成正式驗收。
+- Exact reproduction steps: 使用 [本機模型用量](EVALUATION.md#2026-11-28-本機模型用量) 所列樣本、模型與指令。
+
+## 交付審查草稿
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，開立草稿時為 `0e1c09c`，目標 `main` 為 `3c4bbbc`。
+- Current milestone and status: 可審查的整合差異已建立。整體交付 IN_PROGRESS。
+- Goal of this session: 將整合分支、實測證據與交付限制彙整至同一處供審查。
+- Files changed (with purpose): `docs/PROGRESS.md` 及 `docs/HANDOFF.md` 記錄審查入口。另建立 [GitHub Draft PR #1](https://github.com/Johnnnny0823/RAG/pull/1)。
+- Database migrations added/applied: 無新增。
+- API/Schema changes: 無。
+- Commands actually run and results: `git rev-list --left-right --count origin/main...HEAD` 在開立時顯示 `0 108`。`gh pr view 1` 確認草稿、來源分支、目標 `main` 及 157 個更動檔案。以 GitHub API 與 `git fetch --no-auto-maintenance` 核對 `main` 為 `3c4bbbc`。一般 `git fetch` 的本機自動重整曾遇 pack index 權限錯誤，停用該次自動維護後取件成功。
+- Tests NOT run and reason: 本次只有交付文件及草稿異動，未另跑產品測試。建立時分支與 PR 的一般 CI 仍在執行，既有完整官源工作也仍在執行。
+- Data sources checked (exact URL/date) and license/access notes: 此次沒有新增官方取件。
+- Known bugs / risks / blockers: 34 組人工相關性評分、目標主機驗收、最新完整官源工作仍待。PR 為草稿，尚未合併。
+- Decisions made (ADR links): 從獨立整合分支發起同一個交付審查，以 PR 顯示差異及驗收證據。
+- Uncommitted changes / file ownership warnings: 只更新整合分支，遠端 `main` 維持原 SHA。
+- Next 1–3 concrete actions: 核對新的 PR 檢查及完整官源結果。完成使用者人工相關性及目標環境驗收後再評估交付。
+- Exact reproduction steps: 開啟 [審查草稿](https://github.com/Johnnnny0823/RAG/pull/1)，由其 Evidence 連結查閱對應版本測試。
+
+## 官源歷史重用與 PDF 回歸
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，本機驗收 `68f97b8`。GitHub Actions 完整官源驗收 `89d991f`。
+- Current milestone and status: 歷史重用與報告的官源 E2E 已通過。整體交付 IN_PROGRESS。
+- Goal of this session: 從真實官源及目前整合程式完成工作台、引證與報告回歸。
+- Files changed (with purpose): 更新 `docs/TESTING.md`、`docs/PROGRESS.md`、`docs/HANDOFF.md` 的實測紀錄及[草稿審查](https://github.com/Johnnnny0823/RAG/pull/1)。
+- Database migrations added/applied: 無新增，本機沿用隔離庫 `0023_patent_priorities`。
+- API/Schema changes: 無。
+- Commands actually run and results: [完整官源工作](https://github.com/Johnnnny0823/RAG/actions/runs/46106199884)通過，建成 117 版本及 1,624 向量、Playwright 34 項。`68f97b8` 的 PR 一般 CI 與分支一般 CI 均通過。本機補入 `202639611` 全文，索引多 157 條向量。Vite、FastAPI、背景程序與 Ollama 啟動後，桌面及手機模擬的 `tipo-research.spec.ts` 各通過。首次兩項斷言通過但 HTML reporter 目錄發生 Windows `EPERM`，改用獨立輸出目錄重跑兩項全過，退出碼 0 且產物存在。
+- Tests NOT run and reason: 本次完整官源工作未選用即時公報 PDF，該來源的 403 保留於另一次驗收。未在目標主機測試。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 重驗 `202639611` 的[第 024019 期官方全文](ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639611/113133932-A0304.xml)本機保存原件及已知雜湊。未重新下載。授權與涵蓋見 DATA_SOURCES。
+- Known bugs / risks / blockers: 正式目標主機、網域與 34 組人工相關性複核仍待。
+- Decisions made (ADR links): 保留本機與遠端驗收的修訂與語料界線，未改工作台原始碼。
+- Uncommitted changes / file ownership warnings: 瀏覽器產物放在本機 Git 忽略目錄。三個本機臨時服務已停止，測試帳號已刪除。
+- Next 1–3 concrete actions: 取得正式部署環境與人工評分後完成交付驗收。
+- Exact reproduction steps: 依[官源歷史重用與 PDF 回歸](TESTING.md#官源歷史重用與-pdf-回歸)執行。

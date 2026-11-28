@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import JSONResponse
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel
+from sqlalchemy.engine import Connection
 from sqlalchemy.exc import SQLAlchemyError
 
 from services.api.db import engine
@@ -17,6 +18,7 @@ from services.api.projects import project_missing
 from services.api.patents import (
     HybridPatentHit,
     HybridSearchRequest,
+    HybridSearchResults,
     PatentErrorEnvelope,
     PatentRoute,
     api_error,
@@ -39,6 +41,10 @@ class SavedRun(BaseModel):
     project_id: UUID | None = None
 
 
+class SavedRunSummary(SavedRun):
+    query_preview: str | None
+
+
 class ProjectAssignment(BaseModel):
     project_id: UUID | None
 
@@ -50,50 +56,65 @@ class RunDetails(SavedRun):
     comparisons: list[ComparisonResponse]
 
 
-@router.post("", response_model=SavedRun, status_code=201)
+@router.post(
+    "",
+    response_model=SavedRun,
+    status_code=201,
+    responses={429: {"model": PatentErrorEnvelope}},
+)
 def save_search(request: HybridSearchRequest, account: Owner, response: Response):
     result = run_hybrid(request, full_snapshot=True)
     if isinstance(result, JSONResponse):
         return result
-    settings = result.model_dump(
-        mode="json", exclude={"items", "limit", "offset", "has_more"}
-    )
     try:
         with engine.begin() as conn:
-            run = (
-                conn.exec_driver_sql(
-                    """INSERT INTO search_runs (user_id,request,settings) VALUES (%s,%s,%s)
-                   RETURNING id, created_at""",
-                    (
-                        account.id,
-                        Jsonb(request.model_dump(mode="json")),
-                        Jsonb(settings),
-                    ),
-                )
-                .mappings()
-                .one()
-            )
-            if result.items:
-                conn.exec_driver_sql(
-                    """INSERT INTO search_run_candidates (run_id, position, document_id, result)
-                       VALUES (%s,%s,%s,%s)""",
-                    [
-                        (
-                            run["id"],
-                            position,
-                            hit.document_id,
-                            Jsonb(hit.model_dump(mode="json")),
-                        )
-                        for position, hit in enumerate(result.items, 1)
-                    ],
-                )
+            run = persist_search(conn, account.id, request, result)
     except SQLAlchemyError:
         return unavailable()
     response.headers["Cache-Control"] = "no-store"
+    return run
+
+
+def persist_search(
+    conn: Connection,
+    user_id: UUID,
+    request: HybridSearchRequest,
+    result: HybridSearchResults,
+) -> SavedRun:
+    settings = result.model_dump(
+        mode="json", exclude={"items", "limit", "offset", "has_more"}
+    )
+    run = (
+        conn.exec_driver_sql(
+            """INSERT INTO search_runs (user_id,request,settings) VALUES (%s,%s,%s)
+           RETURNING id, created_at""",
+            (
+                user_id,
+                Jsonb(request.model_dump(mode="json")),
+                Jsonb(settings),
+            ),
+        )
+        .mappings()
+        .one()
+    )
+    if result.items:
+        conn.exec_driver_sql(
+            """INSERT INTO search_run_candidates (run_id, position, document_id, result)
+               VALUES (%s,%s,%s,%s)""",
+            [
+                (
+                    run["id"],
+                    position,
+                    hit.document_id,
+                    Jsonb(hit.model_dump(mode="json")),
+                )
+                for position, hit in enumerate(result.items, 1)
+            ],
+        )
     return SavedRun.model_validate(run)
 
 
-@router.get("", response_model=list[SavedRun])
+@router.get("", response_model=list[SavedRunSummary])
 def list_searches(
     account: Owner,
     response: Response,
@@ -114,7 +135,13 @@ def list_searches(
                 return project_missing()
             rows = (
                 conn.exec_driver_sql(
-                    """SELECT id, created_at, project_id FROM search_runs WHERE user_id=%s
+                    """SELECT id, created_at, project_id,
+                      CASE WHEN jsonb_typeof(request->'query') = 'string' THEN
+                        CASE WHEN length(request->>'query') > 100
+                             THEN left(request->>'query', 99) || '…'
+                             ELSE NULLIF(request->>'query', '') END
+                      END AS query_preview
+                   FROM search_runs WHERE user_id=%s
                    AND (%s::uuid IS NULL OR project_id=%s)
                    ORDER BY created_at DESC, id LIMIT %s OFFSET %s""",
                     (account.id, project_id, project_id, limit, offset),
@@ -125,7 +152,7 @@ def list_searches(
     except SQLAlchemyError:
         return unavailable()
     response.headers["Cache-Control"] = "no-store"
-    return [SavedRun.model_validate(row) for row in rows]
+    return [SavedRunSummary.model_validate(row) for row in rows]
 
 
 @router.patch("/{run_id}/project", response_model=SavedRun)
@@ -162,6 +189,11 @@ def assign_project(
 
 @router.get("/{run_id}", response_model=RunDetails)
 def load_search(run_id: UUID, account: Owner, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return read_saved_search(run_id, account.id)
+
+
+def read_saved_search(run_id: UUID, user_id: UUID) -> RunDetails | JSONResponse:
     try:
         with engine.connect().execution_options(
             isolation_level="REPEATABLE READ"
@@ -170,7 +202,7 @@ def load_search(run_id: UUID, account: Owner, response: Response):
                 conn.exec_driver_sql(
                     """SELECT id, created_at, project_id, request, settings
                        FROM search_runs WHERE id=%s AND user_id=%s""",
-                    (run_id, account.id),
+                    (run_id, user_id),
                 )
                 .mappings()
                 .one_or_none()
@@ -181,7 +213,7 @@ def load_search(run_id: UUID, account: Owner, response: Response):
                 conn.exec_driver_sql(
                     """SELECT c.result FROM search_run_candidates c JOIN search_runs r ON r.id=c.run_id
                    WHERE r.id=%s AND r.user_id=%s ORDER BY c.position""",
-                    (run_id, account.id),
+                    (run_id, user_id),
                 )
                 .scalars()
                 .all()
@@ -190,14 +222,13 @@ def load_search(run_id: UUID, account: Owner, response: Response):
                 conn.exec_driver_sql(
                     """SELECT c.result FROM search_run_comparisons c JOIN search_runs r ON r.id=c.run_id
                    WHERE r.id=%s AND r.user_id=%s ORDER BY c.document_id""",
-                    (run_id, account.id),
+                    (run_id, user_id),
                 )
                 .scalars()
                 .all()
             )
     except SQLAlchemyError:
         return unavailable()
-    response.headers["Cache-Control"] = "no-store"
     return RunDetails.model_validate(
         {**run, "items": results, "comparisons": comparisons}
     )
@@ -218,7 +249,11 @@ def delete_search(run_id: UUID, account: Owner):
     return Response(status_code=204, headers={"Cache-Control": "no-store"})
 
 
-@router.post("/{run_id}/comparisons/{document_id}", response_model=ComparisonResponse)
+@router.post(
+    "/{run_id}/comparisons/{document_id}",
+    response_model=ComparisonResponse,
+    responses={429: {"model": PatentErrorEnvelope}},
+)
 def save_comparison(
     run_id: UUID, document_id: UUID, account: Owner, response: Response
 ):

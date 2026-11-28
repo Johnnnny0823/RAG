@@ -5,7 +5,7 @@ import json
 from urllib.request import Request, urlopen
 
 
-def smoke(base_url: str) -> None:
+def smoke(base_url: str, *, official_e2e: bool = False) -> None:
     def search(query, **filters):
         payload = json.dumps({"query": query, **filters}).encode()
         request = Request(
@@ -19,9 +19,21 @@ def smoke(base_url: str) -> None:
     cases = [
         ("動態導通電阻", "G01R", "202640162"),
         ("動態導通電阻", "Ｇ０１Ｒ ２７／０２", "202640162"),
-        ("氣凝膠隔熱片", "B01J", "202637274"),
-        ("aerogel thermal insulation sheet", "B01J", "202637274"),
     ]
+    if official_e2e:
+        cases.extend(
+            [
+                ("光硬化性樹脂組成物", "C08F", "202639611"),
+                ("photocurable resin composition", "C08F", "202639611"),
+            ]
+        )
+    else:
+        cases.extend(
+            [
+                ("氣凝膠隔熱片", "B01J", "202637274"),
+                ("aerogel thermal insulation sheet", "B01J", "202637274"),
+            ]
+        )
     for query, ipc, expected in cases:
         result = search(query, ipc=ipc, limit=10)
         assert result["tokenizer_version"] == "han-bigram-v1"
@@ -44,4 +56,6 @@ def smoke(base_url: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--api", default="http://127.0.0.1:18004")
-    smoke(parser.parse_args().api)
+    parser.add_argument("--official-e2e", action="store_true")
+    args = parser.parse_args()
+    smoke(args.api, official_e2e=args.official_e2e)

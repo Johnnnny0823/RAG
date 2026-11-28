@@ -5,17 +5,17 @@ on:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       COMPOSE_PROJECT_NAME: patentscope-ci
       POSTGRES_DB: patentscope_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -31,20 +31,37 @@ jobs:
       - run: npx playwright install --with-deps chromium
         working-directory: apps/web
       - run: cp .env.example .env
-      - run: docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build --wait --wait-timeout 180
+      - run: docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build --wait --wait-timeout 180 api web
       - run: python -m pytest -q tests/integration
         env:
           PATENTSCOPE_PG_INTEGRATION: "1"
           PGHOST: 127.0.0.1
           PGPORT: "15432"
           PGDATABASE: patentscope_test
-          PGUSER: patentscope
-          PGPASSWORD: dev_only_change_me
+          PGUSER: patentscope_api
+          PGPASSWORD: dev_api_only_change_me
+          PATENTSCOPE_PG_ADMIN_USER: patentscope
+          PATENTSCOPE_PG_ADMIN_PASSWORD: dev_only_change_me
       - run: python scripts/smoke.py
+      - name: Verify pending search can be reopened before worker starts
+        run: npm run test:e2e --prefix apps/web -- search-resume.spec.ts
+        env:
+          PATENTSCOPE_E2E_PENDING_SEARCH: "1"
+          PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
       - run: npm run test:e2e --prefix apps/web
         env:
           PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
-      - uses: actions/upload-artifact@v5
+      - name: Verify the search worker starts
+        run: docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build --wait search-worker
+      - name: Verify HTTPS deployment
+        run: |
+          tls_dir="$(mktemp -d)"
+          export TLS_CERTIFICATE_FILE="$tls_dir/cert.pem"
+          export TLS_KEY_FILE="$tls_dir/key.pem"
+          openssl req -x509 -newkey rsa:2048 -noenc -days 1 -subj /CN=localhost -addext subjectAltName=IP:127.0.0.1 -out "$TLS_CERTIFICATE_FILE" -keyout "$TLS_KEY_FILE"
+          docker compose -f docker-compose.yml -f docker-compose.deploy.yml -f docker-compose.tls.yml up -d --build --wait --wait-timeout 180 web
+          python scripts/smoke.py --api https://127.0.0.1:18443 --web https://127.0.0.1:18443 --deployment --deployment-rate-limit --ca-file "$TLS_CERTIFICATE_FILE"
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: playwright-diagnostics

@@ -6,13 +6,16 @@ if (!baseURL || !/^http:\/\/127\.0\.0\.1:\d+$/.test(baseURL)) {
 }
 
 const suite = process.env.PATENTSCOPE_E2E_TIPO;
-const officialTag = suite === "versions" ? /@versions/ : suite === "1" ? /@tipo/ : undefined;
+const suiteTag = suite === "versions" ? /@versions/ : suite === "grant-types" ? /@grant-types/ : suite === "derived-design" ? /@derived-design/ : suite === "dates" ? /@gazette/ : suite === "loc" ? /@loc/ : suite === "events" ? /@legal-events/ : suite === "grant-events" ? /@grant-events/ : suite === "1" ? /@tipo/ : undefined;
+const tag = process.env.PATENTSCOPE_E2E_PENDING_SEARCH === "1"
+  ? /@pending-search/
+  : process.env.PATENTSCOPE_E2E_DEPLOY === "1" ? /@packaged/ : suiteTag;
 
 export default defineConfig({
   testDir: "./e2e",
   workers: 1,
-  grep: officialTag,
-  grepInvert: officialTag ? undefined : /@tipo|@versions/,
+  grep: tag,
+  grepInvert: tag ? undefined : /@tipo|@versions|@grant-types|@derived-design|@gazette|@loc|@legal-events|@grant-events|@packaged|@pending-search/,
   reporter: [["list"], ["html", { open: "never" }]],
   use: { baseURL, trace: "retain-on-failure", screenshot: "only-on-failure" },
   projects: [

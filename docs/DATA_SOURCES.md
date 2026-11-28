@@ -24,6 +24,53 @@
 
 保存提供機關、資料集名稱、釋出年份與期別、授權網址、擷取時間與原檔雜湊。後續在詳情及報告呈現政府資料授權所需的顯名聲明。授權範圍不包括專利權及商標權；書目與公開說明書不提供即時法律狀態結論。樣本原檔含公開個人資料欄位，留在未追蹤的資料目錄，正式顯示與索引僅選取產品需要的欄位。 [官方授權及顯名聲明格式](https://data.gov.tw/license)
 
+### 同期新型與設計公告
+
+2026-11-27 重新查核 [TIPO 發布的資料集 15987](https://data.gov.tw/dataset/15987)，目錄列免費、每月更新及政府資料開放授權條款第 1 版。重讀第 053028 期先前由官方 FTPS 取得的 `PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index.xml`。原檔為 15,597,462 bytes，SHA-256 `60936a7ab763fbb8bd79b8a3071aa89d43da3ffe4ef65928734a9ddc70827a4a`，含 1,095 筆發明、349 筆新型及 196 筆設計公告。這些數字是完整來源索引筆數。
+
+隔離驗收選入新型 `M687984`（申請號 `114206949`，16 項請求項及 IPC `A63B59/00`）及設計 `D246917`（申請號 `112306158`）。設計樣本在此索引只有書目，請求項、摘要、說明書及分類欄位皆缺，系統保留空值。這一流程使用 15987 的 S01 索引，支援指定公告號匯入及詞彙索引。[設計說明書與圖式審查基準](https://www.tipo.gov.tw/tw/patents/999-60597.html)
+
+### 新型與設計個案說明書
+
+2026-11-27 按同年 [053030 期清單](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index_all.xml)取到兩份個案。另重新下載[同期封存索引](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index.xml)，16,606,541 bytes，SHA-256 `9bb410efd13450866eaa0bc34523fce8785c46d11ce7237efee4cd0c3b3727f0`。資料集 15987 的更新與授權條件見上節。
+
+| 版別 | 原檔、格式及驗收 |
+| --- | --- |
+| `M688679`，申請號 `114206535` | [個案 XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330M688679/114206535-A0305.xml)，72,760 bytes，SHA-256 `adef492f39db89c809115dd68d028cbff178a3634fbcf11f38de3ab0739c3093`，DTD `1.0.0`。核對 208 段說明書及 10 項請求項。 |
+| `D247328`，申請號 `113306657` | [個案 XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330D247328/113306657-A0305.xml)，4,689 bytes，SHA-256 `f8c18dc5cb114fc70bd54b38a4cd8ea97b57772adac3568603e88c36c3e83d18`，DTD `2.0.1`。核對 7 段說明書，原檔沒有請求項。 |
+
+兩案都保留獨立的 S01 版本及個案文字版本。`fulltext` 涵蓋本次驗證的個案說明書及來源提供的請求項。`M688679` 的個案 XML 另有 `lang=tw` 及 `lang=en` 的摘要。新版 `tipo-issue-2` 保留原文及 `/specification/abstract[1]/abstract-dtext[1]`、`/specification/abstract[2]/abstract-dtext[1]`，既有版本可繼續回查。新型與設計的選定法律異動已可匯入。新型及設計已有按類型選取的排程參數。全文自動補期仍待跨期驗證。
+
+### 新型與設計個案圖式
+
+2026-11-27 從上節個案 XML 的 `drawings/figure/img/@file` 解析個案目錄內的 `IMG-2/Draw` 路徑，經匿名 FTPS 實取下列兩件代表圖式。原檔 XML 標記 `img-format=tif`，實際傳回 JPEG。匯入前核對 JPEG 檔案標記、位元長度及已確認的 SHA-256。圖式沿用 [TIPO 資料集 15987](https://data.gov.tw/dataset/15987) 的更新及授權條件。[智財局 FTP 下載說明](https://cloud.tipo.gov.tw/S220/opdata/information/ftp)
+
+| 公告號 | XML 圖式位置 | 原件 |
+| --- | --- | --- |
+| `M688679` | `/specification/drawings/figure[3]/img[1]` | [JPEG](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330M688679/IMG-2/Draw/114206535-A0305-14-0003-5.JPG)，168,006 bytes，SHA-256 `f8501044f813b2d3881fad354fea3b0ad514776ceeb25eba9f105330c031e091` |
+| `D247328` | `/specification/drawings/figure[1]/img[1]` | [JPEG](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053030/5330D247328/IMG-2/Draw/113306657-A0305-14-0001-1.JPG)，50,699 bytes，SHA-256 `b5fccaeee7ef7896fae9e4c6e17408877c07ddcf3c6c55e39b0b10638a26de48` |
+
+圖式目前由操作員逐頁附加，支援符合已驗證路徑與格式、大小不超過 2 MiB 的 JPEG。圖式尚未納入向量索引及模型比對。
+
+### 新型與設計日期及 LOC 分類
+
+2026-11-27 核對第 053028 期的[官方完整書目](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053028/patent.xml)，23,778,073 bytes，SHA-256 `836c3c9db01099dfe38fa1d15e9e1d3116180126c02f5179ebcf17542c7bd5c8`。書目含 1,095 筆發明、349 筆新型及 196 筆設計。每一筆設計都提供 `classification-locarno/main-classification`，樣本版次皆為 `15`。來源為智財局發布，目錄列免費、每月更新及政府資料開放授權條款第 1 版。[官方資料集 15972](https://data.gov.tw/dataset/15972)
+
+固定驗收的 `D246917`／`112306158` 的申請日為 `2023-11-29`、公告日為 `2026-10-01`、LOC `13-99`；新型 `M687984`／`114206949` 的申請日為 `2025-07-02`、公告日同為 `2026-10-01`。有 12 筆設計書目的申請號帶 `D01`，解析保留尾碼。
+
+### 原設計及衍生設計的編號與來源
+
+2026-11-27 核對智財局編碼規則，衍生設計由九位原設計申請號加 `D` 及從 `01` 開始的兩位序號組成。第 053028 期書目與封存清單中的原設計 `114302318`（公告 `D246928`）和衍生設計 `114302318D01`（公告 `D246929`）保留為不同申請案。兩案依各自書目定位補入申請日 `2025-05-21`、公告日 `2026-10-01` 和第 15 版 LOC `26-06`。[智財局編號說明](https://www.tipo.gov.tw/tw/patents/546-7241.html)
+
+同一卷期的[清單](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index_all.xml)為 16,394,615 bytes，SHA-256 `03e60d4c62ac2f36b6d201d12b69735827db8cdc4d4a90d18f523eb645f7f39a`。清單指定的兩份個案 XML 都是 DTD `1.0.0`，各有一個說明書段落及零項請求項。個案目錄、識別與雜湊逐筆核對，沿用資料集 15987 的授權條件。[官方資料集](https://data.gov.tw/dataset/15987)
+
+| 公告號 | 個案原件 |
+| --- | --- |
+| `D246928` | [XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053028/5328D246928/114302318-A0305.xml)，2,902 bytes，SHA-256 `ad6b07bf406f57b216a590a09efde0c66586176213f323d418144695c756d608` |
+| `D246929` | [XML](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053028/5328D246929/114302318D01-A0305.xml)，2,936 bytes，SHA-256 `0f68a2e3b310bdbe5860b7fc8608201eb4f020a9cccefd2fe3ac5fe2f936a5b2` |
+
+`D246929` 個案的首張官方 [JPEG](ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053028/5328D246929/IMG-2/Draw/114302318D01-A0305-14-0001-1.JPG) 為 114,315 bytes，SHA-256 `7c05913e3c7256fdd5f2edc3e1e31a04678f2500e06138024e98be6293f9d399`，原文位置 `/specification/drawings/figure[1]/img[1]`。
+
 ## 公告期別的固定封存檔
 
 2026-11-10 以匿名 FTPS 列出官方目錄，確認 `專利說明書(1案1XML檔)` 的各期封存位於 `/PatentIsuRegSpecXMLA/<民國年>/PatentIsuRegSpecXMLA_<卷期>/`，115 年目錄當日有第 53 卷第 1 至 31 期。[第 53 卷第 28 期封存索引](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index.xml) 回傳 `226`，15,597,462 bytes 符合 `SIZE`，SHA-256 `60936a7ab763fbb8bd79b8a3071aa89d43da3ffe4ef65928734a9ddc70827a4a`。
@@ -33,3 +80,136 @@
 可重建語料另固定第 24 卷第 19 期 `index_all.xml` 及索引前 20 筆的個案說明書，各檔雜湊列於 [種子腳本](../scripts/seed_tipo_e2e.py)。這些雜湊來自 2026-11-09 驗收資料庫保存的原始物件紀錄。
 
 2026-11-10 重新以匿名 FTPS 取得第 24 卷第 19 期索引與公開案 `202639611` 個案 XML，兩者 SHA-256 均符合上列固定值。獨立 E2E 卷只匯入這一案，核對資料庫的 19 項請求項和 122 段說明書與封存 XML 一致。政府目錄當日仍標示每月更新、免費與政府資料開放授權條款第 1 版。[政府資料開放平臺](https://data.gov.tw/dataset/15996)
+
+## 在瀏覽器查閱官方文件
+
+2026-11-27 核對[專利公開資訊查詢](https://tiponet.tipo.gov.tw/S092_OUT/2022/out)。該頁可接受申請案號、公開號或公告號，[官方網站導覽](https://tiponet.tipo.gov.tw/S092_OUT/2022/sitemap)說明結果由查詢產生且未提供固定網址列表。專利詳情顯示應輸入的同版本文件號，使用者可自行到官方頁面查詢。此入口只導向官方網站，個案與可閱文件依智慧財產局的公開範圍而異。
+
+[TIPO 下載說明](https://cloud.tipo.gov.tw/S220/opdata/information/ftp)說明多數瀏覽器已停止支援 FTP。專利詳情可展開來源批次以取得完整 FTPS 位址、檔案 SHA-256 與原文位置。智慧財產局的發明網路公報及專利網路公報另有近半年卷期的 PDF 入口。[發明網路公報](https://cloud.tipo.gov.tw/S220/gazette/invention/sundry) · [專利網路公報](https://cloud.tipo.gov.tw/S220/gazette/patent)
+
+### 發明公開公報個案 PDF
+
+2026-11-27 實測發明網路公報個案請求。官方回應列出民國 115 年第 24 卷第 19 期、公開號 `202639611`、申請號 `113133932` 及 PDF 網址。直連回應為 `application/pdf`，5,824 bytes、1 頁，SHA-256 為 `cf6992639675e797291b4024b86b28c05550f1827d0af30993d0c67c010a7d1a`。用 pypdf 核對首頁欄標下的號碼。這是公報書目頁，可補充原件回溯，原本的請求項及說明書仍以個案 XML 為來源。[公報個案資料](https://cloud.tipo.gov.tw/S220/gazette/api/patents/laid-opens/cases/pubsud01/113133932) · [官方 PDF](https://cloud.tipo.gov.tw/S220/downloads/invention/pub024019/pdfdata/113133932.pdf)
+
+採用單案、人工指定版本的匯入方式。公報站按近期卷期開放，個案網址的保存期限、下載配額與長期批次介接待確認。公開前端連結直接指向 TIPO。使用時應依智財局政府網站資料開放宣告查核出處標註、例外與個資條件。[智財局政府網站資料開放宣告](https://www.tipo.gov.tw/tw/tipo1/36-17871.html)
+
+### 發明公告公報個案 PDF
+
+2026-11-27 核對同一申請案 `114106690` 的公開和公告兩份官方個案。公開 `202640162` 為第 24 卷第 19 期、2 頁、22,539 bytes、SHA-256 `20df47fe2d746383732d7d4878537c153919338c5735a267cf797bcce09f4dee`。公告 `I941082` 為第 53 卷第 28 期、9 頁、1,349,889 bytes、SHA-256 `7b9fd5dcb190a7108770a812999e556b5126f2d0333dcf3a914ed20c91f1a615`。公告首頁另外帶有公開編號，匯入時以公報類型及證書號欄標判定。此驗收實測發明公告，掃描辨識、其他專利種類及後續全文檢索仍待。[公開 PDF](https://cloud.tipo.gov.tw/S220/downloads/invention/pub024019/pdfdata/114106690.pdf) · [公告個案資料](https://cloud.tipo.gov.tw/S220/gazette/api/patents/grants/cases/sud00_1/114106690) · [公告 PDF](https://cloud.tipo.gov.tw/S220/downloads/patent/isu053028/pdfdata/114106690.pdf)
+
+## 公報書目的申請日、公開日與公告日
+
+2026-11-26 核對政府目錄與匿名 FTPS 封存檔。兩項資料由智慧財產局提供，政府目錄列免費、每月更新、政府資料開放授權條款第 1 版。FTPS 每秒與每日配額未確認。
+
+| 資料集 | 固定卷期與格式 | 下載驗證 | 可核對的範例 |
+| --- | --- | --- | --- |
+| [發明公開公報書目](https://data.gov.tw/dataset/9683) | [第 24 卷第 19 期 pubinvention.xml](ftps://ftp.tipo.gov.tw/PatentPubRegXMLB/115/PatentPubRegXMLB_024019/pubinvention.xml)，2,384 筆 | 17,322,532 bytes，`5eb3c531a3795e685f802289195da4f1779b8ca9eefef3e2f13ea8a85e634558` | `202639611`／`113133932`，公開 2026-10-01，申請 2024-09-06 |
+| [專利公告公報書目](https://data.gov.tw/dataset/15972) | [第 53 卷第 28 期 patent.xml](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053028/patent.xml)，1,640 筆，含 1,095 筆發明公告 | 23,778,073 bytes，`836c3c9db01099dfe38fa1d15e9e1d3116180126c02f5179ebcf17542c7bd5c8` | `I941082`／`114106690`，公告 2026-10-01，申請 2025-02-24 |
+
+`tipo-gazette-dates-1` 按同卷期、申請號及文件種類與編號對應已匯入版本。日期取 `application-reference/document-id/date` 與 `publication-reference/document-id/date`，把來源民國日曆轉成 PostgreSQL `date`。保留原始 XML、SHA-256 及書目 XPath。此來源用於日期補齊，缺少公報書目的既有版本仍可能無日期。
+
+## 最新發明公開卷期
+
+2026-11-26 透過 [TIPO S10 最新期索引](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10) 實際取得第 24 卷第 20 期，10,551,304 bytes、1,639 筆，SHA-256 `2f9a9744eb52eb8be24a79af4f106623e36432470f20afea45c3e0bff3cc70f0`。新版更新指令從所有書目核對 `volno` 及 `isuno`，拒絕卷期混合、筆數不符及空清單。實測匯入前 5 筆，在來源快照記錄原檔位置及雜湊。此次內容範圍為書目及摘要，公開全文另依個案來源處理。[政府目錄 15996](https://data.gov.tw/dataset/15996)
+
+同日經匿名 FTPS 取得[民國 115 年第 024020 期全文封存清單](ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024020/index_all.xml)，11,388,480 bytes，SHA-256 `82982e0f31582bc8cfc17916aa0d3acb68d601e0fd8802389aaa9e4825e51283`。以 S10 送出順序前兩案核對公開號、申請號與個案路徑，匯入 `202642194`（申請號 `114108947`，9 項請求項、62 段）及 `202642585`（申請號 `114112229`，10 項請求項、54 段）。保留原有書目版，另存全文版。此結果只驗證選取的兩案。兩份原檔雜湊分別為 `bfa7ea9f7b45b69b7bb6cb2d7d80420f317db5c3e37f3f4e82cf4bdb41f564c1`、`4e9822c0fca6678c634e54998f4f08b353f37539911ff9b0ae0452ce3aec51fe`。
+
+## 最新發明公告卷期
+
+2026-11-26 從 [TIPO S01 最新公告索引](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01) 實際取得第 53 卷第 30 期，16,606,166 bytes，共 1,680 筆，其中 1,162 筆證書號有發明前綴 `I`。SHA-256 為 `fbfc4c7903e0b08fefaed6bad94240b8e7f4e680c9be80ead5ae31a6782b1d28`。驗收所選公告 `I942697`（申請號 `108112538`）有 38 項請求項，`I942698`（申請號 `108125866`）有 24 項，均核對索引原文及位置。驗收的公告內容範圍為書目及請求項。[政府目錄 15987](https://data.gov.tw/dataset/15987)
+
+同日核對 [第 053030 期公告全文清單](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index_all.xml)，17,429,839 bytes，共 1,680 筆，SHA-256 `d6814fd1679b4cc41ada290bad698b33d85498bcab815d7b2bc90c0cb43e4fea`。檔內的 `specification-files/@xml-file` 路徑可配合 `PatentPubXML/115` 取得個案。抽查 `PatentIsuRegSpecXMLA` 目錄自身以申請號命名的 XML，包含書目、附圖及請求項。以官方清單取得的 `PatentPubXML` 個案則含摘要、說明書與請求項。本次用 `I942741` 和 `I942850` 驗證，原檔雜湊分別為 `715c5d69af4386d4f2509c1a8d84176ede723dbffc2f1ea6023ee3a1dcc7fa65` 與 `5cfd8244f675f12a984c2f5a227700104ef833299cb245dda088ea5d42e3efee`。兩種來源的部分請求項文字有異，系統分版本保存並在全文版引用同一個個案來源。
+
+## 最新卷期的日期公報
+
+2026-11-26 以匿名 FTPS 取得以下同期書目，沿用[日期公報資料集](#公報書目的申請日公開日與公告日)所載政府資料開放授權。完整解析時逐筆核對卷期、申請號、文件號與民國日期。來源年份以公報所載的公開或公告日期驗證。
+
+| 來源 | 檔案資訊 | 首筆發明 |
+| --- | --- | --- |
+| [發明公開 024020](ftps://ftp.tipo.gov.tw/PatentPubRegXMLB/115/PatentPubRegXMLB_024020/pubinvention.xml) | 11,975,072 bytes，1,639 筆發明，SHA-256 `32fe19989646714d2dad592cf6344d237f6bab990792d1972bfdc854c1ee3682` | `202642194`，申請日 2025-03-11，公開日 2026-10-16。 |
+| [發明公告 053030](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053030/patent.xml) | 25,347,635 bytes，1,162 筆發明，SHA-256 `d2ac1042f7cbcf7917065009626b6eccd868c55410a3f055472ea3e3146ae2c8` | `I942697`，申請日 2019-04-10，公告日 2026-10-21。 |
+
+## 封存卷期目錄
+
+2026-11-26 以匿名 FTPS 進入民國 115 年的 `/InventionPubXML/115`、`/PatentIsuRegSpecXMLA/115` 與 `/PatentIsuModXML/115`。在目錄內執行 `LIST` 均取得 `226`，分別列出 20 個公開期別（`024001`～`024020`）、33 個公告期別（`053001`～`053033`）以及 33 個異動期別（`053001`～`053033`）。同一檢查使用 `NLST` 回傳空清單。目錄可供確認封存範圍，卷期及檔案內容仍以下載後的 XML 驗證為準。S01 同日回傳 `053030`，低於公告封存目錄的最大期別 `053033`。目錄修改時間不作專利公告日期。
+
+| 實際取得的索引 | 檔案與發明筆數 | 驗收樣本 |
+| --- | --- | --- |
+| [公開 024018](ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024018/index.xml) | 12,667,509 bytes，1,984 筆，SHA-256 `96c0ac33d8ece8da926dec02432d54ff1dca46678c90adb4d84cbf822df2be3c` | `202637274` 書目與摘要。 |
+| [公告 053031](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053031/index.xml) | 17,400,928 bytes，1,256 筆，SHA-256 `c0abbd28f7635ad326bf1f5391c2b3033e1dc0629df4757ea59fb99afa024176` | `I943859` 的 20 項請求項。 |
+| [公告 053032](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053032/index.xml) | 17,656,938 bytes，1,242 筆，SHA-256 `242b4fa3b5408a5c8cd06434a7e01e2c64a4d28479975081e1f617622c75aa30` | `I945115` 的 20 項請求項。 |
+
+## 專利權異動公報
+
+2026-11-26 查核[專利權異動公報（15974）](https://data.gov.tw/dataset/15974)。提供者經濟部智慧財產局，目錄列每月更新、免費及政府資料開放授權條款第 1 版。[最新期索引 P10](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/P10) 實得 1,662 筆、214,092 bytes，SHA-256 `3945c07fd8f2b286e00dac8d46c67faf849c998f3c89009b3eec75ebc2226299`。索引列申請號、證書號及異動種類，日期及更正欄位須讀該卷期的類別 XML。FTPS 速率限制未確認。
+
+同日重抓 P10 的雜湊一致。根元素 `SundryData` 與 `Sundry` 記錄缺少卷期欄位，須核對封存索引才能定位卷期。
+
+同日另以 `LIST` 找到[第 053033 期封存索引](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053033/index.xml)。用匿名 FTPS 取得後與 P10 回應逐位元相同，大小與 SHA-256 均為上列值。定期更新用此方法核對卷期，再以申請號及證書號的出現次數核對類別 XML。實測 `sud08` 的 838 筆及 `sud24` 的 31 筆發明異動均與 P10 一致。
+
+第 53 卷第 33 期的匿名 FTPS 封存實測如下。
+
+| 類別 | 原檔大小與 SHA-256 | 可取得欄位 |
+| --- | --- | --- |
+| [消滅公告 sud08](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053033/sud08.xml) | 469,608 bytes，`213b98e7337a0f99b74b9eff59ce0d92f0f27ccecf665892f8ee48b8423bd964` | 1,482 筆，含 838 筆發明。申請號、證書號、卷期、消滅日與原因。 |
+| [公報更正 sud24](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053033/sud24.xml) | 41,156 bytes，`97993734e1cd87b54537069ded8593a02615d7aa09442779a47a688ccffc16a3` | 35 筆，含 31 筆發明。申請號、證書號、卷期與更正欄位。公開 API 只使用欄位名稱。 |
+
+`tipo-sundry-events-1` 保留原檔、雜湊及 XML 位置，解析時移除完全符合官方樣本的外部 DTD 宣告，其他 DTD 一律拒絕。僅將可核對申請號的發明事件關聯至已匯入的臺灣案件。事件表示公報記載的歷史事項，來源涵蓋範圍以已匯入期別為限。
+
+2026-11-26 交叉核對 [第 52 卷第 6 期公告索引](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/114/PatentIsuRegSpecXMLA_052006/index.xml) 與第 53 卷第 33 期消滅公告。公告索引有 1,780 筆，16,989,536 bytes，SHA-256 `99cde994594aa622cf9469ecb6541403b3567b4597342a6915c35ce5dab526f8`。證書 `I874215` 和申請號 `113117471` 在兩個原檔一致。公告索引提供 9 項請求項，消滅公報的第 1447 筆記載消滅日 2026-02-21，原因為「未依限繳費」。公告索引屬官方卷期彙整 XML，匯入器允許 32 MiB 上限。個案說明書維持 16 MiB 上限。
+
+[專利權狀態異動資料（發明，30126）](https://data.gov.tw/dataset/30126) 是另一資料來源，官方 [OpenAPI 文件](https://cloud.tipo.gov.tw/S220/opdata/api/file/oas) 列 `/PatentRights` 及 `tk` 欄位。任意案件的最新狀態查詢與授權憑證仍待驗證。此階段使用匿名可取得、可保留原文的固定卷期事件。
+
+### 第 053032 期異動封存
+
+2026-11-26 實測民國 115 年第 053032 期的匿名 FTPS 封存。[索引](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053032/index.xml) 大小為 250,333 bytes，SHA-256 `864b6d1837000ba92354018bc6ea647e9e5050cbe86cdbfda0cb10475ba4575b`。[消滅公告 `sud08`](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053032/sud08.xml) 有 982 筆發明事件，SHA-256 `6b9ccbdcf7d4966247c5de51b5bc2c60371c3badb58f7b6ec93e64801a7cff1a`。[更正公報 `sud24`](ftps://ftp.tipo.gov.tw/PatentIsuModXML/115/PatentIsuModXML_053032/sud24.xml) 有 33 筆發明事件，SHA-256 `624e09e1e2b820778f52722ba3589c9f653ae2423c6e181b0a4c033fb4eafa16`。兩類原檔的發明事件身分及次數均與封存索引一致。
+
+## 第 053033 期新型與設計異動
+
+2026-11-27 依[智財局專利權異動公報資料集](https://data.gov.tw/dataset/15974)核對第 053033 期 FTPS 原件。該資料集採政府資料開放授權條款第 1 版，目錄更新頻率為每月。第 053033 期索引 SHA-256 為 `3945c07fd8f2b286e00dac8d46c67faf849c998f3c89009b3eec75ebc2226299`。兩類事件均比對索引的分類、申請號及證書號。
+
+| 原件 | 發明 | 新型 | 設計 | 未匯入 |
+| --- | ---: | ---: | ---: | ---: |
+| `sud08.xml` 消滅 | 838 | 476 | 167 | 1 筆舊式純數字號 |
+| `sud24.xml` 更正 | 31 | 2 | 1 | 1 筆無法驗證證書格式 |
+
+新型 `M681479`（申請號 `114206865`、第 053010 期 S01）在 `sud24.xml` 第 5 筆有代理人更正。設計 `D246955`（申請號 `114305323`、第 053028 期 S01）在第 28 筆有設計人更正。兩筆皆未載生效日，僅保存更正項目。第 053010 期公告索引 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053010/index.xml` 的 SHA-256 為 `5f2bed1abaa7b9e812fcf1f1e2b240007c4881be719fb387d114b4ca92611d2e`。第 053028 期對應索引的 SHA-256 為 `60936a7ab763fbb8bd79b8a3071aa89d43da3ffe4ef65928734a9ddc70827a4a`。
+
+本次連結驗收涵蓋兩筆更正及以下兩筆消滅公告。消滅日與原因依原件呈現。現行權利狀態請查智財局最新資料。
+
+| 證書號 | 完整申請號 | 公告卷期與原件 SHA-256 | 異動 `sud08.xml` |
+| --- | --- | --- | --- |
+| `M688686` | `114211029` | 第 053030 期 `9bb410efd13450866eaa0bc34523fce8785c46d11ce7237efee4cd0c3b3727f0` | 第 34 筆，2026-11-21，原文引用發明案 `114140287` |
+| `D236497` | `113302173D01` | 第 052006 期 `99cde994594aa622cf9469ecb6541403b3567b4597342a6915c35ce5dab526f8` | 第 611 筆，2026-02-21，未依限繳費 |
+
+2026-11-27 實取新型公告 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053030/index.xml`（16,606,541 bytes）及衍生設計公告 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/114/PatentIsuRegSpecXMLA_052006/index.xml`（16,989,536 bytes）。新型公告位於原件第 1106 筆，衍生設計位於原件第 1695 筆，使用含 `D01` 的完整申請號比對。兩案異動原件均為第 053033 期 `sud08.xml`，SHA-256 為 `213b98e7337a0f99b74b9eff59ce0d92f0f27ccecf665892f8ee48b8423bd964`。
+
+
+## 新型及設計定期選取
+
+2026-11-28 實取第 053028 期的公告索引與書目，索引 SHA-256 為 `60936a7ab763fbb8bd79b8a3071aa89d43da3ffe4ef65928734a9ddc70827a4a`，書目 SHA-256 為 `836c3c9db01099dfe38fa1d15e9e1d3116180126c02f5179ebcf17542c7bd5c8`。索引有 349 筆新型及 196 筆設計，分別以每類上限一筆選出 `M687984`、`D246917`。以官方書目補入兩者公告日 2026-10-01 和設計 LOC `13-99`。同日實取 [S01 最新索引](https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01) 預覽，端點當時回傳第 053030 期，包含 349 筆新型及 169 筆設計。
+
+## 第 053028 期新型及設計全文補匯
+
+2026-11-28 依 [TIPO 專利說明書資料集](https://data.gov.tw/dataset/15987) 所屬的官方 FTPS 封存清單 `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index_all.xml` 選件，清單 SHA-256 為 `03e60d4c62ac2f36b6d201d12b69735827db8cdc4d4a90d18f523eb645f7f39a`。實取兩件 XML，保留公告索引與個案版本原件。
+
+| 證書 | 個案 XML 與 SHA-256 | 實測全文 |
+| --- | --- | --- |
+| `M687984` | `ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053028/5328M687984/114206949-A0305.xml`，`54bae6940d88baee990435a7b76401a1f1edcdecc4cf94e2b9f40012336fb214` | 34,196 bytes，DTD 2.0.1，16 項請求項、25 段說明書 |
+| `D246917` | `ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053028/5328D246917/112306158-A0305.xml`，`2d29c6afbf4738ba75d7bf7ecba42e394a6207ccd5f44325f74e29c36952b4cb` | 3,703 bytes，DTD 2.0.1，2 段說明書 |
+
+## 第 053029 期跨期全文驗收
+
+2026-11-28 核對 [TIPO 專利說明書資料集](https://data.gov.tw/dataset/15987) 並實取第 053029 期的封存清單與個案 XML。資料集採政府資料開放授權條款第 1 版。下列雜湊皆以原件位元組計算。
+
+| 原件 | SHA-256 | 已核對範圍 |
+| --- | --- | --- |
+| `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053029/index.xml` | `f427648c42ed053ceee95e0cd5dc57403d0a8e0a3f2f5ab5ca49af97d6347ac6` | 346 件新型及 215 件設計，驗收各取 1 件 |
+| `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053029/index_all.xml` | `9295fa896934e726174ff4dba4789dbff30d4aef948705ee0b455e2f3f8cb459` | 17,012,564 bytes，公告與個案連結 |
+| `ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLB/115/PatentIsuRegSpecXMLB_053029/patent.xml` | `f9697f387ae35c46f9fc00af0aae8812a74ce7dbdf92be64993410cff42bd7d2` | 兩案公告日 2026-10-11 |
+| `ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053029/5329M688333/114206477-A0305.xml` | `840a63d3319265d51a323879277a3b64736e9215dad0ed952515416317b182d4` | 9,377 bytes，新型 10 項請求項、19 段說明書 |
+| `ftps://ftp.tipo.gov.tw/PatentPubXML/115/PatentPubXML_053029/5329D247113/113302416-A0305.xml` | `ae4f9b68c7d227afc3c9335d656ee666a0fdfee1a6a5f35f8cfd00a7473af229` | 1,362 bytes，設計 2 段說明書 |
+
+## 公告優先權
+
+2026-11-28 重讀先前由官方 FTPS 取得的[第 053028 期公告索引](ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index.xml)。整檔 15,597,462 bytes，SHA-256 `60936a7ab763fbb8bd79b8a3071aa89d43da3ffe4ef65928734a9ddc70827a4a`。在 `tw-bibliographic-data-grant/priority-claims/priority-claim` 讀取 `country`、`doc-number`、`date`，日期格式為公曆 `YYYYMMDD`。該期完整索引共見發明 1,023 筆、新型 30 筆及設計 101 筆優先權節點。這是原檔節點計數，匯入僅涵蓋操作員選定的公告。固定第 024019 期發明公開索引沒有同形優先權節點，未用公告回填公開版本。授權及更新條件沿用[官方資料集 15987](https://data.gov.tw/dataset/15987)。

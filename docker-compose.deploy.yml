@@ -1,6 +1,8 @@
 services:
   api:
     ports: !reset []
+    environment:
+      FORWARDED_ALLOW_IPS: "*"
   web:
     build:
       target: deploy

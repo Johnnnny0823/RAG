@@ -1,13 +1,23 @@
 name: Official patent E2E
 on:
   workflow_dispatch:
+    inputs:
+      coverage:
+        description: "Choose source checks or the full model and browser suite"
+        type: choice
+        options: [full, source]
+        default: full
+      gazette_pdf:
+        description: "Verify archived public and grant PDFs while TIPO still serves them"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   official-patent:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
       COMPOSE_PROJECT_NAME: patentscope-tipo-e2e
@@ -18,38 +28,138 @@ jobs:
       ANALYSIS_MODEL: qwen2.5:1.5b
       ANALYSIS_DIGEST: 65ec06548149b04c096a120e4a6da9d4017ea809c91734ea5631e89f96ddc57b
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
       - run: python -m pip install -r requirements-dev.txt
+      - name: Restore pinned public TIPO fixtures
+        id: tipo-fixtures
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ${{ runner.temp }}/tipo-fixture/*.xml
+            ${{ runner.temp }}/tipo-fixture/objects/download-cache
+          key: ${{ runner.os }}-tipo-public-xml-${{ hashFiles('scripts/seed_tipo_e2e.py') }}
+      - name: Prepare and verify official fixture checksums
+        timeout-minutes: 30
+        run: python -m scripts.seed_tipo_e2e "$RUNNER_TEMP/tipo-fixture" --prepare-only
+      - name: Save verified public TIPO fixtures
+        if: steps.tipo-fixtures.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ${{ runner.temp }}/tipo-fixture/*.xml
+            ${{ runner.temp }}/tipo-fixture/objects/download-cache
+          key: ${{ steps.tipo-fixtures.outputs.cache-primary-key }}
       - run: npm ci --prefix apps/web
-      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npx playwright install --with-deps chromium
         working-directory: apps/web
-      - name: Start isolated database and CPU model server
+      - name: Start packaged web and private API
+        run: docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.deploy.yml up -d --build --wait --wait-timeout 180
+      - name: Verify packaged web deployment
+        run: python scripts/smoke.py --api http://127.0.0.1:5173 --web http://127.0.0.1:5173 --deployment
+      - name: Verify packaged PWA offline isolation
+        run: npx playwright test --project=desktop-chromium
+        working-directory: apps/web
+        env:
+          PATENTSCOPE_E2E_DEPLOY: "1"
+          PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
+      - name: Import and verify cached official corpus
+        run: python -m scripts.seed_tipo_e2e "$RUNNER_TEMP/tipo-fixture" --offline --skip-semantic
+      - name: Official identifiers, provenance and lexical search APIs
         run: |
-          docker compose --env-file .env.example up -d --wait db
+          python scripts/smoke_patents.py --official-e2e --api http://127.0.0.1:5173
+          python scripts/smoke_lexical.py --official-e2e --api http://127.0.0.1:5173
+      - name: Official identifier lookup in Chromium
+        run: npm run test:e2e --prefix apps/web -- patent-number.spec.ts
+        env:
+          PATENTSCOPE_E2E_TIPO: versions
+          PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
+      - name: Start isolated CPU model server
+        if: inputs.coverage == 'full'
+        run: |
           docker run -d --name patentscope-tipo-ollama --network patentscope-tipo-e2e_default --network-alias ollama ollama/ollama@sha256:2c9595c555fd70a28363489ac03bd5bf9e7c5bdf2890373c3a830ffd7252ce6d
           timeout 60 bash -c 'until docker exec patentscope-tipo-ollama ollama list; do sleep 2; done'
           docker exec patentscope-tipo-ollama ollama pull "$EMBEDDING_MODEL"
           docker exec patentscope-tipo-ollama ollama pull "$ANALYSIS_MODEL"
-      - run: docker compose --env-file .env.example up -d --build --wait --wait-timeout 180
-      - run: python -m scripts.seed_tipo_e2e "$RUNNER_TEMP/tipo-fixture"
+      - name: Build official semantic index
+        if: inputs.coverage == 'full'
+        run: docker compose --env-file .env.example run --rm --no-deps migrate python -m services.retrieval.index_semantic --batch-size 2 --request-timeout 180
+      - name: Official semantic search API
+        if: inputs.coverage == 'full'
+        run: |
+          python scripts/smoke_semantic.py --official-e2e --api http://127.0.0.1:5173
+          python scripts/smoke.py --api http://127.0.0.1:5173 --web http://127.0.0.1:5173 --require-official-index
+      - run: npx playwright install --with-deps firefox webkit
+        if: inputs.coverage == 'full'
+        working-directory: apps/web
       - name: Official full text, evidence, history and PDF
+        if: inputs.coverage == 'full'
         run: npm run test:e2e --prefix apps/web
         env:
           PATENTSCOPE_E2E_TIPO: "1"
           PATENTSCOPE_E2E_CROSS_BROWSER: "1"
           PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
       - name: Publication and grant versions, pagination and reranking
-        run: npm run test:e2e --prefix apps/web
+        if: inputs.coverage == 'full'
+        run: npm run test:e2e --prefix apps/web -- patent-versions.spec.ts search-pagination.spec.ts search-rerank.spec.ts
         env:
           PATENTSCOPE_E2E_TIPO: versions
           PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
-      - uses: actions/upload-artifact@v5
+      - name: Verify official utility model and design records
+        run: |
+          compose=(docker compose --env-file .env.example run --rm --no-deps)
+          inputs=(-v "$RUNNER_TEMP/tipo-fixture:/inputs:ro")
+          index_source='ftps://ftp.tipo.gov.tw/PatentIsuRegSpecXMLA/115/PatentIsuRegSpecXMLA_053028/index.xml'
+          "${compose[@]}" "${inputs[@]}" migrate python -m services.ingestion.import_issue \
+            --index /inputs/grant-053028.xml --index-source-url "$index_source" --batch 053028 \
+            --grant-number M687984 --grant-number D246917 --verified-tipo
+          for number in M687984 D246917; do
+            "${compose[@]}" migrate python -m services.ingestion.verify_document "$number" --grant-issue 053028
+          done
+      - name: Utility model and design number lookup in Chromium
+        run: npm run test:e2e --prefix apps/web -- patent-number.spec.ts
+        env:
+          PATENTSCOPE_E2E_TIPO: grant-types
+          PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
+      - name: Restore pinned grant event fixtures
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ${{ runner.temp }}/tipo-fixture/grant-053010.xml
+            ${{ runner.temp }}/tipo-fixture/grant-053030.xml
+            ${{ runner.temp }}/tipo-fixture/grant-052006.xml
+            ${{ runner.temp }}/tipo-fixture/sud08.xml
+            ${{ runner.temp }}/tipo-fixture/sud24.xml
+          key: ${{ runner.os }}-tipo-grant-event-xml-${{ hashFiles('scripts/seed_tipo_grant_events.py') }}
+      - name: Import official utility model and design events
+        timeout-minutes: 10
+        run: python -m scripts.seed_tipo_grant_events "$RUNNER_TEMP/tipo-fixture"
+      - name: Verify official grant events in Playwright
+        id: grant-events
+        run: npm run test:e2e --prefix apps/web -- legal-events.spec.ts
+        env:
+          PATENTSCOPE_E2E_TIPO: grant-events
+          PATENTSCOPE_E2E_CROSS_BROWSER: ${{ inputs.coverage == 'full' && '1' || '0' }}
+          PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
+      - name: Verify paired official gazette PDFs
+        if: inputs.gazette_pdf
+        run: python -m scripts.smoke_gazette_pdfs --api http://127.0.0.1:5173 --compose-project "$COMPOSE_PROJECT_NAME"
+      - name: Verify official gazette PDFs in Chromium
+        if: inputs.gazette_pdf
+        run: npm run test:e2e --prefix apps/web -- patent-number.spec.ts
+        env:
+          PATENTSCOPE_E2E_TIPO: versions
+          PATENTSCOPE_E2E_URL: http://127.0.0.1:5173
+          PATENTSCOPE_E2E_GAZETTE_PDFS: "1"
+      - name: Verify deployment rate limits
+        if: ${{ !cancelled() && steps.grant-events.conclusion == 'success' }}
+        run: python scripts/smoke.py --api http://127.0.0.1:5173 --web http://127.0.0.1:5173 --deployment --deployment-rate-limit
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: tipo-e2e-diagnostics

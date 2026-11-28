@@ -10,7 +10,7 @@ type Candidate = {
 test("local model reranks the same official candidates @versions", async ({ page }) => {
   test.setTimeout(240_000);
   await page.goto("/");
-  await page.getByLabel("構想描述（最多 160 字）").fill("動態導通電阻");
+  await page.getByLabel(/^構想描述（最多 /).fill("動態導通電阻");
   await page.getByLabel("IPC 篩選（選填）").fill("G01R27/02");
   await page.getByLabel("申請人（中英文名稱）").fill("陽明交通");
   const search = page.getByRole("button", { name: "搜尋臺灣專利", exact: true });
@@ -51,5 +51,6 @@ test("local model reranks the same official candidates @versions", async ({ page
     expect(candidate.fusion_rank).toBe(original.find((item) => item.document_id === candidate.document_id)?.fusion_rank);
     await expect(rows.nth(index)).toContainText(candidate.publication_no);
     await expect(rows.nth(index)).toContainText(`重排 ${index + 1}`);
+    await expect(rows.nth(index).getByText(/相關原因 · .*模型依標題與摘要重排/)).toBeVisible();
   }
 });

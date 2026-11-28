@@ -12,18 +12,35 @@ from psycopg.types.json import Jsonb
 from sqlalchemy.engine import Connection
 
 from services.api.db import engine
-from services.ingestion.artifacts import MAX_XML_BYTES, LocalObjectStore, RawArtifact
-from services.ingestion.grant_index import parse_grant
+from services.ingestion.artifacts import (
+    MAX_GAZETTE_XML_BYTES,
+    MAX_XML_BYTES,
+    LocalObjectStore,
+    RawArtifact,
+    add_objects_argument,
+)
+from services.ingestion.grant_index import parse_selected_grants
+from services.ingestion.download import (
+    GRANT_INDEX_URL,
+    INDEX_URL as PUBLICATION_INDEX_URL,
+)
+from services.ingestion.claim_references_v1 import INSERT_REFERENCES, reference_pairs
 from services.ingestion.issue_index import parse_issue_index
 from services.ingestion.issue_manifest import fetch_specifications, resolve_spec_urls
+from services.ingestion.legal_linking import link_events
 from services.ingestion.patentpub import PatentPublication
-from services.ingestion.specification import Claim, Section, parse_specification
+from services.ingestion.specification import (
+    UTILITY_SPEC_PARSER_VERSION,
+    Claim,
+    Section,
+    parse_specification,
+)
 
 PARSER_VERSION = "tipo-issue-1"
+# Retry utility model batches quarantined before support for DTD 2.0.1.
+UTILITY_SPEC_BATCH_VERSION = "tipo-issue-utility-3"
 DATASET_URL = "https://data.gov.tw/dataset/15996"
 LICENSE_URL = "https://data.gov.tw/license"
-GRANT_INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S01"
-PUBLICATION_INDEX_URL = "https://cloud.tipo.gov.tw/S220/opdata/api/gazettes/S10"
 
 
 def validate_index_source(url: str, batch: str, *, grant: bool) -> None:
@@ -45,10 +62,10 @@ class Specification:
     claims: list[Claim]
 
 
-def read_xml(path: Path) -> bytes:
+def read_xml(path: Path, *, size_limit: int = MAX_XML_BYTES) -> bytes:
     with path.open("rb") as stream:
-        payload = stream.read(MAX_XML_BYTES + 1)
-    if len(payload) > MAX_XML_BYTES:
+        payload = stream.read(size_limit + 1)
+    if len(payload) > size_limit:
         raise ValueError(f"{path.name} exceeds the XML size limit")
     return payload
 
@@ -90,11 +107,26 @@ def store_document(
     ).scalar_one()
 
     source_hash = record.source_hash
-    if spec is not None and stage == "publication":
+    has_fulltext = spec is not None and bool(spec.sections)
+    if spec is not None and has_fulltext:
         source_hash = hashlib.sha256(
             f"{source_hash}:{spec.artifact.checksum}".encode()
         ).hexdigest()
-    key = (jurisdiction, record.publication_no, source_hash, PARSER_VERSION, stage)
+    parser_version = (
+        UTILITY_SPEC_PARSER_VERSION
+        if has_fulltext and stage == "grant" and record.publication_no.startswith("M")
+        else PARSER_VERSION
+    )
+    abstracts = (
+        {
+            section.kind: section.text
+            for section in spec.sections
+            if section.kind in {"abstract-zh", "abstract-en"}
+        }
+        if spec
+        else {}
+    )
+    key = (jurisdiction, record.publication_no, source_hash, parser_version, stage)
     document_id = conn.exec_driver_sql(
         """INSERT INTO patent_documents
            (jurisdiction, publication_no, source_hash, parser_version,
@@ -109,15 +141,19 @@ def store_document(
             record.publication_date,
             record.title_zh,
             record.title_en,
-            record.abstract_zh,
-            record.abstract_en,
+            abstracts.get("abstract-zh", record.abstract_zh),
+            abstracts.get("abstract-en", record.abstract_en),
             Jsonb(
                 {
                     "applicants": record.applicants,
                     "inventors": record.inventors,
-                    "content_scope": "claims_only"
-                    if stage == "grant"
-                    else ("fulltext" if spec else "metadata_and_abstract"),
+                    "content_scope": "fulltext"
+                    if has_fulltext
+                    else (
+                        "claims_only"
+                        if spec and spec.claims
+                        else "metadata_and_abstract"
+                    ),
                 }
             ),
         ),
@@ -173,6 +209,12 @@ def store_document(
                     ),
                 ),
             )
+        pairs = reference_pairs((claim.number, claim.text) for claim in spec.claims)
+        if pairs:
+            conn.exec_driver_sql(
+                INSERT_REFERENCES,
+                [(document_id, child, parent) for child, parent in pairs],
+            )
     return document_id
 
 
@@ -184,16 +226,54 @@ def link_artifact(conn, document_id, artifact_id, locator):
     )
 
 
+def store_priorities(conn, document_id, artifact_id, record: PatentPublication):
+    if record.priorities:
+        conn.exec_driver_sql(
+            """INSERT INTO patent_priorities
+               (document_id, artifact_id, record_locator, ordinal, country, priority_no, priority_date)
+               VALUES (%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING""",
+            [
+                (
+                    document_id,
+                    artifact_id,
+                    record.locator,
+                    item.ordinal,
+                    item.country,
+                    item.number,
+                    item.date,
+                )
+                for item in record.priorities
+            ],
+        )
+
+
+def backfill_priorities(conn, batch_id, index_checksum, records):
+    by_locator = {record.locator: record for record in records if record.priorities}
+    if not by_locator:
+        return
+    for document_id, artifact_id, locator in conn.exec_driver_sql(
+        """SELECT da.document_id, da.artifact_id, da.record_locator
+           FROM ingestion_artifacts ia JOIN document_artifacts da ON da.artifact_id = ia.id
+           WHERE ia.batch_id = %s AND ia.checksum = %s AND da.record_locator = ANY(%s)""",
+        (batch_id, index_checksum, list(by_locator)),
+    ):
+        store_priorities(conn, document_id, artifact_id, by_locator[locator])
+
+
 def import_issue(args):
     store = LocalObjectStore(args.objects)
-    data = read_xml(args.index)
+    data = read_xml(
+        args.index,
+        size_limit=MAX_GAZETTE_XML_BYTES if args.grant_number else MAX_XML_BYTES,
+    )
     index_raw = store.put(data)
     index_error = None
-    grant_claims = []
+    grant_claims = {}
     try:
         if args.grant_number:
-            grant, grant_claims = parse_grant(data, args.batch, args.grant_number)
-            records, issues = [grant], []
+            grants = parse_selected_grants(data, args.batch, args.grant_number)
+            records, issues = [grant for grant, _ in grants], []
+            grant_claims = {grant.publication_no: claims for grant, claims in grants}
         else:
             records, issues = parse_issue_index(
                 data, args.limit, None if args.demo else args.batch
@@ -212,12 +292,16 @@ def import_issue(args):
             raise ValueError(
                 "A valid issue index is required before fetching specifications"
             )
-        manifest_data = read_xml(args.manifest)
+        manifest_data = read_xml(
+            args.manifest,
+            size_limit=MAX_GAZETTE_XML_BYTES if args.grant_number else MAX_XML_BYTES,
+        )
         sources = resolve_spec_urls(
             manifest_data,
             args.manifest_url,
             args.batch,
             {record.publication_no: record.application_no for record in records},
+            grant=bool(args.grant_number),
         )
         official_manifest = store.put(manifest_data)
         cache = args.objects / "download-cache" / official_manifest.checksum
@@ -239,8 +323,10 @@ def import_issue(args):
     }
     if args.index_source_url:
         manifest["index_source_url"] = args.index_source_url
-    if args.grant_number:
-        manifest["grant_number"] = args.grant_number
+    if len(args.grant_number) == 1:
+        manifest["grant_number"] = args.grant_number[0]
+    elif args.grant_number:
+        manifest["grant_numbers"] = sorted(args.grant_number)
     if official_manifest is not None:
         manifest.update(
             official_manifest=official_manifest.checksum,
@@ -279,7 +365,12 @@ def import_issue(args):
         dataset_id = conn.exec_driver_sql(
             "SELECT id FROM source_datasets WHERE dataset_key = %s", (dataset_key,)
         ).scalar_one()
-        batch_key = (dataset_id, args.batch, checksum, PARSER_VERSION)
+        batch_parser_version = (
+            UTILITY_SPEC_BATCH_VERSION
+            if any(number.startswith("M") for number in specs_raw)
+            else PARSER_VERSION
+        )
+        batch_key = (dataset_id, args.batch, checksum, batch_parser_version)
         batch_id = conn.exec_driver_sql(
             """INSERT INTO ingestion_batches (dataset_id, batch_key, checksum, parser_version, status)
                VALUES (%s,%s,%s,%s,'processing') ON CONFLICT DO NOTHING RETURNING id""",
@@ -287,10 +378,11 @@ def import_issue(args):
         ).scalar_one_or_none()
         if batch_id is None:
             result = conn.exec_driver_sql(
-                """SELECT status, counts_jsonb FROM ingestion_batches WHERE dataset_id = %s
+                """SELECT id, status, counts_jsonb FROM ingestion_batches WHERE dataset_id = %s
                    AND batch_key = %s AND checksum = %s AND parser_version = %s""",
                 batch_key,
             ).one()
+            backfill_priorities(conn, result.id, index_raw.checksum, records)
             return {"status": result.status, "reused": True, **result.counts_jsonb}
 
         issue_errors = [f"{issue.locator}: {issue.message}" for issue in issues]
@@ -310,21 +402,15 @@ def import_issue(args):
         pending_specs = specs_raw.copy()
         for record in records:
             spec = spec_id = None
-            if args.grant_number:
-                document_id = store_document(
-                    conn,
-                    record,
-                    jurisdiction,
-                    Specification(index_raw, [], grant_claims),
-                    stage="grant",
-                )
-                link_artifact(conn, document_id, index_id, record.locator)
-                continue
             if artifact := pending_specs.pop(record.publication_no, None):
                 error_log = None
                 try:
                     sections, claims = parse_specification(
-                        store.read(artifact), record.application_no
+                        store.read(artifact),
+                        record.application_no,
+                        grant_number=record.publication_no
+                        if args.grant_number
+                        else None,
                     )
                     spec = Specification(artifact, sections, claims)
                 except (ValueError, ET.ParseError) as error:
@@ -340,12 +426,21 @@ def import_issue(args):
                     "parsed" if spec else "quarantined",
                     error_log,
                 )
-            document_id = store_document(conn, record, jurisdiction, spec)
+            stage = "grant" if args.grant_number else "publication"
+            if spec is None and grant_claims.get(record.publication_no):
+                spec = Specification(index_raw, [], grant_claims[record.publication_no])
+            document_id = store_document(conn, record, jurisdiction, spec, stage=stage)
             link_artifact(conn, document_id, index_id, record.locator)
+            store_priorities(conn, document_id, index_id, record)
             if spec is None:
                 metadata += 1
-            else:
-                link_artifact(conn, document_id, spec_id, "/invention-specification")
+            elif spec.sections:
+                locator = (
+                    "/specification"
+                    if args.grant_number
+                    else "/invention-specification"
+                )
+                link_artifact(conn, document_id, spec_id, locator)
                 fulltext += 1
 
         for number, artifact in pending_specs.items():
@@ -362,7 +457,11 @@ def import_issue(args):
         status = (
             "failed"
             if index_error
-            else ("partial" if issues or metadata or quarantined_specs else "complete")
+            else (
+                "partial"
+                if issues or metadata or quarantined_specs or failures
+                else "complete"
+            )
         )
         counts = {
             "metadata": metadata,
@@ -380,7 +479,13 @@ def import_issue(args):
                 for number, error in failures.items()
             ]
         if args.grant_number:
-            counts["grants_with_claims"] = len(records)
+            counts["grants_with_claims"] = sum(
+                bool(claims) for claims in grant_claims.values()
+            )
+        if records and not args.demo:
+            counts["legal_events_linked"] = link_events(
+                conn, applications=sorted({record.application_no for record in records})
+            )
         conn.exec_driver_sql(
             """UPDATE ingestion_batches SET status = %s, counts_jsonb = %s, finished_at = now()
                WHERE id = %s""",
@@ -389,18 +494,20 @@ def import_issue(args):
         return {"status": status, "reused": False, **counts}
 
 
-def main():
+def parse_import_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--index", type=Path, required=True)
     parser.add_argument("--index-source-url", help="Official URL of the supplied index")
     parser.add_argument(
         "--batch", required=True, help="Official issue ID or DEMO batch ID"
     )
-    parser.add_argument("--objects", type=Path, required=True)
+    add_objects_argument(parser)
     parser.add_argument("--limit", type=int, default=100)
     parser.add_argument(
         "--grant-number",
-        help="Import a selected invention grant from an official S01 index",
+        action="append",
+        default=[],
+        help="Select an invention, utility model or design grant from an official S01 index (repeatable)",
     )
     parser.add_argument("--manifest", type=Path, help="Official index_all.xml file")
     parser.add_argument("--manifest-url", help="Official FTPS URL of the manifest file")
@@ -422,9 +529,11 @@ def main():
         action="store_true",
         help="Confirm official artifact provenance",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if not 1 <= args.limit <= 500:
         parser.error("--limit must be between 1 and 500")
+    if len(args.grant_number) > args.limit:
+        parser.error("The number of selected grants exceeds --limit")
     if args.index_source_url:
         if args.demo:
             parser.error("--index-source-url requires --verified-tipo")
@@ -444,10 +553,14 @@ def main():
         parser.error("--fetch-only and --cache-only require --manifest")
     if args.fetch_only and args.cache_only:
         parser.error("--fetch-only and --cache-only cannot be combined")
-    if args.grant_number and (args.demo or args.spec or args.manifest):
+    if args.grant_number and (args.demo or args.spec):
         parser.error(
-            "--grant-number requires --verified-tipo and a grant index without specifications"
+            "--grant-number requires --verified-tipo and an official manifest for specifications"
         )
+    if not args.index_source_url and any(
+        number.startswith(("D", "M")) for number in args.grant_number
+    ):
+        parser.error("Utility model and design grants require --index-source-url")
     args.specs = {}
     for item in args.spec:
         number, separator, path = item.partition("=")
@@ -464,6 +577,11 @@ def main():
         if number in args.specs:
             parser.error("Duplicate publication in --spec")
         args.specs[number] = Path(path)
+    return args
+
+
+def main():
+    args = parse_import_args()
     result = import_issue(args)
     print(json.dumps(result, ensure_ascii=False))
     return int(
