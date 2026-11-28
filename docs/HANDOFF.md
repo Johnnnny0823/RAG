@@ -1,5 +1,28 @@
 # Agent Handoff
 
+## 2026-11-28 Claude Code 接手核對
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Claude Code。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `9ca924a`（比遠端多一個 Codex 的交接文件提交）。產品基準 `d7f4f56`。
+- Current milestone and status: M5 IN_PROGRESS；交付驗收（Goal M6）BLOCKED，等待人工複核結果與目標主機授權。
+- Goal of this session: 依下一節的接手順序核對現況並以實測結果更新進度。
+- Files changed (with purpose): 本節及 PROGRESS 記錄核對結果。產品原始碼、API、資料庫無變更。
+- Database migrations added/applied: 無。Alembic 唯一 head 為 `0023_patent_priorities`，以 `ScriptDirectory.get_heads()` 核對。
+- API/Schema changes: 無。
+- Commands actually run and results:
+  - `git fetch --no-auto-maintenance`、`git status -sb`：工作樹乾淨，遠端 `main` 為 `3c4bbbc`，分支遠端為 `d7f4f56`。`AGENTS.md`、`CLAUDE.md` 自 `5d13594` 起未變更。
+  - `gh pr view 1`、`gh pr checks 1`：PR 為草稿、可合併，兩項 `checks` 通過（[46109014368](https://github.com/Johnnnny0823/RAG/actions/runs/46109014368)、[46109018368](https://github.com/Johnnnny0823/RAG/actions/runs/46109018368)）。`gh run list --workflow "Official patent E2E"`：最近三次（`89d991f`、`f85c79b`、`6d76efc`）成功，`850523a` 的一次失敗已被後續成功取代。
+  - 於獨立 venv 安裝 `requirements-dev.txt` 後，Ruff 格式（135 檔）與 lint 通過，pytest 148 通過、14 略過、1 則既有 Starlette 警告。略過項目需 PostgreSQL 或官方語料。前端 Oxlint 與 `tsc --noEmit` 通過。
+  - `evaluation/tipo_official_117_review.json`：`label_status` 仍為 `pending_human_review`，複核者空白，34 組判定皆未評分。`.patent-data/review/patentscope-review.html` 存在（1,035,869 bytes）。下載、桌面與 `.patent-data` 下沒有找到已填寫的複核 JSON。
+- Tests NOT run and reason: 全新資料卷的 PostgreSQL 整合測試未完成。本機 Docker 引擎無回應：`docker version` 20 秒內未回應，Compose 指令超過 10 分鐘無輸出，已停止該次執行。重啟 Docker Desktop 會中斷使用者其他容器，待使用者決定。瀏覽器 E2E 同樣需要 Docker，未執行。檢索評估需要人工複核檔，未執行。
+- Data sources checked (exact URL/date) and license/access notes: 無新增取件。
+- Known bugs / risks / blockers: 人工複核須由真人完成，AI 不得代填。目標主機、網域、存取方式、備份位置與授權尚未提供。本機 Docker 引擎卡住。
+- Decisions made (ADR links): 無。
+- Uncommitted changes / file ownership warnings: 無。獨立 venv 位於 `%TEMP%\patentscope-m6-venv`，不在專案內。
+- Next 1–3 concrete actions: 恢復 Docker 後依 [PostgreSQL 與 API 整合](TESTING.md#postgresql-與-api-整合) 在全新資料卷重跑。收到人工複核 JSON 後依下一節第 1 步執行評估。取得部署授權後依第 2 步驗收。
+- Exact reproduction steps: 見下一節的指令與連結。
+
 ## 2026-11-28 交由 Claude Code 接續
 
 | 項目 | 接手基準 |
