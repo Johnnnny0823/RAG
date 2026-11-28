@@ -2848,3 +2848,22 @@
 - Uncommitted changes / file ownership warnings: 只更新整合分支，遠端 `main` 維持原 SHA。
 - Next 1–3 concrete actions: 核對新的 PR 檢查及完整官源結果。完成使用者人工相關性及目標環境驗收後再評估交付。
 - Exact reproduction steps: 開啟 [審查草稿](https://github.com/Johnnnny0823/RAG/pull/1)，由其 Evidence 連結查閱對應版本測試。
+
+## 官源歷史重用與 PDF 回歸
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，本機驗收 `68f97b8`。GitHub Actions 完整官源驗收 `89d991f`。
+- Current milestone and status: 歷史重用與報告的官源 E2E 已通過。整體交付 IN_PROGRESS。
+- Goal of this session: 從真實官源及目前整合程式完成工作台、引證與報告回歸。
+- Files changed (with purpose): 更新 `docs/TESTING.md`、`docs/PROGRESS.md`、`docs/HANDOFF.md` 的實測紀錄及[草稿審查](https://github.com/Johnnnny0823/RAG/pull/1)。
+- Database migrations added/applied: 無新增，本機沿用隔離庫 `0023_patent_priorities`。
+- API/Schema changes: 無。
+- Commands actually run and results: [完整官源工作](https://github.com/Johnnnny0823/RAG/actions/runs/46106199884)通過，建成 117 版本及 1,624 向量、Playwright 34 項。`68f97b8` 的 PR 一般 CI 與分支一般 CI 均通過。本機補入 `202639611` 全文，索引多 157 條向量。Vite、FastAPI、背景程序與 Ollama 啟動後，桌面及手機模擬的 `tipo-research.spec.ts` 各通過。首次兩項斷言通過但 HTML reporter 目錄發生 Windows `EPERM`，改用獨立輸出目錄重跑兩項全過，退出碼 0 且產物存在。
+- Tests NOT run and reason: 本次完整官源工作未選用即時公報 PDF，該來源的 403 保留於另一次驗收。未在目標主機測試。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 重驗 `202639611` 的[第 024019 期官方全文](ftps://ftp.tipo.gov.tw/InventionPubXML/115/InventionPubXML_024019/2419202639611/113133932-A0304.xml)本機保存原件及已知雜湊。未重新下載。授權與涵蓋見 DATA_SOURCES。
+- Known bugs / risks / blockers: 正式目標主機、網域與 34 組人工相關性複核仍待。
+- Decisions made (ADR links): 保留本機與遠端驗收的修訂與語料界線，未改工作台原始碼。
+- Uncommitted changes / file ownership warnings: 瀏覽器產物放在本機 Git 忽略目錄。三個本機臨時服務已停止，測試帳號已刪除。
+- Next 1–3 concrete actions: 取得正式部署環境與人工評分後完成交付驗收。
+- Exact reproduction steps: 依[官源歷史重用與 PDF 回歸](TESTING.md#官源歷史重用與-pdf-回歸)執行。

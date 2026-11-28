@@ -424,3 +424,18 @@ npx playwright test --reporter=list
 ## 檢索模型用量
 
 `python -m scripts.benchmark_model_usage --repeats 3 --output <新檔>` 以隔離的真實官源索引和本機 Ollama 執行四種檢索，資訊包含模型呼叫與用量。2026-11-28 實測 12 次並核對每次呼叫種類與數量。詳見[檢索評估](EVALUATION.md#2026-11-28-本機模型用量)。上一版公報 PDF 離線匯入的 [一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46107767098) 已通過。
+
+## 官源歷史重用與 PDF 回歸
+
+2026-11-28，[完整官源 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46106199884)在 `89d991f` 成功。以官源快取重建 117 個文件版本和 1,624 筆向量，索引耗時 25 分 34 秒。語意搜尋 API、全文引證與私人研究流程、跨版分頁及重排序、法律異動與部署限流通過。瀏覽器測試六組共 34 項。歷史重用流程在桌面、平板及手機 Chromium，以及桌面 Firefox、WebKit 五個設定通過。此工作未啟用選用的即時公報 PDF 下載。研究流程的 PDF 為系統產出的私人報告。
+
+同日另以 `68f97b8` 的本機程式驗收。用獨立 PostgreSQL、原件 SHA-256 相符的 `202639611` 全文、隔離 12 個官方文件版本及 263 筆向量。回環 Vite 透過 API 代理連至本機 FastAPI 及背景程序，使用本機 Ollama。桌面及 Pixel 7 模擬 Chromium 兩項完整工作台案例均通過，包含帶回搜尋表單、原文引用與繁中 PDF 內容和連結。兩組測試帳號皆在結尾刪除。
+
+第一次本機執行兩項斷言通過，但 Windows 建立預設 HTML 報告目錄遇 `EPERM`。重跑時以 `PLAYWRIGHT_HTML_OUTPUT_DIR` 與 `--output` 指定 Git 忽略下的獨立路徑。測試命令退出碼 0，並確認 HTML 報告及兩份本機 PDF 產物存在。可從 `apps/web` 執行以下命令，先設定既有的隔離 API、Web、模型及 `PATENTSCOPE_TEST_PYTHON`。
+
+```powershell
+$env:PATENTSCOPE_E2E_URL = 'http://127.0.0.1:18514'
+$env:PATENTSCOPE_E2E_TIPO = '1'
+$env:PLAYWRIGHT_HTML_OUTPUT_DIR = '<可寫入的本機 HTML 報告目錄>'
+.\node_modules\.bin\playwright.cmd test tipo-research.spec.ts --project=desktop-chromium --project=mobile-chromium --output '<可寫入的本機測試產物目錄>'
+```
