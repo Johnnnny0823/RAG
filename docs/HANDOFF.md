@@ -1,5 +1,24 @@
 # Agent Handoff
 
+## 2026-11-28 本機部署驗收
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Claude Code。
+- Branch / commit SHA: 部署來源為 `main` 的 `9a9b77a`，文件於 `docs/local-deployment-acceptance` 分支更新。
+- Current milestone and status: M5 IN_PROGRESS（人工複核待完成）。交付驗收 IN_PROGRESS：本機目標已驗收，公開網域與對外主機待驗證。
+- Goal of this session: 依使用者指定，以本機作為部署目標並驗收。
+- Files changed (with purpose): SETUP 新增本機長期部署步驟，TESTING 記錄驗收結果，PROGRESS 與本節更新狀態。產品程式碼無變更。
+- Database migrations added/applied: 無新增。本機部署與還原站皆在新資料卷遷移至 `0023_patent_priorities`。
+- API/Schema changes: 無。
+- Commands actually run and results: 見 [本機長期部署驗收](TESTING.md#本機長期部署驗收)。HTTP 與 HTTPS 部署冒煙、官方索引、桌面與手機 Chromium 官方流程 2 項、HTTPS 帳號／背景搜尋／引文／私人 PDF、備份還原後筆數一致及原件校驗皆通過。
+- Tests NOT run and reason: 公開網域、公開 CA、區域網路其他裝置與防火牆未測，使用者表示暫時沒有其他使用者。人工複核未完成，檢索評估未執行。
+- Data sources checked (exact URL/date) and license/access notes: 沿用已核對雜湊的固定官方 XML 快取，未新增下載。
+- Known bugs / risks / blockers: 測試種子不會把原件放進部署資料卷，已在 SETUP 補上必要步驟。本機 Ollama 的 11434 埠綁定所有網路介面，屬 lawinformation 專案，未變更。
+- Decisions made (ADR links): 部署目標暫定為本機，由使用者於 2026-11-28 指定。
+- Uncommitted changes / file ownership warnings: 部署工作目錄 `C:\Users\xnikz\patentscope-local\app` 是 `main` 的乾淨複本。密碼與 CA 私鑰在 `C:\Users\xnikz\patentscope-local\secrets`，備份在 `C:\Users\xnikz\patentscope-local\backups\20261128-172538`，均不在版本庫。驗收腳本在 `C:\Users\xnikz\patentscope-local\tools`。
+- Next 1–3 concrete actions: 收到人工複核 JSON 後執行檢索評估。若要對外開放，另提供網域與憑證並驗收防火牆及續期。
+- Exact reproduction steps: 見 [SETUP 本機長期部署](SETUP.md#本機長期部署)。
+
 ## 2026-11-28 Claude Code 接手核對
 
 - Date/time (timezone): 2026-11-28（Asia/Taipei）。

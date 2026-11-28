@@ -57,6 +57,24 @@ docker compose @tlsArgs up -d --build --wait --wait-timeout 180
 
 正式語料驗收時加上 `--require-official-index`，確認同源閘道可取得官方 corpus 狀態，以及詞彙與向量索引都有涵蓋文件。此檢查為唯讀。還需依部署語料另選已知的官方案號，透過語意與混合檢索驗證模型可用及結果回溯。只有在獨立測試站驗證限流時才加 `--deployment-rate-limit`，因為它會短暫用盡該來源 IP 的配額。
 
+### 本機長期部署
+
+使用者於 2026-11-28 指定先以本機作為部署目標。工作目錄須位於 Docker Desktop 可掛載的磁碟，例如 C 槽的新複本。專用 PostgreSQL 與 `API_DB_PASSWORD`、私有 CA 與伺服器憑證都放在版本庫之外，並以環境變數提供給 Compose。依序執行：
+
+1. 以 `docker-compose.yml;docker-compose.deploy.yml` 啟動新的 Compose 專案。
+2. 以 `scripts.seed_tipo_e2e <快取> --offline` 匯入已核對雜湊的固定官方語料並建立索引。
+3. 種子把原件寫在快取目錄的 `objects`，部署須另把原件複製進專案自己的資料卷，否則備份會因找不到原件而失敗：
+
+```powershell
+docker compose run --rm --no-deps -v "${fixture}:/inputs:ro" migrate python -m services.ingestion.sync_objects --objects /inputs/objects --copy-to /var/lib/patentscope/objects
+docker compose run --rm --no-deps migrate python -m services.ingestion.sync_objects
+```
+
+4. 加上 `docker-compose.tls.yml` 以 `up -d --no-deps --force-recreate --wait web` 切換為 HTTPS，再以 `scripts/smoke.py --deployment --require-official-index --ca-file <CA>` 驗收。
+5. 依[原始 XML 持久保存、備份及還原](#原始-xml-持久保存備份及還原)備份，還原到另一個 Compose 專案核對。
+
+本機 CA 只用於這台主機。瀏覽器要信任 HTTPS，需把 CA 匯入目前使用者的信任存放區，或改用由公開 CA 簽發的憑證。驗收結果見[測試文件](TESTING.md#本機長期部署驗收)。
+
 ## M1 官方樣本重現
 
 下列 PowerShell 指令使用獨立的 Compose 專案與資料卷。先依 README 建立 `.env`。第 24 卷第 19 期索引和個案說明書的授權、雜湊及格式見 [資料來源](DATA_SOURCES.md)。從空的資料目錄下載，下載器會拒絕覆寫既有檔案。
