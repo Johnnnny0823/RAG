@@ -4,7 +4,7 @@
 
 - Date/time (timezone): 2026-11-28（Asia/Taipei）。
 - Agent: Claude Code。
-- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `9ca924a`（比遠端多一個 Codex 的交接文件提交）。產品基準 `d7f4f56`。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `9ca924a`，產品基準 `d7f4f56`。經使用者同意，PR #1 於 2026-11-28 以 `593dde1` 合併入 `main`（合併提交 `0810e1d`），合併前兩項 PR 檢查與合併後 main CI 皆通過。
 - Current milestone and status: M5 IN_PROGRESS；交付驗收（Goal M6）BLOCKED，等待人工複核結果與目標主機授權。
 - Goal of this session: 依下一節的接手順序核對現況並以實測結果更新進度。
 - Files changed (with purpose): 本節及 PROGRESS 記錄核對結果。產品原始碼、API、資料庫無變更。
@@ -20,12 +20,13 @@
   - 全新資料卷遷移前文件 0 筆，遷移至 `0023_patent_priorities`。`tests/integration` 14 項通過（73.8 秒）。
   - 同一專案啟動 API 與 Web：`scripts/smoke.py` 通過。`PATENTSCOPE_E2E_PENDING_SEARCH=1` 的 `search-resume.spec.ts` 3 項通過，一般 Playwright 套件 12 項通過，皆為 Chromium 桌面、平板、手機。
   - 依 `.github/workflows/tipo-e2e.yml`（coverage=full，未開啟選用的公報 PDF）在本機另一個全新專案 `patentscope-claude-tipo-1128` 逐步重跑。模型改用主機 Ollama，`qwen3-embedding:0.6b` 與 `qwen2.5:1.5b` 摘要與工作流程固定值相同。24 個官方檔案以 FTPS 重新下載且雜湊相符。匯入 99 書目加 1 全文、17 全文加 3 隔離、1 筆公告，三份文件與封存 XML 核對一致，建立 1,560 個詞彙片段與 117 版本 1,624 筆向量。打包 Web 冒煙、部署標頭、正式索引與部署限流冒煙通過。Playwright 共 34 項通過：PWA 離線 1、編號查詢 3、全文／歷史／PDF 五種瀏覽器 5、跨版本／分頁／重排 12、新型與設計 3、公告異動五種瀏覽器 10。
-- Tests NOT run and reason: 選用的遠端公報 PDF 步驟未執行，TIPO 個案端點先前回 HTTP 403。檢索評估需要人工複核檔，未執行。正式主機未提供。
+  - 合併後在同一保留語料執行工作流程的選用步驟 `python -m scripts.smoke_gazette_pdfs`：本機直接向 TIPO 取件成功，`202640162` 與 `I941082` 的官方 PDF 與 XML 請求項出處核對通過；`PATENTSCOPE_E2E_GAZETTE_PDFS=1` 的 `patent-number.spec.ts` Chromium 三種裝置 3 項通過。GitHub runner 先前收到的 HTTP 403 未在此重現，原因仍未確認。
+- Tests NOT run and reason: 檢索評估需要人工複核檔，未執行。正式主機未提供。GitHub runner 的即時公報 PDF 未重跑。
 - Data sources checked (exact URL/date) and license/access notes: 無新增取件。
 - Known bugs / risks / blockers: 人工複核須由真人完成，AI 不得代填。目標主機、網域、存取方式、備份位置與授權尚未提供。舊驗收專案的 Compose 網路曾占滿位址池，已移除。`D:\專利RAG` 工作樹仍有 2026-11-26 的未提交修改（含另一個 `0018` 遷移），與整合分支的 `0018_audit_logs` 衝突，本次未處理。
 - Decisions made (ADR links): 無。
 - Uncommitted changes / file ownership warnings: 無。獨立 venv 位於 `%TEMP%\patentscope-m6-venv`，不在專案內。
-- Next 1–3 concrete actions: 收到人工複核 JSON 後依下一節第 1 步執行評估。取得部署主機與授權後依第 2 步驗收。使用者同意清理後已移除 209 個停止的舊驗收容器與 24 個網路，資料卷待確認。
+- Next 1–3 concrete actions: 收到人工複核 JSON 後依下一節第 1 步執行評估。取得部署主機與授權後依第 2 步驗收。使用者同意清理後已移除 209 個停止的舊驗收容器、24 個網路、153 個舊映像與建置快取。80 個舊資料卷（約 4.4 GB）待使用者確認是否永久刪除；保留 `patentscope-claude-tipo-1128`（供人工複核後評估）與 `patentscope_postgres-data`。
 - Exact reproduction steps: 見下一節的指令與連結。
 
 ## 2026-11-28 交由 Claude Code 接續
