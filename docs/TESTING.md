@@ -402,3 +402,9 @@ npx playwright test --reporter=list
 一般 CI 將不需背景程序的瀏覽器測試放在程序啟動之前。待處理搜尋可重新開啟及取消的三項案例也在停止背景程序的設定執行。背景程序的啟動步驟、PostgreSQL 佇列回歸與完整官源 E2E 均保留。
 
 本機 `playwright.cmd test search-errors.spec.ts --project=desktop-chromium --repeat-each=3` 共 6 項通過。`519fdd2` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46106443651)已通過待處理搜尋、一般 Playwright、背景程序啟動及 HTTPS 部署。這一輪跑完未再看到相同錯誤。
+
+## 資料庫就緒檢查
+
+執行 `python -m pytest -q tests/integration -k 'ready_rejects or migration_head'`，需接到已遷移的隔離 PostgreSQL，使用 `patentscope_api`。案例將就緒檢查所需的資料表設為一張不存在的表，以及一張存在但帳號無法讀取的管理表。舊版在兩種情況均誤回 200，修正後均回傳 HTTP 503 `DATABASE_UNAVAILABLE`，錯誤本文不含資料表名。`/api/v1/health` 依舊回傳 200。遷移及帳號授權完整的情況，就緒狀態回傳 200。
+
+同一隔離庫於預熱後連續執行 25 次就緒查詢。每次以受限帳號建立連線並檢查 30 張資料表，本機中位數 28.34 毫秒。此數字僅適用於該環境，未量測公開入口或併發負載。

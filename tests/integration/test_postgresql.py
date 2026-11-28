@@ -15,6 +15,7 @@ from psycopg.types.json import Jsonb
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 
 from services.api.db import engine
+from services.api import db as database
 from services.api.main import app
 from services.api import report_jobs, search_worker
 from services.api.patents import HybridSearchResults
@@ -58,6 +59,17 @@ def test_migration_head_and_vector_operator():
         )
     with TestClient(app) as client:
         assert client.get("/api/v1/ready").json() == {"status": "ready"}
+
+
+@pytest.mark.parametrize("table", ["missing_runtime_table", "alembic_version"])
+def test_database_ready_rejects_missing_or_unreadable_runtime_table(monkeypatch, table):
+    monkeypatch.setattr(database, "READINESS_TABLES", ("patent_documents", table))
+    with TestClient(app) as client:
+        response = client.get("/api/v1/ready")
+        assert response.status_code == 503
+        assert response.json()["error"]["code"] == "DATABASE_UNAVAILABLE"
+        assert table not in response.text
+        assert client.get("/api/v1/health").status_code == 200
 
 
 def test_api_role_cannot_write_corpus_or_manage_schema():
