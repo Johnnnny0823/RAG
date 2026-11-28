@@ -2753,3 +2753,22 @@
 - Uncommitted changes / file ownership warnings: 僅修改整合分支。測試庫與日常開發庫隔離。
 - Next 1–3 concrete actions: 追蹤新版一般 CI 和完整官源 E2E。待人工評分、主機及網域就緒後完成交付驗收。
 - Exact reproduction steps: 依 [私人搜尋歷史與條件重用](TESTING.md#私人搜尋歷史與條件重用)重跑，官源版本使用 `PATENTSCOPE_E2E_TIPO=1`。
+
+## 一般 CI 首頁載入回歸
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `89d991f`。
+- Current milestone and status: 已診斷並調整一般 CI，待新版遠端結果。整體交付 IN_PROGRESS。
+- Goal of this session: 釐清偶發空白首頁並減少測試啟動期間的容器網路變動。
+- Files changed (with purpose): `.github/workflows/ci.yml` 將背景程序啟動移到一般 Playwright 之後。更新進度、測試及交接。
+- Database migrations added/applied: 無新增。
+- API/Schema changes: 無。
+- Commands actually run and results: `gh run download 46083175462` 取回 trace，確認 HTML 成功、兩個前端模組收到 `ERR_NETWORK_CHANGED`。`playwright.cmd test --list` 列出 12 項預設及 3 項待處理搜尋測試。`uv run --with pyyaml` 核對新版工作流程的執行順序，`git diff --check` 通過。
+- Tests NOT run and reason: 此次沒有產品程式碼異動，未另跑本機單元測試。新版一般 CI 待遠端結果；`89d991f` 的完整官源 E2E [46106199884](https://github.com/Johnnnny0823/RAG/actions/runs/46106199884)仍在執行。
+- Data sources checked (exact URL/date) and license/access notes: 沒有新增取件。
+- Known bugs / risks / blockers: 單次 trace 無法確定 runner 網路變化來源。正式主機及 34 組人工相關性複核仍待。
+- Decisions made (ADR links): 保留原測試斷言與工作程序啟動檢查。瀏覽器測試與非必要的 worker 啟動錯開。
+- Uncommitted changes / file ownership warnings: 本次只修改整合分支。下載的 trace 存放於 Git 忽略目錄。
+- Next 1–3 concrete actions: 核對本提交的一般 CI 與已在跑的完整官源 E2E。
+- Exact reproduction steps: 在一般 CI 觀察兩組瀏覽器步驟先完成，然後驗證工作程序啟動及 HTTPS 部署。若失敗，沿用 [首頁載入診斷](TESTING.md#一般-ci-首頁載入回歸)。

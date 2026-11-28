@@ -394,3 +394,9 @@ npx playwright test --reporter=list
 `tests/integration/test_postgresql.py` 的 `test_search_history_preview_is_bounded_and_private` 使用兩個合成帳號。核對歷史預覽只適用於本人的資料、無登入時為 401、長文以省略號截短、舊資料缺構想時為 `null`，並要求 `Cache-Control: no-store`。
 
 2026-11-28，在隔離 Nginx、FastAPI、PostgreSQL 以 DEMO 搜尋紀錄執行 Chromium、Firefox 與 WebKit。開啟歷史時原表單草稿保持原樣。點「帶入搜尋表單」會填入原構想、特徵、篩選、排序與重排序設定，移動焦點，當下沒有送出檢索。編輯後主動送出，逐欄查核送出的條件，再確認原保存的請求未改。此次合成測試確認表單和請求，沒有對相關性評分。另將官源工作台回歸加上帶入與鍵盤焦點的斷言。
+
+## 一般 CI 首頁載入回歸
+
+`681d649` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46083175462)記錄一項桌面 Chromium 首頁失敗。下載 Playwright trace 後確認首頁 HTTP 200，`/src/research.tsx` 與 `/src/corpus-dashboard.tsx` 兩個模組因 `ERR_NETWORK_CHANGED` 未載入。該次測試在背景程序容器啟動後約一秒開始，其他 11 項通過。兩事件相鄰，無法單憑該次紀錄判定 runner 的網路變化來源。
+
+一般 CI 將不需背景程序的瀏覽器測試放在程序啟動之前。待處理搜尋可重新開啟及取消的三項案例也在停止背景程序的設定執行。背景程序的啟動步驟、PostgreSQL 佇列回歸與完整官源 E2E 均保留。
