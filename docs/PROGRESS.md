@@ -9,13 +9,13 @@
 | M4 研究介面 | DONE | 2026-11-09，真實 TIPO 瀏覽器流程通過，涵蓋檢索及篩選、專利詳情、比對矩陣、工作台、保存歷史與載入／空結果／錯誤。日期邊界另以 SQL 測試值核對，現有正式樣本日期未知。見 [交接](HANDOFF.md)。 |
 | M5 評估、隱私與報告 | IN_PROGRESS | 私人 PDF、[報告逾時接手](TESTING.md#私人報告程序中斷回歸)、[登入後接續背景搜尋](TESTING.md#工作台查看及取消既有背景搜尋)、登出撤銷、自助刪除及靜態前端部署流程已驗證。[評估](EVALUATION.md)已有三種模式基線、請求項與說明書引文核對。新版固定語料的 34 組候選待人工複核。 |
 | M6 延伸功能 | NOT_STARTED | MVP 之後再評估。 |
-| 交付驗收（Goal M6） | BLOCKED | 官方完整工作流程及最新官方事件來源流程均有通過紀錄，Nginx／TLS 及真實索引皆有隔離驗收。外部目標主機與人工標註仍待。 |
+| 交付驗收（Goal M6） | IN_PROGRESS | 官方完整工作流程及官方事件來源流程均有通過紀錄。2026-11-28 依使用者指定的本機目標完成 HTTPS 部署、官方索引、帳號、私人 PDF 及備份還原驗收（[紀錄](TESTING.md#本機長期部署驗收)）。人工標註仍待；公開網域與對外主機待驗證。 |
 
 ## 2026-11-28 交付證據索引
 
 Claude Code 接手順序、既有證據與待人工及外部部署驗收項目見[最新交接](HANDOFF.md#2026-11-28-交由-claude-code-接續)。
 
-2026-11-28 Claude Code 接手核對：Ruff、pytest 148 項、前端 lint 與型別檢查在本機通過，遷移唯一 head 為 `0023_patent_priorities`，PR #1 的兩項檢查及最近三次官方 E2E 成功。重啟 Docker 後，全新資料卷遷移至 `0023_patent_priorities` 並通過 14 項 PostgreSQL 整合、HTTP 冒煙、3 項背景搜尋接續及 12 項一般 Playwright。官方 E2E 工作流程在本機全新專案重跑，下載並核對 24 個官方檔案、建立 1,624 筆向量，34 項 Playwright 含 Firefox 與 WebKit 通過。選用的公報 PDF 步驟本機直接取件成功，兩份 PDF 與 XML 出處核對及 3 項 Chromium 通過。PR #1 已合併入 `main`（`0810e1d`），main CI 通過。34 組人工複核仍未評分，目標主機未提供。見 [核對紀錄](HANDOFF.md#2026-11-28-claude-code-接手核對)。
+2026-11-28 Claude Code 接手核對：Ruff、pytest 148 項、前端 lint 與型別檢查在本機通過，遷移唯一 head 為 `0023_patent_priorities`，PR #1 的兩項檢查及最近三次官方 E2E 成功。重啟 Docker 後，全新資料卷遷移至 `0023_patent_priorities` 並通過 14 項 PostgreSQL 整合、HTTP 冒煙、3 項背景搜尋接續及 12 項一般 Playwright。官方 E2E 工作流程在本機全新專案重跑，下載並核對 24 個官方檔案、建立 1,624 筆向量，34 項 Playwright 含 Firefox 與 WebKit 通過。選用的公報 PDF 步驟本機直接取件成功，兩份 PDF 與 XML 出處核對及 3 項 Chromium 通過。PR #1 已合併入 `main`（`0810e1d`），main CI 通過。34 組人工複核未完成：使用者表示無法判讀專利，決定留在待辦。另以 Codex 的 AI 初評跑[暫定評估](EVALUATION.md#2026-11-28-ai-初評暫定評估非人工標註)，明確標示非人工標註。使用者指定先以本機為部署目標，本機 HTTPS 部署與備份還原驗收通過。見 [核對紀錄](HANDOFF.md#2026-11-28-claude-code-接手核對)。
 
 整合分支的累積差異、驗收證據及待確認事項可在[交付審查草稿](https://github.com/Johnnnny0823/RAG/pull/1)檢視。
 
