@@ -45,6 +45,11 @@ type Hit = PatentVersion & {
 type SourceLocation = { xpath: string; artifact_sha256: string };
 type Evidence = SourceLocation & { quote: string; char_start: number; char_end: number };
 type SearchSort = "relevance" | "date_desc" | "date_asc";
+const searchSortLabels: Record<SearchSort, string> = {
+  relevance: "相關性",
+  date_desc: "文件日期（新至舊）",
+  date_asc: "文件日期（舊至新）",
+};
 type Detail = {
   abstract_zh: string | null;
   abstract_en: string | null;
@@ -89,6 +94,7 @@ type PatentPage<T> = { items: T[]; has_more: boolean; limit: number; offset: num
 type Results = PatentPage<Hit> & { corpus_coverage?: CorpusCoverage | null };
 type NumberLookup = { number: string; numberType: string; page: PatentPage<PatentVersion> };
 type RunSummary = { id: string; created_at: string; project_id: string | null };
+type HistoryRun = RunSummary & { query_preview: string | null };
 type Project = { id: string; name: string; description: string };
 type SavedRun = RunSummary & {
   request: Search & { limit: number };
@@ -350,13 +356,14 @@ export function Research() {
   const [previewComparisons, setPreviewComparisons] = useState<ComparedDocument[]>([]);
   const [session, setSession] = useState<{ token: string; email: string; canMonitorIngestion: boolean } | null>(null);
   const workspaceHeading = useRef<HTMLHeadingElement>(null);
+  const editorHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (session) workspaceHeading.current?.focus();
   }, [session]);
   const [ingestionJobs, setIngestionJobs] = useState<IngestionJob[] | null>(null);
   const [accountDeleted, setAccountDeleted] = useState(false);
   const [registering, setRegistering] = useState(false);
-  const [history, setHistory] = useState<RunSummary[] | null>(null);
+  const [history, setHistory] = useState<HistoryRun[] | null>(null);
   const [historyOffset, setHistoryOffset] = useState(0);
   const [saved, setSaved] = useState<SavedRun | null>(null);
   const [confirmSearchRemoval, setConfirmSearchRemoval] = useState(false);
@@ -428,7 +435,7 @@ export function Research() {
 
   async function loadHistory(token: string, offset = 0) {
     const filter = projectFilter ? "&project_id=" + encodeURIComponent(projectFilter) : "";
-    const rows = await request<RunSummary[]>(`/search-runs?limit=21&offset=${offset}${filter}`, undefined, token);
+    const rows = await request<HistoryRun[]>(`/search-runs?limit=21&offset=${offset}${filter}`, undefined, token);
     setHistory(rows);
     setHistoryOffset(offset);
   }
@@ -436,7 +443,6 @@ export function Research() {
   function showSavedPage(record: SavedRun, offset = 0) {
     const limit = record.request.limit;
     setSearch(record.request);
-    setSortBy(record.request.sort_by ?? "relevance");
     setResults({ items: record.items.slice(offset, offset + limit), offset, limit, has_more: offset + limit < record.items.length, corpus_coverage: record.settings?.corpus_coverage });
     setSelected(null);
   }
@@ -577,9 +583,30 @@ export function Research() {
 
   async function analyze() {
     const data = await request<{ features: Feature[] }>("/queries/analyze", { query: query.trim() });
-    setDrafts(data.features.map((feature) => ({
+    loadFeatureDrafts(data.features);
+  }
+
+  function loadFeatureDrafts(features: Feature[]) {
+    setDrafts(features.map((feature) => ({
       ...feature, keywords_zh: feature.keywords_zh.join("，"), keywords_en: feature.keywords_en.join(", "),
     })));
+  }
+
+  function reuseSearch(strategy: Search) {
+    setQuery(strategy.query);
+    loadFeatureDrafts(strategy.features);
+    setIpc(strategy.ipc ?? "");
+    setFilters({
+      loc: strategy.loc ?? "",
+      published_from: strategy.published_from ?? "",
+      published_to: strategy.published_to ?? "",
+      document_stage: strategy.document_stage ?? "",
+      content_scope: strategy.content_scope ?? "",
+      applicant: strategy.applicant ?? "",
+    });
+    setRerank(strategy.rerank);
+    setSortBy(strategy.sort_by ?? "relevance");
+    editorHeading.current?.focus();
   }
 
   async function loadResults(next: Search, newSearch = false) {
@@ -796,9 +823,7 @@ export function Research() {
           {projectFilter && <ResearchSessions key={projectFilter} projectId={projectFilter} token={session.token}
             request={request} run={run} busy={!!busy} onUse={(idea, features) => {
               setQuery(idea);
-              setDrafts(features.map((feature) => ({
-                ...feature, keywords_zh: feature.keywords_zh.join("，"), keywords_en: feature.keywords_en.join(", "),
-              })));
+              loadFeatureDrafts(features);
             }} />}
           {projectFilter && <section className="my-4 rounded-lg border border-slate-200 p-3">
             <h3>專案收藏</h3>
@@ -868,8 +893,9 @@ export function Research() {
           {!!history?.length && <>
             <ul className="my-3 space-y-2">
               {history.slice(0, 20).map((item) => <li key={item.id}>
-                <button disabled={!!busy} onClick={() => void run("正在開啟搜尋紀錄…", () => openRun(item.id, session.token))}>
-                  {new Date(item.created_at).toLocaleString("zh-TW")} · {item.id.slice(0, 8)}
+                <button className="max-w-full break-words text-left" disabled={!!busy} onClick={() => void run("正在開啟搜尋紀錄…", () => openRun(item.id, session.token))}>
+                  <strong className="block">{item.query_preview || "已保存的搜尋"}</strong>{" "}
+                  <time className="text-sm" dateTime={item.created_at}>{new Date(item.created_at).toLocaleString("zh-TW")}</time> · {item.id.slice(0, 8)}
                 </button>
               </li>)}
             </ul>
@@ -907,7 +933,7 @@ export function Research() {
       </section>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <section className="research-panel">
-          <h2>發明構想</h2>
+          <h2 ref={editorHeading} tabIndex={-1}>發明構想</h2>
           <form onSubmit={(event) => { event.preventDefault(); if (!busy && query.trim()) void run("正在檢索專利…", () => submitSearch(false)); }}>
             <fieldset disabled={!!busy}>
               <label className="research-field">構想描述（最多 {MAX_INVENTION_LENGTH} 字）
@@ -971,9 +997,7 @@ export function Research() {
               <label className="my-3 block"><input type="checkbox" checked={rerank} onChange={(event) => setRerank(event.target.checked)} /> 使用本機模型重排序</label>
               <label className="research-field">候選排序
                 <select value={sortBy} onChange={(event) => setSortBy(event.target.value as SearchSort)}>
-                  <option value="relevance">相關性</option>
-                  <option value="date_desc">文件日期（新至舊）</option>
-                  <option value="date_asc">文件日期（舊至新）</option>
+                  {Object.entries(searchSortLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               </label>
               <button className="research-primary" disabled={!query.trim()} type="submit">搜尋臺灣專利</button>
@@ -1021,7 +1045,8 @@ export function Research() {
             </div>}
             {saved && <details className="mb-3">
               <summary>已保存的檢索策略</summary>
-              <p className="my-2 text-sm">本機重排序 · {search.rerank ? "啟用" : "停用"}</p>
+              <p className="my-2 text-sm">本機重排序 · {search.rerank ? "啟用" : "停用"} · 候選排序 {searchSortLabels[search.sort_by ?? "relevance"]}</p>
+              <button className="mb-2" type="button" disabled={!!busy} onClick={() => reuseSearch(saved.request)}>帶入搜尋表單</button>
               {search.features.length ? <ul className="space-y-2 text-sm">
                 {search.features.map((feature) => <li key={feature.feature_id} className="break-words">
                   <strong>{feature.description_zh}</strong> · {feature.must_have ? "必要" : "選用"}

@@ -2734,3 +2734,22 @@
 - Uncommitted changes / file ownership warnings: 本次測試使用獨立 Compose 專案和資料卷，日常資料庫未改動。
 - Next 1–3 concrete actions: 取得人工標註與目標主機後完成相關性重評及部署。
 - Exact reproduction steps: 依 [官方公告優先權驗收](TESTING.md#官方公告優先權驗收)重跑。
+
+## 私人搜尋歷史與條件重用
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `681d649`。
+- Current milestone and status: 歷史預覽及帶入表單已通過隔離驗收。整體交付 IN_PROGRESS。
+- Goal of this session: 可從私人歷史辨別並重用檢索條件，維持原保存紀錄。
+- Files changed (with purpose): `search_runs.py` 增加受限預覽，`research.tsx` 顯示歷史摘要並提供表單帶入，PostgreSQL 測試涵蓋預覽與所有權，官源 E2E 增加帶入檢查。更新 API、進度、測試及交接。
+- Database migrations added/applied: 無新增。隔離測試使用既有 `0023_patent_priorities`。
+- API/Schema changes: `GET /api/v1/search-runs` 新增向下相容的 `query_preview`。
+- Commands actually run and results: Ruff、前端 lint、型別檢查及正式建置通過。Pytest 147 passed、12 skipped，啟用隔離 PostgreSQL 後 12 項整合測試全數通過，1 則既有 Starlette 警告。封裝 Nginx 的 Chromium、Firefox、WebKit 各以真實 API 和 DEMO 保存資料通過預覽、帶入、提交與原始保存結果檢查。
+- Tests NOT run and reason: 本機官源回歸未完成，Docker Desktop 預設網段耗盡後改用獨立網段，已複製包含 `202639611` 的舊測試資料卷，啟動觀察仍未確認終態。新版遠端完整流程待驗收。
+- Data sources checked (exact URL/date) and license/access notes: 本輪測試沿用既有公開樣本快照與合成工作台資料，無新增 TIPO 下載。
+- Known bugs / risks / blockers: 34 組人工相關性評估、正式主機驗收仍待。帶入表單會取代目前可編輯的草稿。
+- Decisions made (ADR links): 歷史僅顯示受限摘要，原保存策略仍由其詳情顯示。使用者主動帶入後才更新表單。
+- Uncommitted changes / file ownership warnings: 僅修改整合分支。測試庫與日常開發庫隔離。
+- Next 1–3 concrete actions: 追蹤新版一般 CI 和完整官源 E2E。待人工評分、主機及網域就緒後完成交付驗收。
+- Exact reproduction steps: 依 [私人搜尋歷史與條件重用](TESTING.md#私人搜尋歷史與條件重用)重跑，官源版本使用 `PATENTSCOPE_E2E_TIPO=1`。

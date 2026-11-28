@@ -188,13 +188,22 @@ test("official publication supports saved evidence and PDF export @tipo", async 
     const historyResponse = page.waitForResponse((response) =>
       new URL(response.url()).pathname === `/api/v1/search-runs/${id}` && response.request().method() === "GET",
     );
-    await page.getByRole("button", { name: new RegExp(`${id.slice(0, 8)}$`) }).click();
+    const savedEntry = page.getByRole("button", { name: new RegExp(`${id.slice(0, 8)}$`) });
+    await expect(savedEntry).toContainText(longIdea.slice(0, 10).trim());
+    await savedEntry.click();
     const reopened = await historyResponse;
     expect(reopened.ok()).toBe(true);
     const reopenedRun = await reopened.json();
     expect(reopenedRun.request.query).toBe(longIdea);
     expect(reopenedRun.settings.query_expansion_version).toBe("sentence-expansion-v2");
     expect(reopenedRun.settings.corpus_coverage).toEqual(coverage);
+    const ideaEditor = page.getByLabel(/^構想描述（最多 /);
+    await expect(ideaEditor).toHaveValue("");
+    await page.getByText("已保存的檢索策略", { exact: true }).click();
+    await button("帶入搜尋表單").click();
+    await expect(page.getByRole("heading", { name: "發明構想", exact: true })).toBeFocused();
+    await expect(ideaEditor).toHaveValue(longIdea);
+    await expect(page.getByLabel("文件內容")).toHaveValue("fulltext");
     await expect(scopeLine).toContainText(`向量索引 ${coverage.semantic_versions} 個文件版本`);
     expect(reopenedRun.comparisons).toEqual([
       expect.objectContaining({ document_id: documentId, items }),

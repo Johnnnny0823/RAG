@@ -11,6 +11,7 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
 from psycopg.errors import ForeignKeyViolation, InsufficientPrivilege
+from psycopg.types.json import Jsonb
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 
 from services.api.db import engine
@@ -319,6 +320,33 @@ def test_background_search_saves_snapshot_only_for_completed_owner_job(
     assert client.get(path, headers=owner).json()["run_id"] is None
     assert len(client.get("/api/v1/search-runs", headers=owner).json()) == 1
     assert outcomes == [("search_job_finished", {"status": "succeeded"})]
+
+
+def test_search_history_preview_is_bounded_and_private(accounts):
+    client, ((owner_id, owner, _), (other_id, other, _)) = accounts
+    query = "DEMO " + "發明" * 80
+    with engine.begin() as conn:
+        for user_id, request in (
+            (owner_id, Jsonb({"query": query})),
+            (owner_id, Jsonb({})),
+            (other_id, Jsonb({"query": "Other DEMO query"})),
+        ):
+            conn.exec_driver_sql(
+                "INSERT INTO search_runs (user_id, request, settings) VALUES (%s, %s, '{}')",
+                (user_id, request),
+            )
+    endpoint = "/api/v1/search-runs"
+    assert client.get(endpoint).status_code == 401
+    response = client.get(endpoint, headers=owner)
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert {item["query_preview"] for item in response.json()} == {
+        query[:99] + "…",
+        None,
+    }
+    assert [
+        item["query_preview"] for item in client.get(endpoint, headers=other).json()
+    ] == ["Other DEMO query"]
 
 
 def test_background_report_is_private_ephemeral_and_deleted_with_run(

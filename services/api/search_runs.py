@@ -41,6 +41,10 @@ class SavedRun(BaseModel):
     project_id: UUID | None = None
 
 
+class SavedRunSummary(SavedRun):
+    query_preview: str | None
+
+
 class ProjectAssignment(BaseModel):
     project_id: UUID | None
 
@@ -110,7 +114,7 @@ def persist_search(
     return SavedRun.model_validate(run)
 
 
-@router.get("", response_model=list[SavedRun])
+@router.get("", response_model=list[SavedRunSummary])
 def list_searches(
     account: Owner,
     response: Response,
@@ -131,7 +135,13 @@ def list_searches(
                 return project_missing()
             rows = (
                 conn.exec_driver_sql(
-                    """SELECT id, created_at, project_id FROM search_runs WHERE user_id=%s
+                    """SELECT id, created_at, project_id,
+                      CASE WHEN jsonb_typeof(request->'query') = 'string' THEN
+                        CASE WHEN length(request->>'query') > 100
+                             THEN left(request->>'query', 99) || '…'
+                             ELSE NULLIF(request->>'query', '') END
+                      END AS query_preview
+                   FROM search_runs WHERE user_id=%s
                    AND (%s::uuid IS NULL OR project_id=%s)
                    ORDER BY created_at DESC, id LIMIT %s OFFSET %s""",
                     (account.id, project_id, project_id, limit, offset),
@@ -142,7 +152,7 @@ def list_searches(
     except SQLAlchemyError:
         return unavailable()
     response.headers["Cache-Control"] = "no-store"
-    return [SavedRun.model_validate(row) for row in rows]
+    return [SavedRunSummary.model_validate(row) for row in rows]
 
 
 @router.patch("/{run_id}/project", response_model=SavedRun)
