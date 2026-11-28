@@ -2810,3 +2810,22 @@
 - Uncommitted changes / file ownership warnings: 驗收檔案放在 Git 忽略目錄，資料庫只使用隔離測試庫。
 - Next 1–3 concrete actions: 關注一般 CI 與既有完整官源 E2E，待標註與目標環境就緒再驗收交付。
 - Exact reproduction steps: 依 [官源公報 PDF 首次離線匯入](TESTING.md#官源公報-pdf-首次離線匯入)操作。
+
+## 本機模型用量量測
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，起點 `f200dd9`。
+- Current milestone and status: 四種檢索的本機模型用量已實測。整體交付 IN_PROGRESS。
+- Goal of this session: 補齊可重現的檢索成本觀測，核對每種模式使用的本機模型呼叫。
+- Files changed (with purpose): 新增 `scripts/benchmark_model_usage.py`，記錄模型實際請求與回傳用量，更新 EVALUATION、TESTING、PROGRESS、HANDOFF。
+- Database migrations added/applied: 無。隔離資料庫重建 11 版本的詞彙及語意索引，分別有 104 個片段與 106 筆向量。
+- API/Schema changes: 無。
+- Commands actually run and results: Ruff 及 pytest 通過（148 通過、14 預設跳過、1 則既有警告）。`python -m scripts.benchmark_model_usage --repeats 3` 四種模式共 12 次，逐次核對模型呼叫、耗時與 token。詞彙沒有模型呼叫，向量和混合各 1 次嵌入，重排另加 1 次生成。離線 PDF 上一版的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46107767098)通過。
+- Tests NOT run and reason: 用量工具不更動產品流程，本次未重跑本機瀏覽器。上版完整官源工作仍在建置語意索引。
+- Data sources checked (exact URL/date) and license/access notes: 2026-11-28 使用[既有官方保存原件](TESTING.md#官源公報-pdf-首次離線匯入)重建索引，沒有新取件。
+- Known bugs / risks / blockers: 未量測電費、折舊或目標環境金額。34 組人工評分及目標主機仍待。
+- Decisions made (ADR links): 只記錄實際模型呼叫、可得 token 值及耗時。量測繞過 HTTP，以相同的後端檢索程式執行。
+- Uncommitted changes / file ownership warnings: 本機 JSON 保存在 `.patent-data/official-model-usage-20261128.json`，未把測試語料或模型物件加入版本庫。
+- Next 1–3 concrete actions: 追蹤完整官源工作。取得人工評分、主機權限與網域設定後完成正式驗收。
+- Exact reproduction steps: 使用 [本機模型用量](EVALUATION.md#2026-11-28-本機模型用量) 所列樣本、模型與指令。

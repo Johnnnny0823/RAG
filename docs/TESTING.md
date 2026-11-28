@@ -420,3 +420,7 @@ npx playwright test --reporter=list
 - 設定 `PATENTSCOPE_E2E_TIPO=versions`、`PATENTSCOPE_E2E_GAZETTE_PDFS=1` 及 `PATENTSCOPE_E2E_CROSS_BROWSER=1` 並對封裝測試站執行 `npm run test:e2e --prefix apps/web -- patent-number.spec.ts`，Chromium 桌面／平板／手機及桌面 Firefox、WebKit 共 5 項通過。
 
 離線模式另有 pytest 斷言阻止呼叫下載函式。GitHub runner 直接從 TIPO 即時取件的 HTTP 403 結果沿用[先前紀錄](#官方公報-pdf-回歸)。
+
+## 檢索模型用量
+
+`python -m scripts.benchmark_model_usage --repeats 3 --output <新檔>` 以隔離的真實官源索引和本機 Ollama 執行四種檢索，資訊包含模型呼叫與用量。2026-11-28 實測 12 次並核對每次呼叫種類與數量。詳見[檢索評估](EVALUATION.md#2026-11-28-本機模型用量)。上一版公報 PDF 離線匯入的 [一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46107767098) 已通過。
