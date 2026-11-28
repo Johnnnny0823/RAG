@@ -2829,3 +2829,22 @@
 - Uncommitted changes / file ownership warnings: 本機 JSON 保存在 `.patent-data/official-model-usage-20261128.json`，未把測試語料或模型物件加入版本庫。
 - Next 1–3 concrete actions: 追蹤完整官源工作。取得人工評分、主機權限與網域設定後完成正式驗收。
 - Exact reproduction steps: 使用 [本機模型用量](EVALUATION.md#2026-11-28-本機模型用量) 所列樣本、模型與指令。
+
+## 交付審查草稿
+
+- Date/time (timezone): 2026-11-28（Asia/Taipei）。
+- Agent: Codex。
+- Branch / commit SHA: `codex/gemini-m6-integration`，開立草稿時為 `0e1c09c`，目標 `main` 為 `3c4bbbc`。
+- Current milestone and status: 可審查的整合差異已建立。整體交付 IN_PROGRESS。
+- Goal of this session: 將整合分支、實測證據與交付限制彙整至同一處供審查。
+- Files changed (with purpose): `docs/PROGRESS.md` 及 `docs/HANDOFF.md` 記錄審查入口。另建立 [GitHub Draft PR #1](https://github.com/Johnnnny0823/RAG/pull/1)。
+- Database migrations added/applied: 無新增。
+- API/Schema changes: 無。
+- Commands actually run and results: `git rev-list --left-right --count origin/main...HEAD` 在開立時顯示 `0 108`。`gh pr view 1` 確認草稿、來源分支、目標 `main` 及 157 個更動檔案。以 GitHub API 與 `git fetch --no-auto-maintenance` 核對 `main` 為 `3c4bbbc`。一般 `git fetch` 的本機自動重整曾遇 pack index 權限錯誤，停用該次自動維護後取件成功。
+- Tests NOT run and reason: 本次只有交付文件及草稿異動，未另跑產品測試。建立時分支與 PR 的一般 CI 仍在執行，既有完整官源工作也仍在執行。
+- Data sources checked (exact URL/date) and license/access notes: 此次沒有新增官方取件。
+- Known bugs / risks / blockers: 34 組人工相關性評分、目標主機驗收、最新完整官源工作仍待。PR 為草稿，尚未合併。
+- Decisions made (ADR links): 從獨立整合分支發起同一個交付審查，以 PR 顯示差異及驗收證據。
+- Uncommitted changes / file ownership warnings: 只更新整合分支，遠端 `main` 維持原 SHA。
+- Next 1–3 concrete actions: 核對新的 PR 檢查及完整官源結果。完成使用者人工相關性及目標環境驗收後再評估交付。
+- Exact reproduction steps: 開啟 [審查草稿](https://github.com/Johnnnny0823/RAG/pull/1)，由其 Evidence 連結查閱對應版本測試。
