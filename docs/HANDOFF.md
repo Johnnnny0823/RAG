@@ -1,5 +1,43 @@
 # Agent Handoff
 
+## 2026-11-28 交由 Claude Code 接續
+
+| 項目 | 接手基準 |
+| --- | --- |
+| 日期與交接者 | 2026-11-28（Asia/Taipei），Codex |
+| 工作目錄 | `D:\patentscope-m6-integration`。原開發目錄為 `D:\專利RAG`，請在整合工作樹接續。 |
+| Git | `codex/gemini-m6-integration`，產品與驗收基準 `d7f4f56`。遠端 `main` 為 `3c4bbbc`。整合內容集中於 [Draft PR #1](https://github.com/Johnnnny0823/RAG/pull/1)。 |
+| 里程碑 | M0–M4 已有驗收，M5 人工評估與 Goal M6 外部部署為 BLOCKED。原規格的 M6 選配延伸另列於 [進度](PROGRESS.md)。 |
+| 本次變更 | 更新 HANDOFF 與 PROGRESS，產品原始碼、API、資料庫均無新變更。 |
+| 遷移 | 唯一 head `0023_patent_priorities`。已有空白庫、既有公告補入及有資料時的降版保護證據。 |
+
+### 接手邊界
+
+先完整閱讀 `AGENTS.md`、`CLAUDE.md`，再查 `git status --short --branch`、`git log -3 --oneline` 和 [交付證據索引](PROGRESS.md#2026-11-28-交付證據索引)。本機檢查開始時工作樹乾淨。沿用既有分支與新版遷移。依使用者要求，請勿重套 Gemini 的 `patentscope-m6-complete.patch` 或覆蓋整合內容。PR 保持草稿。涉及正式部署、合併或正式資料時，先取得使用者針對目標環境的授權。
+
+### 已核對的證據
+
+- `d7f4f56` 的 [PR CI](https://github.com/Johnnnny0823/RAG/actions/runs/46109018368) 與 [分支 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46109014368) 均成功，涵蓋單元測試、PostgreSQL 整合、一般 Playwright、HTTP 冒煙與隔離 HTTPS。
+- `89d991f` 的[完整官源 E2E](https://github.com/Johnnnny0823/RAG/actions/runs/46106199884) 成功。固定官方 XML 以雜湊核對，建立 117 個文件版本與 1,624 筆向量，34 項 Playwright 通過，包含歷史重用、跨版引證、私人 PDF 與法律異動。本機 `68f97b8` 另以桌面、手機模擬完成整條研究流程。[重現方式](TESTING.md#官源歷史重用與-pdf-回歸)
+- 選用的遠端即時公報 PDF 在個案 JSON 端點收到 HTTP 403。先前合法取得的公開 `202640162` 與公告 `I941082` 已實測離線首次匯入、SHA-256、2 與 9 頁、版本隔離及跨瀏覽器查閱。這與系統生成的私人研究 PDF 是兩條獨立驗收。[來源與限制](DATA_SOURCES.md#發明公告公報個案-pdf) · [離線測試](TESTING.md#官源公報-pdf-首次離線匯入)
+- 本次實際執行 `git status`、`git log`、`gh pr view`、`gh pr checks` 與 `gh run view` 核對以上狀態。本次是文件交接，產品測試證據沿用列明的提交與執行結果。此輪沒有新增 TIPO 取件，也未在正式主機執行測試。
+
+### 下一位接手順序
+
+1. **收取人工複核 JSON。** 本機離線表為 `D:\patentscope-m6-integration\.patent-data\review\patentscope-review.html`，驗證時檔案存在。`evaluation/tipo_official_117_review.json` 有 34 組待複核候選。由真人填入標註者、0–2 分與依據後匯出，核對 `label_status` 為 `human_reviewed` 且文件指紋完整。異機接手可依評估文件重新匯出離線表。使用同一固定 117 版本的隔離語料執行下方命令，記錄 Precision@10、Recall@10、nDCG@10、MRR、延遲和未評候選數。AI 不得代填。[評估與資料集](EVALUATION.md#人工複核候選池)
+2. **等待部署主機資訊及明確授權。** 需要主機、網域、可用存取方式及備份位置。依 SETUP 先準備 Docker、Ollama、專用資料庫帳密及憑證。驗收正式 HTTPS、同源 API、真實索引、帳號及私人 PDF，並將備份還原到獨立目標資料庫核對元資料、原始物件與可搜尋索引。本機隔離 TLS、換證及備份還原有既有通過證據。[部署方式](SETUP.md#使用自備憑證啟用-https) · [還原驗收](TESTING.md#隔離部署的備份還原驗收)
+3. **以實際結果收尾。** 更新 PROGRESS、HANDOFF、TESTING 和草稿 PR。保留新舊修訂、樣本、CI 與正式環境驗收的證據範圍。人工複核或目標主機尚缺時維持對應未驗收狀態。先備份、再驗收，合併另依維護者授權。
+
+```powershell
+Set-Location D:/patentscope-m6-integration
+git -c safe.directory=D:/patentscope-m6-integration status --short --branch
+gh pr checks 1 -R Johnnnny0823/RAG
+python -X utf8 scripts/evaluate_search.py --api http://127.0.0.1:18038 --dataset "C:/path/to/reviewed.json" --repeats 2
+```
+
+Windows 若遇 Git `dubious ownership`，沿用上述單次 `safe.directory`。需要 fetch 時可加 `--no-auto-maintenance`，避開已觀察到的磁碟 pack index 權限問題。測試資料、PDF、追蹤檔及憑證留在適當的隔離目錄和 Git 忽略路徑。
+
+
 ## M5 靜態前端部署驗收
 
 - Date/time (timezone): 2026-11-09（Asia/Taipei）。
