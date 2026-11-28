@@ -2783,11 +2783,11 @@
 - Files changed (with purpose): `services/api/db.py` 擴充 readiness 的資料庫查詢，`tests/integration/test_postgresql.py` 驗證缺表和權限不足。更新 API、進度、測試及交接文件。
 - Database migrations added/applied: 無新增。沿用隔離 PostgreSQL `0023_patent_priorities`，執行帳號的既有權限沒有變更。
 - API/Schema changes: `GET /api/v1/ready` 增加表及 schema 讀取檢查，保留既有成功及錯誤結構。
-- Commands actually run and results: 新回歸先重現缺表及權限不足各錯回 200。修正後 `pytest -q tests/integration` 14 項通過，預設 pytest 147 項通過、14 項預設跳過，均有既有 Starlette 警告。Ruff 格式及 lint 通過。以同一隔離庫測 25 次就緒查詢，中位數 28.34 毫秒。
+- Commands actually run and results: 新回歸先重現缺表及權限不足各錯回 200。修正後 `pytest -q tests/integration` 14 項通過，預設 pytest 147 項通過、14 項預設跳過，均有既有 Starlette 警告。Ruff 格式及 lint 通過。以同一隔離庫測 25 次就緒查詢，中位數 28.34 毫秒。`0199ddd` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46107072790)全數通過。
 - Tests NOT run and reason: 本次未重跑本機完整瀏覽器與模型工作。上一版工作台的完整官源 E2E 仍在進行。
 - Data sources checked (exact URL/date) and license/access notes: 此輪無新增 TIPO 取件。
 - Known bugs / risks / blockers: 就緒檢查覆蓋讀取與向量運算，完整移轉版本仍由 Alembic 和 CI 遷移測試查核。正式主機及 34 組人工評估仍待。
 - Decisions made (ADR links): 從既有角色資料表清單共用就緒檢查範圍。資料表狀況不包含於 HTTP 錯誤本文。
 - Uncommitted changes / file ownership warnings: 只修改整合分支，資料庫測試均在隔離 PostgreSQL。
-- Next 1–3 concrete actions: 追蹤新版一般 CI 和上版完整官源 E2E。等待人工評估及目標部署環境。
+- Next 1–3 concrete actions: 追蹤上版完整官源 E2E。等待人工評估及目標部署環境。
 - Exact reproduction steps: 依 [資料庫就緒檢查](TESTING.md#資料庫就緒檢查) 執行。

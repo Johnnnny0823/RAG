@@ -408,3 +408,5 @@ npx playwright test --reporter=list
 執行 `python -m pytest -q tests/integration -k 'ready_rejects or migration_head'`，需接到已遷移的隔離 PostgreSQL，使用 `patentscope_api`。案例將就緒檢查所需的資料表設為一張不存在的表，以及一張存在但帳號無法讀取的管理表。舊版在兩種情況均誤回 200，修正後均回傳 HTTP 503 `DATABASE_UNAVAILABLE`，錯誤本文不含資料表名。`/api/v1/health` 依舊回傳 200。遷移及帳號授權完整的情況，就緒狀態回傳 200。
 
 同一隔離庫於預熱後連續執行 25 次就緒查詢。每次以受限帳號建立連線並檢查 30 張資料表，本機中位數 28.34 毫秒。此數字僅適用於該環境，未量測公開入口或併發負載。
+
+`0199ddd` 的[一般 CI](https://github.com/Johnnnny0823/RAG/actions/runs/46107072790)通過 PostgreSQL 整合、HTTP 冒煙、核心 Playwright 及 HTTPS 部署。
